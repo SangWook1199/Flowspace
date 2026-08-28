@@ -1,0 +1,15 @@
+export const sprints = [
+  { id: 1, name: 'Sprint 1', status: 'ACTIVE', goal: '로그인 및 인증 기능 구현', startDate: '2026.05.29', endDate: '2026.06.11', remaining: '14일 남음', progress: 68, total: 35, completed: 24, color: 'indigo', icon: 'Flag' },
+  { id: 2, name: 'Sprint 2', status: 'PLANNING', goal: '회원 관리 및 프로젝트 기능 구현', startDate: '2026.06.12', endDate: '2026.06.25', remaining: '15일 남음', progress: 0, total: 12, completed: 0, color: 'sky', icon: 'CalendarDays' },
+  { id: 3, name: 'Sprint 3', status: 'COMPLETED', goal: '대시보드 및 통계 기능 구현', startDate: '2026.05.01', endDate: '2026.05.14', remaining: '완료됨', progress: 100, total: 18, completed: 18, color: 'green', icon: 'CircleCheck' },
+  { id: 4, name: 'Sprint 4', status: 'PLANNING', goal: '알림 및 실시간 기능 구현', startDate: '2026.06.26', endDate: '2026.07.09', remaining: '29일 남음', progress: 0, total: 10, completed: 0, color: 'amber', icon: 'Hourglass' }
+];
+export const sprintSummary = [{ label: '진행 중', value: 1, tone: 'indigo' }, { label: '계획됨', value: 2, tone: 'sky' }, { label: '완료', value: 12, tone: 'green' }];
+
+export const sprintTasks = [
+  { id: 1, title: 'JWT 로그인 API 구현', assignee: '상욱', priority: '높음', start: '2026.09.01', end: '2026.09.02', subtasks: ['JWT 발급', 'Refresh Token', '로그인 API'], complete: 3, total: 3, tone: 'red' },
+  { id: 2, title: '블록 드래그 기능', assignee: '민수', priority: '보통', start: '2026.09.03', end: '2026.09.05', complete: 2, total: 4, tone: 'orange' },
+  { id: 3, title: 'Sprint UI 디자인', assignee: '서연', priority: '보통', start: '2026.09.02', end: '2026.09.06', complete: 1, total: 3, tone: 'orange' },
+  { id: 4, title: '파일 업로드 테스트', assignee: '지민', priority: '낮음', start: '2026.09.08', end: '2026.09.09', complete: 0, total: 2, tone: 'green' },
+  { id: 5, title: 'OAuth 연동', assignee: '상욱', priority: '높음', start: '2026.09.10', end: '2026.09.12', complete: 2, total: 2, tone: 'red' }
+];
