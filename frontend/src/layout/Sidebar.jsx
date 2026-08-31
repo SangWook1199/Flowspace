@@ -13,8 +13,14 @@ export default function Sidebar({ navigation, pages, members }) {
   const go = (label) => {
     if (label === "홈") navigate("/");
     if (label === "스프린트") navigate("/sprints");
+    if (label === "칸반") navigate("/kanban");
   };
-  const activeLabel = pathname.startsWith("/sprints") ? "스프린트" : "홈";
+  const activeLabel = pathname.startsWith("/sprints")
+    ? "스프린트"
+    : pathname.startsWith("/kanban")
+      ? "칸반"
+      : "홈";
+
   return (
     <aside className={styles.sidebar}>
       <div className={styles.logoMark}>

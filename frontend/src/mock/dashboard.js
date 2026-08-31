@@ -1,7 +1,7 @@
 export const navigation = [
   ["홈", "House"],
   ["스프린트", "Zap"],
-  ["칸반", "PanelsTopLeft"],
+  ["칸반", "KanbanSquare"],
   ["캘린더", "CalendarDays"],
   ["회의록", "Video"],
   ["팀 위키", "BookOpen"],

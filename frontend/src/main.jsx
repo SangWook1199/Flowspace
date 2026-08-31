@@ -7,6 +7,7 @@ import "./styles/sprint.css";
 import "./styles/sprint-list.css";
 import "./styles/sidebar-sprints.css";
 import "./styles/sprint-detail.css";
+import "./styles/kanban.css";
 import "./styles/sprint-detail-table.css";
 
 createRoot(document.getElementById("root")).render(<App />);

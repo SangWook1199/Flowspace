@@ -186,7 +186,11 @@
 }
 .main {
   margin-left: 278px;
+  width: calc(100% - 278px);
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
 }
 .header {
   height: 85px;
