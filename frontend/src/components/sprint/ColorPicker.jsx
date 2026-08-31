@@ -1,2 +1,34 @@
-const colors = ['#4f5cf6', '#91d8bc', '#f8b544', '#f16469', '#a691e9', '#59b9d0', '#d7dde8'];
-export default function ColorPicker({ value, onChange }) { return <section className="colorPicker"><label>스프린트 색상</label><div>{colors.map(color => <button type="button" aria-label={`${color} 색상`} onClick={() => onChange(color)} className={value === color ? 'picked' : ''} style={{ backgroundColor: color }} key={color}>{value === color && '✓'}</button>)}</div><small>스프린트를 구분할 색상을 선택하세요.</small></section>; }
+const colors = [
+  "#4f5cf6",
+  "#91d8bc",
+  "#f8b544",
+  "#f16469",
+  "#a691e9",
+  "#59b9d0",
+  "#d7dde8",
+];
+
+export default function ColorPicker({ value, onChange }) {
+  return (
+    <section className="colorPicker">
+      <label>스프린트 색상</label>
+
+      <div>
+        {colors.map((color) => (
+          <button
+            key={color}
+            type="button"
+            aria-label={`${color} 색상`}
+            onClick={() => onChange(color)}
+            className={value === color ? "picked" : ""}
+            style={{ backgroundColor: color }}
+          >
+            {value === color && "✓"}
+          </button>
+        ))}
+      </div>
+
+      <small>스프린트를 구분할 색상을 선택하세요.</small>
+    </section>
+  );
+}

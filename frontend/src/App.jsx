@@ -1,10 +1,10 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
-import Dashboard from './pages/Dashboard';
-import SprintCreate from './pages/SprintCreate';
-import SprintList from './pages/SprintList';
-import SprintDetail from './pages/SprintDetail';
-import SprintTasks from './pages/SprintTasks';
-import MainLayout from './layout/MainLayout';
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import Dashboard from "./pages/Dashboard";
+import SprintCreate from "./pages/SprintCreate";
+import SprintList from "./pages/SprintList";
+import SprintDetail from "./pages/SprintDetail";
+import SprintTasks from "./pages/SprintTasks";
+import MainLayout from "./layout/MainLayout";
 
 function App() {
   return (

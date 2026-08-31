@@ -1,3 +1,31 @@
-import { CalendarDays, Ellipsis, Flag } from 'lucide-react';
-import SprintProgress from './SprintProgress';
-export default function SprintDetailHero({ sprint }) { return <section className="detailHero"><div className="detailIcon"><Flag size={36}/></div><div className="detailTitle"><h1>{sprint.name} <span>계획됨</span></h1><p>{sprint.goal}</p><small><CalendarDays size={15}/> 2026.09.01 (화) ~ 2026.09.14 (월)　·　14일 남음</small></div><div className="detailProgress"><div><button><Ellipsis size={20}/></button><button>스프린트 편집</button></div><SprintProgress progress={0} color="indigo"/><b>0 / 15 완료</b></div></section>; }
+import { CalendarDays, Ellipsis, Flag } from "lucide-react";
+import SprintProgress from "./SprintProgress";
+export default function SprintDetailHero({ sprint }) {
+  return (
+    <section className="detailHero">
+      <div className="detailIcon">
+        <Flag size={36} />
+      </div>
+      <div className="detailTitle">
+        <h1>
+          {sprint.name} <span>계획됨</span>
+        </h1>
+        <p>{sprint.goal}</p>
+        <small>
+          <CalendarDays size={15} /> 2026.09.01 (화) ~ 2026.09.14 (월)　·　14일
+          남음
+        </small>
+      </div>
+      <div className="detailProgress">
+        <div>
+          <button>
+            <Ellipsis size={20} />
+          </button>
+          <button>스프린트 편집</button>
+        </div>
+        <SprintProgress progress={0} color="indigo" />
+        <b>0 / 15 완료</b>
+      </div>
+    </section>
+  );
+}

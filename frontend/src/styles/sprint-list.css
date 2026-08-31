@@ -1,1 +1,366 @@
-.sprintListPage{padding:26px 30px 40px}.sprintListHeading{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px}.sprintListHeading .breadcrumb{margin-bottom:16px}.sprintListHeading h1{margin:0 0 8px;font-size:29px;letter-spacing:-1.6px}.sprintListHeading p{margin:0;color:#65758e;font-size:14px}.sprintListHeading>button{height:42px;border:0;border-radius:8px;background:#4f5cf6;color:#fff;padding:0 17px;display:flex;align-items:center;gap:8px;font-weight:700;box-shadow:0 5px 13px #4f5cf640}.sprintSummary{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:21px}.sprintSummary article{height:92px;border:1px solid #e5e7eb;border-radius:14px;background:#fff;padding:18px;position:relative}.sprintSummary span{position:absolute;left:18px;top:20px;width:10px;height:10px;border-radius:50%}.sprintSummary p{margin:0 0 9px 20px;color:#6e7d93;font-size:12px}.sprintSummary strong{margin-left:20px;font-size:24px}.sprintSummary .indigo,.currentSprint i.indigo{background:#4f5cf6}.sprintSummary .sky,.currentSprint i.sky{background:#27a5df}.sprintSummary .green,.currentSprint i.green{background:#34ba79}.sprintFilter{height:58px;border-top:1px solid #e8edf4;border-bottom:1px solid #e8edf4;display:flex;align-items:center;gap:18px;margin-bottom:20px}.sprintFilter>div{display:flex;gap:5px}.sprintFilter>div button{height:31px;padding:0 13px;border:0;border-radius:7px;background:transparent;color:#66758e;font-size:13px}.sprintFilter>div button.active{background:#edf0ff;color:#4e5cf4;font-weight:700}.sprintFilter label{margin-left:auto;height:36px;width:250px;border:1px solid #dfe6f0;border-radius:8px;background:#fff;display:flex;align-items:center;gap:8px;padding:0 10px;color:#65758e}.sprintFilter input{width:100%;border:0;outline:0;font:13px inherit}.filterButton{height:36px;border:1px solid #dfe6f0;border-radius:8px;background:#fff;display:flex;align-items:center;gap:7px;padding:0 12px;font-size:13px}.sprintListBody{display:grid;grid-template-columns:205px minmax(0,1fr);gap:18px}.currentSprint{height:max-content;border:1px solid #e5e7eb;border-radius:14px;background:#fff;padding:18px}.currentSprint h2{font-size:14px;margin:0 0 13px}.currentSprint button{width:100%;height:37px;display:flex;align-items:center;gap:8px;padding:0;border:0;background:transparent;text-align:left}.currentSprint i{width:9px;height:9px;border-radius:50%}.currentSprint span{font-size:13px;flex:1}.currentSprint b{font-size:11px;color:#65758e;background:#f2f4f8;border-radius:10px;padding:3px 6px}.sprintCards{display:grid;gap:10px}.sprintCard{min-height:122px;border:1px solid #e5e7eb;border-left:5px solid;border-radius:13px;background:#fff;display:grid;grid-template-columns:minmax(285px,1.45fr) minmax(155px,.75fr) minmax(260px,1fr) 76px;align-items:center;gap:20px;padding:16px 17px}.sprintCard.indigo{border-left-color:#4f5cf6}.sprintCard.sky{border-left-color:#22a7e4}.sprintCard.green{border-left-color:#34ba79}.sprintCard.amber{border-left-color:#f4a623}.sprintIdentity{display:flex;align-items:center;gap:15px}.sprintIcon{width:62px;height:62px;border-radius:13px;display:grid;place-items:center}.indigo .sprintIcon{background:#f0efff;color:#4f5cf6}.sky .sprintIcon{background:#e7f7ff;color:#199bdb}.green .sprintIcon{background:#e7f8ef;color:#31b878}.amber .sprintIcon{background:#fff5e3;color:#f2a321}.sprintIdentity h2{font-size:18px;margin:0 0 7px}.sprintIdentity h2 span{font-size:11px;font-weight:600;color:#4f5cf6;background:#eeedff;border-radius:9px;padding:4px 8px;margin-left:8px;vertical-align:2px}.sprintIdentity p{margin:0 0 9px;font-size:13px}.sprintIdentity small{color:#62728a;font-size:11px}.sprintProgress span,.sprintNumbers span{font-size:11px;color:#6c7b91}.sprintProgress strong{display:block;margin:4px 0 7px;font-size:21px}.sprintProgress strong.indigo{color:#4f5cf6}.sprintProgress strong.green{color:#30b875}.sprintProgress div{height:7px;background:#e6eaf0;border-radius:8px;overflow:hidden}.sprintProgress i{display:block;height:100%;border-radius:inherit;background:#9aa7b8}.sprintProgress i.indigo{background:#4f5cf6}.sprintProgress i.green{background:#34ba79}.sprintNumbers{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;text-align:center}.sprintNumbers b{display:block;font-size:18px;margin-top:8px}.sprintNumbers span:nth-child(2) b{color:#27ae70}.sprintNumbers span:nth-child(3) b{color:#2268e7}.sprintDetail{border:0;background:transparent;font-size:12px;font-weight:700;white-space:nowrap}.emptySprints{padding:50px;text-align:center;color:#718099}@media(max-width:1150px){.sprintCard{grid-template-columns:1.3fr .7fr 1fr}.sprintDetail{display:none}}@media(max-width:860px){.sprintListPage{padding:22px 18px}.sprintSummary{grid-template-columns:1fr}.sprintListBody{grid-template-columns:1fr}.currentSprint{display:flex;gap:12px;align-items:center}.currentSprint h2{margin:0}.currentSprint button{width:auto;flex:1}.sprintCard{grid-template-columns:1fr;padding:18px}.sprintFilter{height:auto;padding:10px 0;flex-wrap:wrap}.sprintFilter label{margin-left:0;width:100%}}
+.sprintListPage {
+  padding: 26px 30px 40px;
+}
+.sprintListHeading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.sprintListHeading .breadcrumb {
+  margin-bottom: 16px;
+}
+.sprintListHeading h1 {
+  margin: 0 0 8px;
+  font-size: 29px;
+  letter-spacing: -1.6px;
+}
+.sprintListHeading p {
+  margin: 0;
+  color: #65758e;
+  font-size: 14px;
+}
+.sprintListHeading > button {
+  height: 42px;
+  border: 0;
+  border-radius: 8px;
+  background: #4f5cf6;
+  color: #fff;
+  padding: 0 17px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  box-shadow: 0 5px 13px #4f5cf640;
+}
+.sprintSummary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 21px;
+}
+.sprintSummary article {
+  height: 92px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fff;
+  padding: 18px;
+  position: relative;
+}
+.sprintSummary span {
+  position: absolute;
+  left: 18px;
+  top: 20px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.sprintSummary p {
+  margin: 0 0 9px 20px;
+  color: #6e7d93;
+  font-size: 12px;
+}
+.sprintSummary strong {
+  margin-left: 20px;
+  font-size: 24px;
+}
+.sprintSummary .indigo,
+.currentSprint i.indigo {
+  background: #4f5cf6;
+}
+.sprintSummary .sky,
+.currentSprint i.sky {
+  background: #27a5df;
+}
+.sprintSummary .green,
+.currentSprint i.green {
+  background: #34ba79;
+}
+.sprintFilter {
+  height: 58px;
+  border-top: 1px solid #e8edf4;
+  border-bottom: 1px solid #e8edf4;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+.sprintFilter > div {
+  display: flex;
+  gap: 5px;
+}
+.sprintFilter > div button {
+  height: 31px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #66758e;
+  font-size: 13px;
+}
+.sprintFilter > div button.active {
+  background: #edf0ff;
+  color: #4e5cf4;
+  font-weight: 700;
+}
+.sprintFilter label {
+  margin-left: auto;
+  height: 36px;
+  width: 250px;
+  border: 1px solid #dfe6f0;
+  border-radius: 8px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  color: #65758e;
+}
+.sprintFilter input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  font: 13px inherit;
+}
+.filterButton {
+  height: 36px;
+  border: 1px solid #dfe6f0;
+  border-radius: 8px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+.sprintListBody {
+  display: grid;
+  grid-template-columns: 205px minmax(0, 1fr);
+  gap: 18px;
+}
+.currentSprint {
+  height: max-content;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fff;
+  padding: 18px;
+}
+.currentSprint h2 {
+  font-size: 14px;
+  margin: 0 0 13px;
+}
+.currentSprint button {
+  width: 100%;
+  height: 37px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+.currentSprint i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+.currentSprint span {
+  font-size: 13px;
+  flex: 1;
+}
+.currentSprint b {
+  font-size: 11px;
+  color: #65758e;
+  background: #f2f4f8;
+  border-radius: 10px;
+  padding: 3px 6px;
+}
+.sprintCards {
+  display: grid;
+  gap: 10px;
+}
+.sprintCard {
+  min-height: 122px;
+  border: 1px solid #e5e7eb;
+  border-left: 5px solid;
+  border-radius: 13px;
+  background: #fff;
+  display: grid;
+  grid-template-columns: minmax(285px, 1.45fr) minmax(155px, 0.75fr) minmax(
+      260px,
+      1fr
+    ) 76px;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 17px;
+}
+.sprintCard.indigo {
+  border-left-color: #4f5cf6;
+}
+.sprintCard.sky {
+  border-left-color: #22a7e4;
+}
+.sprintCard.green {
+  border-left-color: #34ba79;
+}
+.sprintCard.amber {
+  border-left-color: #f4a623;
+}
+.sprintIdentity {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+.sprintIcon {
+  width: 62px;
+  height: 62px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+}
+.indigo .sprintIcon {
+  background: #f0efff;
+  color: #4f5cf6;
+}
+.sky .sprintIcon {
+  background: #e7f7ff;
+  color: #199bdb;
+}
+.green .sprintIcon {
+  background: #e7f8ef;
+  color: #31b878;
+}
+.amber .sprintIcon {
+  background: #fff5e3;
+  color: #f2a321;
+}
+.sprintIdentity h2 {
+  font-size: 18px;
+  margin: 0 0 7px;
+}
+.sprintIdentity h2 span {
+  font-size: 11px;
+  font-weight: 600;
+  color: #4f5cf6;
+  background: #eeedff;
+  border-radius: 9px;
+  padding: 4px 8px;
+  margin-left: 8px;
+  vertical-align: 2px;
+}
+.sprintIdentity p {
+  margin: 0 0 9px;
+  font-size: 13px;
+}
+.sprintIdentity small {
+  color: #62728a;
+  font-size: 11px;
+}
+.sprintProgress span,
+.sprintNumbers span {
+  font-size: 11px;
+  color: #6c7b91;
+}
+.sprintProgress strong {
+  display: block;
+  margin: 4px 0 7px;
+  font-size: 21px;
+}
+.sprintProgress strong.indigo {
+  color: #4f5cf6;
+}
+.sprintProgress strong.green {
+  color: #30b875;
+}
+.sprintProgress div {
+  height: 7px;
+  background: #e6eaf0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.sprintProgress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #9aa7b8;
+}
+.sprintProgress i.indigo {
+  background: #4f5cf6;
+}
+.sprintProgress i.green {
+  background: #34ba79;
+}
+.sprintNumbers {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  text-align: center;
+}
+.sprintNumbers b {
+  display: block;
+  font-size: 18px;
+  margin-top: 8px;
+}
+.sprintNumbers span:nth-child(2) b {
+  color: #27ae70;
+}
+.sprintNumbers span:nth-child(3) b {
+  color: #2268e7;
+}
+.sprintDetail {
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.emptySprints {
+  padding: 50px;
+  text-align: center;
+  color: #718099;
+}
+@media (max-width: 1150px) {
+  .sprintCard {
+    grid-template-columns: 1.3fr 0.7fr 1fr;
+  }
+  .sprintDetail {
+    display: none;
+  }
+}
+@media (max-width: 860px) {
+  .sprintListPage {
+    padding: 22px 18px;
+  }
+  .sprintSummary {
+    grid-template-columns: 1fr;
+  }
+  .sprintListBody {
+    grid-template-columns: 1fr;
+  }
+  .currentSprint {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  .currentSprint h2 {
+    margin: 0;
+  }
+  .currentSprint button {
+    width: auto;
+    flex: 1;
+  }
+  .sprintCard {
+    grid-template-columns: 1fr;
+    padding: 18px;
+  }
+  .sprintFilter {
+    height: auto;
+    padding: 10px 0;
+    flex-wrap: wrap;
+  }
+  .sprintFilter label {
+    margin-left: 0;
+    width: 100%;
+  }
+}
