@@ -1,0 +1,4 @@
+import { Plus } from 'lucide-react';
+import TaskRow from './TaskRow';
+import styles from './TaskWorkspace.module.css';
+export default function TaskTable({ tasks, selectedId, checkedIds, onCheck, onSelect, onAdd }) { const allChecked = tasks.length && checkedIds.length === tasks.length; const toggleAll = () => onCheck('ALL'); return <section className={styles.tableWrap}><table><thead><tr><th><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th><th>번호</th><th>작업 제목</th><th>담당자</th><th>우선순위</th><th>시작일</th><th>마감일</th><th>하위 작업</th><th/></tr></thead><tbody>{tasks.map(task => <TaskRow task={task} key={task.id} checked={checkedIds.includes(task.id)} selected={selectedId === task.id} onCheck={onCheck} onSelect={onSelect}/>)}</tbody></table><button className={styles.addTask} onClick={onAdd}><Plus size={18}/> 새 작업 추가</button><footer>전체 {tasks.length}개 작업 <button>20개씩⌄</button></footer></section>; }
