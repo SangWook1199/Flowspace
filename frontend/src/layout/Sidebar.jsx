@@ -14,12 +14,18 @@ export default function Sidebar({ navigation, pages, members }) {
     if (label === "홈") navigate("/");
     if (label === "스프린트") navigate("/sprints");
     if (label === "칸반") navigate("/kanban");
+    if (label === "캘린더") navigate("/calendar");
+    if (label === "회고") navigate("/retrospectives");
   };
   const activeLabel = pathname.startsWith("/sprints")
     ? "스프린트"
     : pathname.startsWith("/kanban")
       ? "칸반"
-      : "홈";
+      : pathname.startsWith("/calendar")
+        ? "캘린더"
+        : pathname.startsWith("/retrospectives")
+          ? "회고"
+          : "홈";
 
   return (
     <aside className={styles.sidebar}>

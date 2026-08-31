@@ -1,10 +1,9 @@
 export const navigation = [
   ["홈", "House"],
-  ["스프린트", "Zap"],
+  ["스프린트", "Flag"],
   ["칸반", "KanbanSquare"],
   ["캘린더", "CalendarDays"],
-  ["회의록", "Video"],
-  ["팀 위키", "BookOpen"],
+  ["회고", "MessageSquareText"],
 ];
 
 export const pages = ["API 명세", "디자인 시스템", "QA 체크리스트"];
