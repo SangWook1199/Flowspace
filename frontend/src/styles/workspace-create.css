@@ -373,8 +373,8 @@
 .workspace-next,
 .workspace-create,
 .workspace-skip {
-  height: 50px;
-  padding: 0 22px;
+  height: 40px;
+  padding: 0 16px;
   border-radius: 12px;
 
   display: inline-flex;

@@ -9,6 +9,8 @@ import Calendar from "./pages/Calendar";
 import RetrospectiveList from "./pages/RetrospectiveList";
 import RetrospectiveDetailPage from "./pages/RetrospectiveDetailPage";
 import WorkspaceCreatePage from "./pages/WorkspaceCreatePage";
+import LoginPage from "./pages/LoginPage";
+import SignupPage from "./pages/SignupPage";
 
 import MainLayout from "./layout/MainLayout";
 
@@ -31,6 +33,8 @@ function App() {
           />
         </Route>
         <Route path="/workspace/create" element={<WorkspaceCreatePage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
       </Routes>
     </BrowserRouter>
   );

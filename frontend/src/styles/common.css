@@ -26,10 +26,3 @@
   background: linear-gradient(135deg, #5372ff, #7756e8);
   box-shadow: 0 5px 12px #7990e044;
 }
-
-.flowspace-logo-btn {
-  border: none;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
-}
