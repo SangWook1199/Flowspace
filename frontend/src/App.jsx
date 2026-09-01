@@ -8,6 +8,7 @@ import KanbanBoard from "./pages/KanbanBoard";
 import Calendar from "./pages/Calendar";
 import RetrospectiveList from "./pages/RetrospectiveList";
 import RetrospectiveDetailPage from "./pages/RetrospectiveDetailPage";
+import WorkspaceCreatePage from "./pages/WorkspaceCreatePage";
 
 import MainLayout from "./layout/MainLayout";
 
@@ -29,6 +30,7 @@ function App() {
             element={<RetrospectiveDetailPage />}
           />
         </Route>
+        <Route path="/workspace/create" element={<WorkspaceCreatePage />} />
       </Routes>
     </BrowserRouter>
   );

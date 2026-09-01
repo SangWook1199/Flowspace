@@ -14,10 +14,10 @@
 .logo {
   font-size: 22px;
   letter-spacing: -0.8px;
-  margin: 0 0 26px 49px;
+  margin: 0 0 26px 10px;
   line-height: 34px;
 }
-.logoMark {
+.sidebarLogoMark {
   position: absolute;
   top: 25px;
   left: 27px;

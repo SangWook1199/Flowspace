@@ -1,0 +1,35 @@
+.flowspace-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.flowspace-brand strong {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.8px;
+  color: #0f172a;
+}
+
+.logo {
+  font-size: 0;
+  margin-left: 0;
+}
+.logoMark {
+  position: relative;
+  top: 0;
+  left: 13px;
+  margin-bottom: 25px;
+  width: 31px;
+  height: 31px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #5372ff, #7756e8);
+  box-shadow: 0 5px 12px #7990e044;
+}
+
+.flowspace-logo-btn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
