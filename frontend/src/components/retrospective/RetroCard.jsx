@@ -1,4 +1,5 @@
 import { MessageSquare, MoreVertical } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import CircleProgress from "./CircleProgress";
 
 export default function RetroCard({ retrospective }) {
@@ -24,6 +25,8 @@ export default function RetroCard({ retrospective }) {
         : status === "progress"
           ? "진행 중"
           : "예정";
+
+  const navigate = useNavigate();
 
   return (
     <article className="retro-card">
@@ -85,7 +88,14 @@ export default function RetroCard({ retrospective }) {
         )}
 
         <div className="retro-card__actions">
-          <button className="retro-open-btn">열기</button>
+          <button
+            className="retro-open-btn"
+            onClick={() =>
+              navigate(`/retrospectives/${retrospective.sprintId}`)
+            }
+          >
+            열기
+          </button>
           <button className="retro-more-btn">
             <MoreVertical size={18} />
           </button>

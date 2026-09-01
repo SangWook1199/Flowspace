@@ -11,5 +11,6 @@ import "./styles/kanban.css";
 import "./styles/calendar.css";
 import "./styles/retrospectiveList.css";
 import "./styles/sprint-detail-table.css";
+import "./styles/retrospective-detail.css";
 
 createRoot(document.getElementById("root")).render(<App />);
