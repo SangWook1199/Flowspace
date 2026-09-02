@@ -32,8 +32,9 @@ export default function LoginPage() {
     },
     {
       image: document,
-      title: "회의록과 문서 협업",
-      description: "회의 내용을 기록하고 액션 아이템까지 연결하세요.",
+      title: "문서를 함께 작성하세요",
+      description:
+        "기획서, 회의록 등의 문서를 작성하고 하나의 워크스페이스에서 관리하세요.",
     },
   ];
 
