@@ -1,3 +1,38 @@
-import { ArrowRight } from 'lucide-react';
-import styles from '../../styles/classes.js';
-export default function OnlineTeamCard({ members }) { return <section className={`${styles.panel} ${styles.onlineCard}`}><div className={styles.panelHeader}><h2>온라인 팀원</h2><button className={styles.more}>전체 보기 <ArrowRight size={15}/></button></div><div className={styles.memberGrid}>{members.map(member => <div key={member.name}><span className={`${styles.avatar} ${styles[member.tone]}`}>{member.initial}</span><b>{member.name}</b><small><em className={member.online ? styles.onlineDot : styles.offlineDot}/>{member.online ? '온라인':'오프라인'}</small></div>)}</div></section>; }
+import { ArrowRight } from "lucide-react";
+import styles from "../../styles/classes.js";
+
+export default function OnlineTeamCard({ members }) {
+  return (
+    <section className={`${styles.panel} ${styles.onlineCard}`}>
+      <div className={styles.panelHeader}>
+        <h2>온라인 팀원</h2>
+
+        <button className={styles.more}>
+          전체 보기
+          <ArrowRight size={15} />
+        </button>
+      </div>
+
+      <div className={styles.memberGrid}>
+        {members.map((member) => (
+          <div key={member.name}>
+            <span className={`${styles.avatar} ${styles[member.tone]}`}>
+              {member.initial}
+            </span>
+
+            <b>{member.name}</b>
+
+            <small>
+              <em
+                className={
+                  member.online ? styles.onlineDot : styles.offlineDot
+                }
+              />
+              {member.online ? "온라인" : "오프라인"}
+            </small>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}

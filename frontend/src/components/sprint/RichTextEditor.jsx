@@ -1,3 +1,59 @@
-import { Bold, CheckSquare, Italic, Link, List, ListOrdered } from 'lucide-react';
-const commands = [[Bold, 'bold', '굵게'], [Italic, 'italic', '기울임'], [List, 'insertUnorderedList', '글머리 기호'], [ListOrdered, 'insertOrderedList', '번호 목록'], [CheckSquare, 'insertUnorderedList', '체크리스트'], [Link, 'createLink', '링크']];
-export default function RichTextEditor({ value, onChange }) { const run = command => { if (command === 'createLink') document.execCommand(command, false, 'https://'); else document.execCommand(command, false); }; return <section className="richEditor"><label>상세 설명</label><div className="editorShell"><div className="editorTools">{commands.map(([Icon, command, label]) => <button type="button" title={label} onMouseDown={e => { e.preventDefault(); run(command); }} key={label}><Icon size={17}/></button>)}</div><div className="editor" contentEditable suppressContentEditableWarning data-placeholder="스프린트에 대한 상세 설명을 작성하세요. (선택)" onInput={e => onChange(e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: value }}/></div><div className="fieldFooter"><span>스프린트의 배경, 범위, 기대 효과 등을 자유롭게 작성할 수 있습니다.</span><b>{value.replace(/<[^>]*>/g, '').length} / 2000</b></div></section>; }
+import {
+  Bold,
+  CheckSquare,
+  Italic,
+  Link,
+  List,
+  ListOrdered,
+} from "lucide-react";
+const commands = [
+  [Bold, "bold", "굵게"],
+  [Italic, "italic", "기울임"],
+  [List, "insertUnorderedList", "글머리 기호"],
+  [ListOrdered, "insertOrderedList", "번호 목록"],
+  [CheckSquare, "insertUnorderedList", "체크리스트"],
+  [Link, "createLink", "링크"],
+];
+export default function RichTextEditor({ value, onChange }) {
+  const run = (command) => {
+    if (command === "createLink")
+      document.execCommand(command, false, "https://");
+    else document.execCommand(command, false);
+  };
+  return (
+    <section className="richEditor">
+      <label>상세 설명</label>
+      <div className="editorShell">
+        <div className="editorTools">
+          {commands.map(([Icon, command, label]) => (
+            <button
+              type="button"
+              title={label}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                run(command);
+              }}
+              key={label}
+            >
+              <Icon size={17} />
+            </button>
+          ))}
+        </div>
+        <div
+          className="editor"
+          contentEditable
+          suppressContentEditableWarning
+          data-placeholder="스프린트에 대한 상세 설명을 작성하세요. (선택)"
+          onInput={(e) => onChange(e.currentTarget.innerHTML)}
+          dangerouslySetInnerHTML={{ __html: value }}
+        />
+      </div>
+      <div className="fieldFooter">
+        <span>
+          스프린트의 배경, 범위, 기대 효과 등을 자유롭게 작성할 수 있습니다.
+        </span>
+        <b>{value.replace(/<[^>]*>/g, "").length} / 2000</b>
+      </div>
+    </section>
+  );
+}

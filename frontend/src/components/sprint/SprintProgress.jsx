@@ -1,1 +1,11 @@
-export default function SprintProgress({ progress, color }) { return <div className="sprintProgress"><span>진행률</span><strong className={color}>{progress}%</strong><div><i className={color} style={{ width: `${progress}%` }}/></div></div>; }
+export default function SprintProgress({ progress, color }) {
+  return (
+    <div className="sprintProgress">
+      <span>진행률</span>
+      <strong className={color}>{progress}%</strong>
+      <div>
+        <i className={color} style={{ width: `${progress}%` }} />
+      </div>
+    </div>
+  );
+}
