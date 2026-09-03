@@ -3,8 +3,6 @@ package com.flowspace.dto.workspace;
 import com.flowspace.entity.WorkspaceInvite;
 import com.flowspace.entity.enums.InviteStatus;
 
-// @formatter:off
-
 // 내가 받은 초대 응답 DTO
 public record InviteResponse(
 
@@ -14,8 +12,7 @@ public record InviteResponse(
         String workspaceInitials,
         String workspaceColor,
         String inviterName,
-        InviteStatus status
-) {
+        InviteStatus status) {
 
     public static InviteResponse from(WorkspaceInvite invite) {
         return new InviteResponse(
@@ -25,9 +22,6 @@ public record InviteResponse(
                 invite.getWorkspace().getInitials(),
                 invite.getWorkspace().getColor().name(),
                 invite.getInviter().getName(),
-                invite.getStatus()
-        );
+                invite.getStatus());
     }
 }
-
-// @formatter:on

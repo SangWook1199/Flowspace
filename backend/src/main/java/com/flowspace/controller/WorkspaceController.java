@@ -5,6 +5,8 @@ import com.flowspace.dto.workspace.WorkspaceResponse;
 import com.flowspace.dto.workspace.WorkspaceInviteRequest;
 import com.flowspace.dto.workspace.WorkspaceInviteResponse;
 import com.flowspace.dto.workspace.InviteResponse;
+import com.flowspace.dto.workspace.WorkspaceMemberResponse;
+import com.flowspace.dto.workspace.WorkspaceOwnerTransferRequest;
 import com.flowspace.service.WorkspaceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -62,5 +64,44 @@ public class WorkspaceController {
     @PatchMapping("/invites/{inviteId}/accept")
     public void acceptInvite(@PathVariable Long inviteId, @AuthenticationPrincipal UserDetails userDetails) {
         workspaceService.acceptInvite(inviteId, userDetails.getUsername());
+    }
+
+    @Operation(summary = "워크스페이스 초대 거절")
+    @PatchMapping("/invites/{inviteId}/decline")
+    public void declineInvite(@PathVariable Long inviteId, @AuthenticationPrincipal UserDetails userDetails) {
+        workspaceService.declineInvite(inviteId, userDetails.getUsername());
+    }
+
+    @Operation(summary = "워크스페이스 멤버 목록 조회")
+    @GetMapping("/{workspaceId}/members")
+    public List<WorkspaceMemberResponse> getMembers(@PathVariable Long workspaceId,
+        @AuthenticationPrincipal UserDetails userDetails) {
+        return workspaceService.getMembers(workspaceId, userDetails.getUsername());
+    }
+
+    @Operation(summary = "워크스페이스 소유권 이전")
+    @PatchMapping("/{workspaceId}/owner")
+    public void transferOwnership(@PathVariable Long workspaceId,
+        @Valid @RequestBody WorkspaceOwnerTransferRequest request, @AuthenticationPrincipal UserDetails userDetails) {
+        workspaceService.transferOwnership(workspaceId, request, userDetails.getUsername());
+    }
+
+    @Operation(summary = "워크스페이스 삭제")
+    @DeleteMapping("/{workspaceId}")
+    public void deleteWorkspace(@PathVariable Long workspaceId, @AuthenticationPrincipal UserDetails userDetails) {
+        workspaceService.deleteWorkspace(workspaceId, userDetails.getUsername());
+    }
+
+    @Operation(summary = "워크스페이스 멤버 추방")
+    @DeleteMapping("/{workspaceId}/members/{userId}")
+    public void removeMember(@PathVariable Long workspaceId, @PathVariable Long userId,
+        @AuthenticationPrincipal UserDetails userDetails) {
+        workspaceService.removeMember(workspaceId, userId, userDetails.getUsername());
+    }
+
+    @Operation(summary = "워크스페이스 나가기")
+    @DeleteMapping("/{workspaceId}/leave")
+    public void leaveWorkspace(@PathVariable Long workspaceId, @AuthenticationPrincipal UserDetails userDetails) {
+        workspaceService.leaveWorkspace(workspaceId, userDetails.getUsername());
     }
 }

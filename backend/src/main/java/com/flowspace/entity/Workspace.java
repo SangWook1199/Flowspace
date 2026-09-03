@@ -36,4 +36,8 @@ public class Workspace {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    public void changeOwner(User owner) {
+        this.owner = owner;
+    }
 }

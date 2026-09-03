@@ -8,8 +8,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "workspace_members", uniqueConstraints = {
-        @UniqueConstraint(columnNames = { "workspace_id", "user_id" })
-})
+        @UniqueConstraint(columnNames = { "workspace_id", "user_id" }) })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -36,4 +35,8 @@ public class WorkspaceMember {
 
     @Column(name = "joined_at", nullable = false, updatable = false)
     private LocalDateTime joinedAt;
+
+    public void changeRole(WorkspaceRole role) {
+        this.role = role;
+    }
 }

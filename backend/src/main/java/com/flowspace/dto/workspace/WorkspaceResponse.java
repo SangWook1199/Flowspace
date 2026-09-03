@@ -2,6 +2,7 @@ package com.flowspace.dto.workspace;
 
 import com.flowspace.entity.Workspace;
 import com.flowspace.entity.enums.WorkspaceColor;
+import com.flowspace.entity.enums.WorkspaceRole;
 
 // @formatter:off
 
@@ -12,17 +13,22 @@ public record WorkspaceResponse(
         String name,
         String initials,
         WorkspaceColor color,
-        Long ownerId
+        Long ownerId,
+        WorkspaceRole role
 ) {
 
-    public static WorkspaceResponse from(Workspace workspace) {
+    public static WorkspaceResponse from(
+            Workspace workspace,
+            WorkspaceRole role
+    ) {
         return new WorkspaceResponse(
                 workspace.getWorkspaceId(),
                 workspace.getName(),
                 workspace.getInitials(),
                 workspace.getColor(),
-                workspace.getOwner().getUserId()
-            );
+                workspace.getOwner().getUserId(),
+                role
+        );
     }
 }
 

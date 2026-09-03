@@ -45,4 +45,9 @@ public class WorkspaceInvite {
         this.status = InviteStatus.ACCEPTED;
         this.respondedAt = LocalDateTime.now();
     }
+
+    public void decline() {
+        this.status = InviteStatus.DECLINED;
+        this.respondedAt = LocalDateTime.now();
+    }
 }
