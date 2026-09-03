@@ -1,24 +1,11 @@
 package com.flowspace.service;
 
-import com.flowspace.dto.workspace.InviteResponse;
-import com.flowspace.dto.workspace.WorkspaceCreateRequest;
-import com.flowspace.dto.workspace.WorkspaceInviteRequest;
-import com.flowspace.dto.workspace.WorkspaceInviteResponse;
-import com.flowspace.dto.workspace.WorkspaceMemberResponse;
-import com.flowspace.dto.workspace.WorkspaceOwnerTransferRequest;
-import com.flowspace.dto.workspace.WorkspaceResponse;
-import com.flowspace.entity.User;
-import com.flowspace.entity.Workspace;
-import com.flowspace.entity.WorkspaceInvite;
-import com.flowspace.entity.WorkspaceMember;
-import com.flowspace.entity.enums.InviteStatus;
-import com.flowspace.entity.enums.WorkspaceRole;
+import com.flowspace.dto.workspace.*;
+import com.flowspace.entity.*;
+import com.flowspace.entity.enums.*;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
-import com.flowspace.repository.UserRepository;
-import com.flowspace.repository.WorkspaceInviteRepository;
-import com.flowspace.repository.WorkspaceMemberRepository;
-import com.flowspace.repository.WorkspaceRepository;
+import com.flowspace.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +21,7 @@ public class WorkspaceService {
         private final WorkspaceMemberRepository workspaceMemberRepository;
         private final UserRepository userRepository;
         private final WorkspaceInviteRepository workspaceInviteRepository;
+        private final TaskStatusRepository taskStatusRepository;
 
         // 워크스페이스 생성
         public WorkspaceResponse createWorkspace(WorkspaceCreateRequest request, String email) {
@@ -50,6 +38,17 @@ public class WorkspaceService {
                         .role(WorkspaceRole.OWNER).build();
 
                 workspaceMemberRepository.save(member);
+
+                // 기본 Task 상태 생성
+                taskStatusRepository.saveAll(List.of(
+                        TaskStatus.builder().workspace(workspace).name("할 일").category(TaskStatusCategory.TODO)
+                                .color(WorkspaceColor.BLUE).position(0).build(),
+
+                        TaskStatus.builder().workspace(workspace).name("진행 중").category(TaskStatusCategory.IN_PROGRESS)
+                                .color(WorkspaceColor.PURPLE).position(1).build(),
+
+                        TaskStatus.builder().workspace(workspace).name("완료").category(TaskStatusCategory.DONE)
+                                .color(WorkspaceColor.GREEN).position(2).build()));
 
                 user.updateLastWorkspace(workspace);
 
@@ -150,7 +149,6 @@ public class WorkspaceService {
                 workspaceMemberRepository.save(member);
 
                 invite.accept();
-
                 user.updateLastWorkspace(invite.getWorkspace());
         }
 

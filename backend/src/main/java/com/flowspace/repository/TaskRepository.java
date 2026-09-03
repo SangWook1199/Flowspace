@@ -19,4 +19,6 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     long countBySprint(Sprint sprint);
 
     long countBySprintAndStatus_Category(Sprint sprint, TaskStatusCategory category);
+
+    List<Task> findByStatus(TaskStatus status);
 }

@@ -27,7 +27,11 @@ public enum ErrorCode {
 
     // Sprint
     SPRINT_NOT_FOUND(HttpStatus.NOT_FOUND, "스프린트를 찾을 수 없습니다."),
-    INVALID_SPRINT_DATE(HttpStatus.BAD_REQUEST, "종료일은 시작일보다 빠를 수 없습니다."),;
+    INVALID_SPRINT_DATE(HttpStatus.BAD_REQUEST, "종료일은 시작일보다 빠를 수 없습니다."),
+
+    // Task
+    TASK_STATUS_NOT_FOUND(HttpStatus.NOT_FOUND, "Task 상태를 찾을 수 없습니다."),
+    INVALID_TASK_STATUS(HttpStatus.BAD_REQUEST, "유효하지 않은 Task 상태입니다."),;
 
     private final HttpStatus status;
     private final String message;
