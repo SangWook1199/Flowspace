@@ -7,9 +7,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "users", uniqueConstraints = {
-        @UniqueConstraint(columnNames = { "provider", "provider_id" })
-})
+@Table(name = "users", uniqueConstraints = { @UniqueConstraint(columnNames = { "provider", "provider_id" }) })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -56,4 +54,9 @@ public class User extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "last_workspace_id")
     private Workspace lastWorkspace;
+
+    // 마지막 워크스페이스 변경
+    public void updateLastWorkspace(Workspace workspace) {
+        this.lastWorkspace = workspace;
+    }
 }

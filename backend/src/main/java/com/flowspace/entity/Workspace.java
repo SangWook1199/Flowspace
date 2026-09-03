@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import com.flowspace.entity.enums.WorkspaceColor;
 
 @Entity
 @Table(name = "workspaces")
@@ -28,9 +29,10 @@ public class Workspace {
     @Column(name = "initials", nullable = false, length = 4)
     private String initials;
 
-    @Column(name = "color", nullable = false, length = 20)
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     @Builder.Default
-    private String color = "blue";
+    private WorkspaceColor color = WorkspaceColor.BLUE;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
