@@ -13,9 +13,9 @@ import java.time.LocalDateTime;
 @Table(name = "events")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@EntityListeners(AuditingEntityListener.class)
 @AllArgsConstructor
 @Builder
+@EntityListeners(AuditingEntityListener.class)
 public class Event {
 
     @Id

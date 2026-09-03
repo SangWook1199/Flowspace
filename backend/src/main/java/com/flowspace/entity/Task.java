@@ -1,7 +1,8 @@
 package com.flowspace.entity;
 
 import com.flowspace.entity.enums.TaskPriority;
-import com.flowspace.entity.enums.TaskStatus;
+import com.flowspace.entity.enums.TaskStatusCategory;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -24,6 +25,10 @@ public class Task extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "workspace_id", nullable = false)
     private Workspace workspace;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "status_id", nullable = false)
+    private TaskStatus status;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "block_id", nullable = false, unique = true)
@@ -54,12 +59,27 @@ public class Task extends BaseEntity {
     private LocalDateTime completedAt;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 10)
-    @Builder.Default
-    private TaskStatus status = TaskStatus.TODO;
-
-    @Enumerated(EnumType.STRING)
     @Column(name = "priority", nullable = false, length = 10)
     @Builder.Default
     private TaskPriority priority = TaskPriority.MEDIUM;
+
+    public void update(Sprint sprint, User assignee, String description, LocalDate startDate, LocalDate endDate,
+        TaskPriority priority) {
+        this.sprint = sprint;
+        this.assignee = assignee;
+        this.description = description;
+        this.startDate = startDate;
+        this.endDate = endDate;
+        this.priority = priority;
+    }
+
+    public void updateStatus(TaskStatus status) {
+        this.status = status;
+
+        if (status.getCategory() == TaskStatusCategory.DONE) {
+            this.completedAt = LocalDateTime.now();
+        } else {
+            this.completedAt = null;
+        }
+    }
 }

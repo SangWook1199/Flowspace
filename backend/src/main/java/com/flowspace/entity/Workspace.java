@@ -13,9 +13,9 @@ import com.flowspace.entity.enums.WorkspaceColor;
 @Table(name = "workspaces")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@EntityListeners(AuditingEntityListener.class)
 @AllArgsConstructor
 @Builder
+@EntityListeners(AuditingEntityListener.class)
 public class Workspace {
 
     @Id

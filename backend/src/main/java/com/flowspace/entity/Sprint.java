@@ -14,9 +14,9 @@ import java.time.LocalDateTime;
 @Table(name = "sprints")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@EntityListeners(AuditingEntityListener.class)
 @AllArgsConstructor
 @Builder
+@EntityListeners(AuditingEntityListener.class)
 public class Sprint {
 
     @Id
