@@ -1,6 +1,9 @@
 package com.flowspace.entity;
 
 import com.flowspace.entity.enums.EventType;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -10,6 +13,7 @@ import java.time.LocalDateTime;
 @Table(name = "events")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@EntityListeners(AuditingEntityListener.class)
 @AllArgsConstructor
 @Builder
 public class Event {
@@ -55,6 +59,7 @@ public class Event {
     @Column(name = "recurrence_rule", length = 100)
     private String recurrenceRule;
 
+    @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 }

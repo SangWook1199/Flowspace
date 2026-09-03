@@ -1,5 +1,8 @@
 package com.flowspace.entity;
 
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
 import com.flowspace.entity.enums.InviteStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -10,6 +13,7 @@ import java.time.LocalDateTime;
 @Table(name = "workspace_invites")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@EntityListeners(AuditingEntityListener.class)
 @AllArgsConstructor
 @Builder
 public class WorkspaceInvite {
@@ -35,6 +39,7 @@ public class WorkspaceInvite {
     @Builder.Default
     private InviteStatus status = InviteStatus.PENDING;
 
+    @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

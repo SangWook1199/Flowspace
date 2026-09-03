@@ -1,6 +1,9 @@
 package com.flowspace.entity;
 
 import com.flowspace.entity.enums.SprintStatus;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -11,6 +14,7 @@ import java.time.LocalDateTime;
 @Table(name = "sprints")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@EntityListeners(AuditingEntityListener.class)
 @AllArgsConstructor
 @Builder
 public class Sprint {
@@ -52,6 +56,21 @@ public class Sprint {
     @Builder.Default
     private SprintStatus status = SprintStatus.PLANNING;
 
+    @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    public void update(String name, String goal, String description, String color, LocalDate startDate,
+        LocalDate endDate) {
+        this.name = name;
+        this.goal = goal;
+        this.description = description;
+        this.color = color;
+        this.startDate = startDate;
+        this.endDate = endDate;
+    }
+
+    public void updateStatus(SprintStatus status) {
+        this.status = status;
+    }
 }

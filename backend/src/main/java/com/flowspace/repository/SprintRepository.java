@@ -9,9 +9,7 @@ import java.util.List;
 
 public interface SprintRepository extends JpaRepository<Sprint, Long> {
 
-    List<Sprint> findByWorkspace(Workspace workspace);
+    List<Sprint> findByWorkspaceOrderByStartDateDesc(Workspace workspace);
 
-    List<Sprint> findByWorkspaceAndStatus(
-            Workspace workspace,
-            SprintStatus status);
+    List<Sprint> findByWorkspaceAndStatusOrderByStartDateDesc(Workspace workspace, SprintStatus status);
 }

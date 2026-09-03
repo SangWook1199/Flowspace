@@ -1,5 +1,8 @@
 package com.flowspace.entity;
 
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -9,6 +12,7 @@ import java.time.LocalDateTime;
 @Table(name = "refresh_tokens")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@EntityListeners(AuditingEntityListener.class)
 @AllArgsConstructor
 @Builder
 public class RefreshToken {
@@ -28,6 +32,7 @@ public class RefreshToken {
     @Column(name = "expired_at", nullable = false)
     private LocalDateTime expiredAt;
 
+    @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 }

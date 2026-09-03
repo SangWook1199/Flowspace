@@ -1,5 +1,8 @@
 package com.flowspace.entity;
 
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -9,6 +12,7 @@ import java.time.LocalDateTime;
 @Table(name = "files")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@EntityListeners(AuditingEntityListener.class)
 @AllArgsConstructor
 @Builder
 public class File {
@@ -47,6 +51,7 @@ public class File {
     @Column(name = "file_url", nullable = false, length = 500)
     private String fileUrl;
 
+    @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 }

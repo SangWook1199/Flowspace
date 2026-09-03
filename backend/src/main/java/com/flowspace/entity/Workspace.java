@@ -3,6 +3,9 @@ package com.flowspace.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
 import java.time.LocalDateTime;
 import com.flowspace.entity.enums.WorkspaceColor;
 
@@ -10,6 +13,7 @@ import com.flowspace.entity.enums.WorkspaceColor;
 @Table(name = "workspaces")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@EntityListeners(AuditingEntityListener.class)
 @AllArgsConstructor
 @Builder
 public class Workspace {
@@ -34,6 +38,7 @@ public class Workspace {
     @Builder.Default
     private WorkspaceColor color = WorkspaceColor.BLUE;
 
+    @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
