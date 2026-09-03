@@ -17,8 +17,10 @@ public enum ErrorCode {
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."),
 
     // Workspace
-    WORKSPACE_NOT_FOUND(HttpStatus.NOT_FOUND, "워크스페이스를 찾을 수 없습니다."),
-    ACCESS_DENIED(HttpStatus.FORBIDDEN, "권한이 없습니다.");
+    WORKSPACE_NOT_FOUND(HttpStatus.NOT_FOUND, "워크스페이스를 찾을 수 없습니다."), ACCESS_DENIED(HttpStatus.FORBIDDEN, "권한이 없습니다."),
+    ALREADY_WORKSPACE_MEMBER(HttpStatus.CONFLICT, "이미 워크스페이스 멤버입니다."),
+    ALREADY_INVITED(HttpStatus.CONFLICT, "이미 초대가 진행 중입니다."), INVITE_NOT_FOUND(HttpStatus.NOT_FOUND, "초대를 찾을 수 없습니다."),
+    INVALID_INVITE_STATUS(HttpStatus.BAD_REQUEST, "이미 처리된 초대입니다.");
 
     private final HttpStatus status;
     private final String message;

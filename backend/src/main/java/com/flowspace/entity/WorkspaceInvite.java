@@ -40,4 +40,9 @@ public class WorkspaceInvite {
 
     @Column(name = "responded_at")
     private LocalDateTime respondedAt;
+
+    public void accept() {
+        this.status = InviteStatus.ACCEPTED;
+        this.respondedAt = LocalDateTime.now();
+    }
 }
