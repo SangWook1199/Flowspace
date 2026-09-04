@@ -1,6 +1,8 @@
 package com.flowspace.entity;
 
 import com.flowspace.entity.enums.SprintStatus;
+import com.flowspace.entity.enums.WorkspaceColor;
+
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -41,9 +43,10 @@ public class Sprint {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "color", nullable = false, length = 7)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "color", nullable = false)
     @Builder.Default
-    private String color = "#4F6EF7";
+    private WorkspaceColor color = WorkspaceColor.BLUE;
 
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
@@ -60,7 +63,7 @@ public class Sprint {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    public void update(String name, String goal, String description, String color, LocalDate startDate,
+    public void update(String name, String goal, String description, WorkspaceColor color, LocalDate startDate,
         LocalDate endDate) {
         this.name = name;
         this.goal = goal;

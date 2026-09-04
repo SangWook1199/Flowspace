@@ -2,16 +2,23 @@ package com.flowspace.service;
 
 import java.util.List;
 
+import com.flowspace.dto.task.TaskCreateRequest;
+import com.flowspace.dto.task.TaskResponse;
 import com.flowspace.dto.task.TaskStatusCreateRequest;
 import com.flowspace.dto.task.TaskStatusDeleteRequest;
 import com.flowspace.dto.task.TaskStatusEditRequest;
 import com.flowspace.dto.task.TaskStatusReorderRequest;
 import com.flowspace.dto.task.TaskStatusResponse;
+import com.flowspace.dto.task.TaskStatusUpdateRequest;
+import com.flowspace.dto.task.TaskUpdateRequest;
+import com.flowspace.entity.Sprint;
+import com.flowspace.entity.Task;
 import com.flowspace.entity.TaskStatus;
 import com.flowspace.entity.User;
 import com.flowspace.entity.Workspace;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
+import com.flowspace.repository.SprintRepository;
 import com.flowspace.repository.TaskRepository;
 import com.flowspace.repository.TaskStatusRepository;
 import com.flowspace.repository.UserRepository;
@@ -28,6 +35,7 @@ public class TaskService {
 
     private final TaskStatusRepository taskStatusRepository;
     private final TaskRepository taskRepository;
+    private final SprintRepository sprintRepository;
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final UserRepository userRepository;
@@ -132,5 +140,169 @@ public class TaskService {
         taskRepository.findByStatus(status).forEach(task -> task.updateStatus(targetStatus));
 
         taskStatusRepository.delete(status);
+    }
+
+    // Task 생성
+    public TaskResponse createTask(Long sprintId, TaskCreateRequest request, String email) {
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        Sprint sprint = sprintRepository.findById(sprintId)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(sprint.getWorkspace(), user)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        TaskStatus status = taskStatusRepository.findById(request.statusId())
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
+
+        if (!status.getWorkspace().getWorkspaceId().equals(sprint.getWorkspace().getWorkspaceId())) {
+            throw new FlowSpaceException(ErrorCode.INVALID_TASK_STATUS);
+        }
+
+        User assignee = null;
+        if (request.assigneeId() != null) {
+            assignee = userRepository.findById(request.assigneeId())
+                .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+            workspaceMemberRepository.findByWorkspaceAndUser(sprint.getWorkspace(), assignee)
+                .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+        }
+
+        Task task = Task.builder().workspace(sprint.getWorkspace()).sprint(sprint).createdBy(user).assignee(assignee)
+            .status(status).description(request.description()).startDate(request.startDate()).endDate(request.endDate())
+            .priority(request.priority()).build();
+
+        taskRepository.save(task);
+
+        return TaskResponse.from(task);
+    }
+
+    // 스프린트 Task 목록 조회
+    @Transactional(readOnly = true)
+    public List<TaskResponse> getTasksBySprint(Long sprintId, String email) {
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        Sprint sprint = sprintRepository.findById(sprintId)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(sprint.getWorkspace(), user)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        return taskRepository.findBySprint(sprint).stream().map(TaskResponse::from).toList();
+    }
+
+    // Task 단건 조회
+    @Transactional(readOnly = true)
+    public TaskResponse getTask(Long taskId, String email) {
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        Task task = taskRepository.findById(taskId).orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(task.getWorkspace(), user)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        return TaskResponse.from(task);
+    }
+
+    // Task 수정
+    public TaskResponse updateTask(Long taskId, TaskUpdateRequest request, String email) {
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        Task task = taskRepository.findById(taskId).orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(task.getWorkspace(), user)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        Sprint sprint = null;
+        if (request.sprintId() != null) {
+            sprint = sprintRepository.findById(request.sprintId())
+                .orElseThrow(() -> new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND));
+
+            if (!sprint.getWorkspace().getWorkspaceId().equals(task.getWorkspace().getWorkspaceId())) {
+                throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
+            }
+        }
+
+        User assignee = null;
+        if (request.assigneeId() != null) {
+            assignee = userRepository.findById(request.assigneeId())
+                .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+            workspaceMemberRepository.findByWorkspaceAndUser(task.getWorkspace(), assignee)
+                .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+        }
+
+        TaskStatus status = taskStatusRepository.findById(request.statusId())
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
+
+        if (!status.getWorkspace().getWorkspaceId().equals(task.getWorkspace().getWorkspaceId())) {
+            throw new FlowSpaceException(ErrorCode.INVALID_TASK_STATUS);
+        }
+
+        task.update(sprint, assignee, status, request.description(), request.startDate(), request.endDate(),
+            request.priority());
+
+        return TaskResponse.from(task);
+    }
+
+    // Backlog Task 목록 조회
+    @Transactional(readOnly = true)
+    public List<TaskResponse> getBacklogTasks(Long workspaceId, String email) {
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        Workspace workspace = workspaceRepository.findById(workspaceId)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        return taskRepository.findByWorkspaceAndSprintIsNull(workspace).stream().map(TaskResponse::from).toList();
+    }
+
+    // Task 상태 변경
+    public TaskResponse updateTaskStatus(Long taskId, TaskStatusUpdateRequest request, String email) {
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        Task task = taskRepository.findById(taskId).orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(task.getWorkspace(), user)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        TaskStatus status = taskStatusRepository.findById(request.statusId())
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
+
+        if (!status.getWorkspace().getWorkspaceId().equals(task.getWorkspace().getWorkspaceId())) {
+            throw new FlowSpaceException(ErrorCode.INVALID_TASK_STATUS);
+        }
+
+        task.updateStatus(status);
+
+        return TaskResponse.from(task);
+    }
+
+    // Task 삭제
+    public void deleteTask(Long taskId, String email) {
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        Task task = taskRepository.findById(taskId).orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(task.getWorkspace(), user)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        taskRepository.delete(task);
     }
 }

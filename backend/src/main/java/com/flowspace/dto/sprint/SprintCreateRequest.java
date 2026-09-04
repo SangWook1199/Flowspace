@@ -1,6 +1,8 @@
 package com.flowspace.dto.sprint;
 
 import com.flowspace.entity.enums.SprintStatus;
+import com.flowspace.entity.enums.WorkspaceColor;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -22,8 +24,8 @@ public record SprintCreateRequest(
   @Size(max = 1000, message = "설명은 1000자 이하입니다.")
   String description,
 
-  @NotBlank(message = "색상은 필수입니다.")
-  String color,
+  @NotNull(message = "색상은 필수입니다.")
+  WorkspaceColor color,
 
   @NotNull(message = "시작일은 필수입니다.")
   LocalDate startDate,

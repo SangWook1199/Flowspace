@@ -30,10 +30,6 @@ public class Task extends BaseEntity {
     @JoinColumn(name = "status_id", nullable = false)
     private TaskStatus status;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "block_id", nullable = false, unique = true)
-    private Block block;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sprint_id")
     private Sprint sprint;
@@ -63,14 +59,22 @@ public class Task extends BaseEntity {
     @Builder.Default
     private TaskPriority priority = TaskPriority.MEDIUM;
 
-    public void update(Sprint sprint, User assignee, String description, LocalDate startDate, LocalDate endDate,
-        TaskPriority priority) {
+    public void update(Sprint sprint, User assignee, TaskStatus status, String description, LocalDate startDate,
+        LocalDate endDate, TaskPriority priority) {
+
         this.sprint = sprint;
         this.assignee = assignee;
+        this.status = status;
         this.description = description;
         this.startDate = startDate;
         this.endDate = endDate;
         this.priority = priority;
+
+        if (status.getCategory() == TaskStatusCategory.DONE) {
+            this.completedAt = LocalDateTime.now();
+        } else {
+            this.completedAt = null;
+        }
     }
 
     public void updateStatus(TaskStatus status) {
@@ -81,5 +85,9 @@ public class Task extends BaseEntity {
         } else {
             this.completedAt = null;
         }
+    }
+
+    public void updateSprint(Sprint sprint) {
+        this.sprint = sprint;
     }
 }
