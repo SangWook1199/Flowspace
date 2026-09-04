@@ -11,13 +11,13 @@ import java.util.List;
 
 public interface TaskRepository extends JpaRepository<Task, Long> {
 
-    List<Task> findBySprint(Sprint sprint);
+    List<Task> findBySprintOrderByPositionAsc(Sprint sprint);
 
-    List<Task> findByWorkspaceAndSprintIsNull(Workspace workspace);
+    List<Task> findByWorkspaceAndSprintIsNullOrderByPositionAsc(Workspace workspace);
 
-    List<Task> findByWorkspaceAndStatus(Workspace workspace, TaskStatus status);
+    List<Task> findByWorkspaceAndStatusOrderByPositionAsc(Workspace workspace, TaskStatus status);
 
-    List<Task> findByStatus(TaskStatus status);
+    List<Task> findByStatusOrderByPositionAsc(TaskStatus status);
 
     long countBySprint(Sprint sprint);
 

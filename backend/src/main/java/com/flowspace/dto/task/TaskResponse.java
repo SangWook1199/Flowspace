@@ -4,6 +4,7 @@ import com.flowspace.entity.SubTask;
 import com.flowspace.entity.Task;
 import com.flowspace.entity.enums.TaskPriority;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -19,6 +20,8 @@ public record TaskResponse(
 
     Long statusId,
     String statusName,
+
+    BigDecimal position,
 
     Long assigneeId,
 
@@ -43,6 +46,7 @@ public record TaskResponse(
             task.getSprint() == null ? null : task.getSprint().getSprintId(),
             task.getStatus().getStatusId(),
             task.getStatus().getName(),
+            task.getPosition(),
             task.getAssignee() == null ? null : task.getAssignee().getUserId(),
             task.getDescription(),
             task.getStartDate(),

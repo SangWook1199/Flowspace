@@ -33,7 +33,8 @@ public enum ErrorCode {
     TASK_STATUS_NOT_FOUND(HttpStatus.NOT_FOUND, "Task 상태를 찾을 수 없습니다."),
     INVALID_TASK_STATUS(HttpStatus.BAD_REQUEST, "유효하지 않은 Task 상태입니다."),
     TASK_NOT_FOUND(HttpStatus.NOT_FOUND, "Task를 찾을 수 없습니다."),
-    SUBTASK_NOT_FOUND(HttpStatus.NOT_FOUND, "서브태스크를 찾을 수 없습니다."),;
+    SUBTASK_NOT_FOUND(HttpStatus.NOT_FOUND, "서브태스크를 찾을 수 없습니다."),
+    INVALID_SPRINT(HttpStatus.BAD_REQUEST, "유효하지 않은 스프린트입니다."),;
 
     private final HttpStatus status;
     private final String message;

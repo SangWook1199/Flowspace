@@ -1,9 +1,13 @@
 package com.flowspace.service;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
 
 import com.flowspace.dto.task.TaskCreateRequest;
+import com.flowspace.dto.task.TaskReorderRequest;
 import com.flowspace.dto.task.TaskResponse;
+import com.flowspace.dto.task.TaskSprintUpdateRequest;
 import com.flowspace.dto.task.TaskStatusCreateRequest;
 import com.flowspace.dto.task.TaskStatusDeleteRequest;
 import com.flowspace.dto.task.TaskStatusEditRequest;
@@ -144,7 +148,16 @@ public class TaskService {
             throw new FlowSpaceException(ErrorCode.INVALID_TASK_STATUS);
         }
 
-        taskRepository.findByStatus(status).forEach(task -> task.updateStatus(targetStatus));
+        int position = taskRepository
+            .findByWorkspaceAndStatusOrderByPositionAsc(targetStatus.getWorkspace(), targetStatus).size();
+
+        List<Task> tasks = taskRepository.findByStatusOrderByPositionAsc(status);
+
+        for (Task task : tasks) {
+            task.updateStatus(targetStatus);
+            task.updatePosition(BigDecimal.valueOf(position));
+            position++;
+        }
 
         taskStatusRepository.delete(status);
     }
@@ -168,6 +181,8 @@ public class TaskService {
             throw new FlowSpaceException(ErrorCode.INVALID_TASK_STATUS);
         }
 
+        BigDecimal position = BigDecimal.valueOf(taskRepository.findBySprintOrderByPositionAsc(sprint).size());
+
         User assignee = null;
         if (request.assigneeId() != null) {
             assignee = userRepository.findById(request.assigneeId())
@@ -178,12 +193,13 @@ public class TaskService {
         }
 
         Task task = Task.builder().workspace(sprint.getWorkspace()).sprint(sprint).createdBy(user).assignee(assignee)
-            .status(status).description(request.description()).startDate(request.startDate()).endDate(request.endDate())
-            .priority(request.priority()).build();
+            .status(status).position(position).description(request.description()).startDate(request.startDate())
+            .endDate(request.endDate()).priority(request.priority()).build();
 
         taskRepository.save(task);
 
-        return TaskResponse.from(task, List.of());
+        List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
+        return TaskResponse.from(task, subtasks);
     }
 
     // 스프린트 Task 목록 조회
@@ -199,7 +215,10 @@ public class TaskService {
         workspaceMemberRepository.findByWorkspaceAndUser(sprint.getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        return taskRepository.findBySprint(sprint).stream().map(task -> TaskResponse.from(task, List.of())).toList();
+        return taskRepository.findBySprintOrderByPositionAsc(sprint).stream().map(task -> {
+            List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
+            return TaskResponse.from(task, subtasks);
+        }).toList();
     }
 
     // Task 단건 조회
@@ -256,8 +275,21 @@ public class TaskService {
             throw new FlowSpaceException(ErrorCode.INVALID_TASK_STATUS);
         }
 
+        BigDecimal position = task.getPosition();
+
+        if (!Objects.equals(task.getSprint() == null ? null : task.getSprint().getSprintId(), request.sprintId())) {
+
+            if (sprint == null) {
+                position = BigDecimal.valueOf(
+                    taskRepository.findByWorkspaceAndSprintIsNullOrderByPositionAsc(task.getWorkspace()).size());
+            } else {
+                position = BigDecimal.valueOf(taskRepository.findBySprintOrderByPositionAsc(sprint).size());
+            }
+        }
         task.update(sprint, assignee, status, request.description(), request.startDate(), request.endDate(),
             request.priority());
+
+        task.updatePosition(position);
 
         List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
 
@@ -277,8 +309,10 @@ public class TaskService {
         workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        return taskRepository.findByWorkspaceAndSprintIsNull(workspace).stream()
-            .map(task -> TaskResponse.from(task, List.of())).toList();
+        return taskRepository.findByWorkspaceAndSprintIsNullOrderByPositionAsc(workspace).stream().map(task -> {
+            List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
+            return TaskResponse.from(task, subtasks);
+        }).toList();
     }
 
     // Task 상태 변경
@@ -299,7 +333,17 @@ public class TaskService {
             throw new FlowSpaceException(ErrorCode.INVALID_TASK_STATUS);
         }
 
+        // 같은 Status면 변경하지 않음
+        if (task.getStatus().getStatusId().equals(request.statusId())) {
+            List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
+            return TaskResponse.from(task, subtasks);
+        }
+
+        BigDecimal position = BigDecimal
+            .valueOf(taskRepository.findByWorkspaceAndStatusOrderByPositionAsc(task.getWorkspace(), status).size());
+
         task.updateStatus(status);
+        task.updatePosition(position);
 
         List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
 
@@ -317,7 +361,26 @@ public class TaskService {
         workspaceMemberRepository.findByWorkspaceAndUser(task.getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
+        TaskStatus status = task.getStatus();
+        Sprint sprint = task.getSprint();
+
         taskRepository.delete(task);
+
+        List<Task> tasks;
+
+        if (sprint == null) {
+            tasks = taskRepository.findByWorkspaceAndSprintIsNullOrderByPositionAsc(task.getWorkspace()).stream()
+                .filter(t -> t.getStatus().getStatusId().equals(status.getStatusId())).toList();
+        } else {
+            tasks = taskRepository.findBySprintOrderByPositionAsc(sprint).stream()
+                .filter(t -> t.getStatus().getStatusId().equals(status.getStatusId())).toList();
+        }
+
+        int position = 0;
+        for (Task t : tasks) {
+            t.updatePosition(BigDecimal.valueOf(position));
+            position++;
+        }
     }
 
     // SubTask 생성
@@ -404,5 +467,76 @@ public class TaskService {
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
         subTaskRepository.delete(subTask);
+    }
+
+    // Task 스프린트 이동
+    public TaskResponse updateTaskSprint(Long taskId, TaskSprintUpdateRequest request, String email) {
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        Task task = taskRepository.findById(taskId).orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(task.getWorkspace(), user)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        if (Objects.equals(task.getSprint() == null ? null : task.getSprint().getSprintId(), request.sprintId())) {
+
+            List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
+            return TaskResponse.from(task, subtasks);
+        }
+
+        Sprint sprint = null;
+
+        if (request.sprintId() != null) {
+            sprint = sprintRepository.findById(request.sprintId())
+                .orElseThrow(() -> new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND));
+
+            if (!sprint.getWorkspace().getWorkspaceId().equals(task.getWorkspace().getWorkspaceId())) {
+                throw new FlowSpaceException(ErrorCode.INVALID_SPRINT);
+            }
+        }
+
+        BigDecimal position;
+
+        if (sprint == null) {
+            position = BigDecimal
+                .valueOf(taskRepository.findByWorkspaceAndSprintIsNullOrderByPositionAsc(task.getWorkspace()).size());
+        } else {
+            position = BigDecimal.valueOf(taskRepository.findBySprintOrderByPositionAsc(sprint).size());
+        }
+
+        task.updateSprint(sprint);
+        task.updatePosition(position);
+
+        List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
+
+        return TaskResponse.from(task, subtasks);
+    }
+
+    // Task 순서 변경
+    public void reorderTasks(TaskReorderRequest request, String email) {
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        for (TaskReorderRequest.Item item : request.tasks()) {
+
+            Task task = taskRepository.findById(item.taskId())
+                .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_NOT_FOUND));
+
+            workspaceMemberRepository.findByWorkspaceAndUser(task.getWorkspace(), user)
+                .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+            TaskStatus status = taskStatusRepository.findById(item.statusId())
+                .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
+
+            if (!task.getWorkspace().getWorkspaceId().equals(status.getWorkspace().getWorkspaceId())) {
+                throw new FlowSpaceException(ErrorCode.INVALID_TASK_STATUS);
+            }
+
+            task.updateStatus(status);
+            task.updatePosition(item.position());
+        }
     }
 }
