@@ -17,22 +17,13 @@ public class SwaggerConfig {
 
                 final String securitySchemeName = "OAuth2";
 
+                SecurityScheme securityScheme = new SecurityScheme().type(SecurityScheme.Type.OAUTH2).flows(
+                        new OAuthFlows().password(new OAuthFlow().tokenUrl("/api/auth/token").scopes(new Scopes())));
+
                 return new OpenAPI()
-                                .info(new Info()
-                                                .title("FlowSpace API")
-                                                .description("FlowSpace 프로젝트 API 문서")
-                                                .version("v1.0.0"))
-                                .components(new Components()
-                                                .addSecuritySchemes(
-                                                                securitySchemeName,
-                                                                new SecurityScheme()
-                                                                                .type(SecurityScheme.Type.OAUTH2)
-                                                                                .flows(new OAuthFlows()
-                                                                                                .password(new OAuthFlow()
-                                                                                                                .tokenUrl("/api/auth/token")
-                                                                                                                .scopes(new Scopes())))))
-                                .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
-                                .externalDocs(new ExternalDocumentation()
-                                                .description("FlowSpace GitHub"));
+                        .info(new Info().title("FlowSpace API").description("FlowSpace 프로젝트 API 문서").version("v1.0.0"))
+                        .components(new Components().addSecuritySchemes(securitySchemeName, securityScheme))
+                        .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
+                        .externalDocs(new ExternalDocumentation().description("FlowSpace GitHub"));
         }
 }

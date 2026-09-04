@@ -3,7 +3,11 @@ package com.flowspace.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
 import java.time.LocalDateTime;
+import com.flowspace.entity.enums.WorkspaceColor;
 
 @Entity
 @Table(name = "workspaces")
@@ -11,6 +15,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+@EntityListeners(AuditingEntityListener.class)
 public class Workspace {
 
     @Id
@@ -28,10 +33,16 @@ public class Workspace {
     @Column(name = "initials", nullable = false, length = 4)
     private String initials;
 
-    @Column(name = "color", nullable = false, length = 20)
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     @Builder.Default
-    private String color = "blue";
+    private WorkspaceColor color = WorkspaceColor.BLUE;
 
+    @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    public void changeOwner(User owner) {
+        this.owner = owner;
+    }
 }
