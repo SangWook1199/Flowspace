@@ -1,5 +1,9 @@
 package com.flowspace.controller;
 
+import com.flowspace.dto.task.SubTaskCreateRequest;
+import com.flowspace.dto.task.SubTaskReorderRequest;
+import com.flowspace.dto.task.SubTaskResponse;
+import com.flowspace.dto.task.SubTaskUpdateRequest;
 import com.flowspace.dto.task.TaskCreateRequest;
 import com.flowspace.dto.task.TaskResponse;
 import com.flowspace.dto.task.TaskStatusCreateRequest;
@@ -17,6 +21,8 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -121,6 +127,54 @@ public class TaskController {
         @AuthenticationPrincipal UserDetails userDetails) {
 
         return taskService.getBacklogTasks(workspaceId, userDetails.getUsername());
+    }
+
+    // SubTask 생성
+    @Operation(summary = "SubTask 생성")
+    @PostMapping("/{taskId}/subtasks")
+    public ResponseEntity<SubTaskResponse> createSubTask(@PathVariable Long taskId,
+        @Valid @RequestBody SubTaskCreateRequest request, @AuthenticationPrincipal UserDetails userDetails) {
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(taskService.createSubTask(taskId, request, userDetails.getUsername()));
+    }
+
+    // SubTask 목록 조회
+    @Operation(summary = "SubTask 목록 조회")
+    @GetMapping("/{taskId}/subtasks")
+    public ResponseEntity<List<SubTaskResponse>> getSubTasks(@PathVariable Long taskId,
+        @AuthenticationPrincipal UserDetails userDetails) {
+
+        return ResponseEntity.ok(taskService.getSubTasks(taskId, userDetails.getUsername()));
+    }
+
+    // SubTask 수정
+    @Operation(summary = "SubTask 수정")
+    @PatchMapping("/subtasks/{subtaskId}")
+    public ResponseEntity<SubTaskResponse> updateSubTask(@PathVariable Long subtaskId,
+        @Valid @RequestBody SubTaskUpdateRequest request, @AuthenticationPrincipal UserDetails userDetails) {
+
+        return ResponseEntity.ok(taskService.updateSubTask(subtaskId, request, userDetails.getUsername()));
+    }
+
+    // SubTask 순서 변경
+    @Operation(summary = "SubTask 순서 변경")
+    @PatchMapping("/subtasks/reorder")
+    public ResponseEntity<Void> reorderSubTasks(@Valid @RequestBody SubTaskReorderRequest request,
+        @AuthenticationPrincipal UserDetails userDetails) {
+
+        taskService.reorderSubTasks(request, userDetails.getUsername());
+        return ResponseEntity.ok().build();
+    }
+
+    // SubTask 삭제
+    @Operation(summary = "SubTask 삭제")
+    @DeleteMapping("/subtasks/{subtaskId}")
+    public ResponseEntity<Void> deleteSubTask(@PathVariable Long subtaskId,
+        @AuthenticationPrincipal UserDetails userDetails) {
+
+        taskService.deleteSubTask(subtaskId, userDetails.getUsername());
+        return ResponseEntity.noContent().build();
     }
 
 }

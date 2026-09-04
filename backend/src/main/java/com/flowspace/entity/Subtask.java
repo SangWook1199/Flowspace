@@ -9,7 +9,7 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-public class Subtask {
+public class SubTask {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,4 +30,16 @@ public class Subtask {
     @Column(name = "position", nullable = false)
     @Builder.Default
     private Integer position = 0;
+
+    public void update(String content) {
+        this.content = content;
+    }
+
+    public void updateCompleted(Boolean isCompleted) {
+        this.isCompleted = isCompleted;
+    }
+
+    public void updatePosition(Integer position) {
+        this.position = position;
+    }
 }

@@ -25,7 +25,7 @@ public class Block extends BaseEntity {
     private Page page;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "task_id", unique = true)
+    @JoinColumn(name = "task_id", unique = true, nullable = true)
     private Task task;
 
     @ManyToOne(fetch = FetchType.LAZY)

@@ -1,10 +1,12 @@
 package com.flowspace.dto.task;
 
+import com.flowspace.entity.SubTask;
 import com.flowspace.entity.Task;
 import com.flowspace.entity.enums.TaskPriority;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 // @formatter:off
 
@@ -28,11 +30,13 @@ public record TaskResponse(
     TaskPriority priority,
 
     LocalDateTime completedAt,
-    LocalDateTime createdAt
+    LocalDateTime createdAt,
+
+    List<SubTaskResponse> subtasks
 
 ) {
 
-    public static TaskResponse from(Task task) {
+    public static TaskResponse from(Task task, List<SubTask> subtasks) {
         return new TaskResponse(
             task.getTaskId(),
             task.getWorkspace().getWorkspaceId(),
@@ -45,7 +49,10 @@ public record TaskResponse(
             task.getEndDate(),
             task.getPriority(),
             task.getCompletedAt(),
-            task.getCreatedAt()
+            task.getCreatedAt(),
+            subtasks.stream()
+            .map(SubTaskResponse::from)
+            .toList()
         );
     }
 }
