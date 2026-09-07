@@ -46,4 +46,16 @@ public class Page extends BaseEntity {
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    public void update(String title, String icon, File coverFile, Page parentPage) {
+        this.title = title;
+        this.icon = icon;
+        this.coverFile = coverFile;
+        this.parentPage = parentPage;
+    }
+
+    public void delete() {
+        this.isDeleted = true;
+        this.deletedAt = LocalDateTime.now();
+    }
 }

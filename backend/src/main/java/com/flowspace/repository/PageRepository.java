@@ -8,7 +8,10 @@ import java.util.List;
 
 public interface PageRepository extends JpaRepository<Page, Long> {
 
-    List<Page> findByWorkspaceAndIsDeletedFalse(Workspace workspace);
+    List<Page> findByWorkspaceAndIsDeletedFalseOrderByCreatedAtDesc(Workspace workspace);
 
-    List<Page> findByParentPage(Page parentPage);
+    List<Page> findByParentPageAndIsDeletedFalse(Page parentPage);
+
+    Optional<Page> findByPageIdAndIsDeletedFalse(Long pageId);
+
 }
