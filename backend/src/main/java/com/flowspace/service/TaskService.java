@@ -25,6 +25,8 @@ import com.flowspace.entity.Task;
 import com.flowspace.entity.TaskStatus;
 import com.flowspace.entity.User;
 import com.flowspace.entity.Workspace;
+import com.flowspace.entity.WorkspaceTaskStatus;
+import com.flowspace.entity.id.WorkspaceTaskStatusId;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.repository.SprintRepository;
@@ -34,6 +36,8 @@ import com.flowspace.repository.TaskStatusRepository;
 import com.flowspace.repository.UserRepository;
 import com.flowspace.repository.WorkspaceMemberRepository;
 import com.flowspace.repository.WorkspaceRepository;
+import com.flowspace.repository.WorkspaceTaskStatusRepository;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,6 +48,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class TaskService {
 
     private final TaskStatusRepository taskStatusRepository;
+    private final WorkspaceTaskStatusRepository workspaceTaskStatusRepository;
     private final TaskRepository taskRepository;
     private final SprintRepository sprintRepository;
     private final WorkspaceRepository workspaceRepository;
@@ -63,14 +68,18 @@ public class TaskService {
         workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        int position = taskStatusRepository.findByWorkspaceOrderByPositionAsc(workspace).size();
+        int position = (int) workspaceTaskStatusRepository.countByWorkspace(workspace);
 
-        TaskStatus status = TaskStatus.builder().workspace(workspace).name(request.name()).category(request.category())
-            .color(request.color()).position(position).build();
+        TaskStatus status = taskStatusRepository.save(
+            TaskStatus.builder().name(request.name()).category(request.category()).color(request.color()).build());
 
-        taskStatusRepository.save(status);
+        WorkspaceTaskStatus mapping = WorkspaceTaskStatus.builder()
+            .id(new WorkspaceTaskStatusId(workspace.getWorkspaceId(), status.getStatusId())).workspace(workspace)
+            .taskStatus(status).position(position).build();
 
-        return TaskStatusResponse.from(status);
+        workspaceTaskStatusRepository.save(mapping);
+
+        return TaskStatusResponse.from(mapping);
     }
 
     // Task 상태 목록 조회
@@ -86,8 +95,8 @@ public class TaskService {
         workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        return taskStatusRepository.findByWorkspaceOrderByPositionAsc(workspace).stream().map(TaskStatusResponse::from)
-            .toList();
+        return workspaceTaskStatusRepository.findByWorkspaceOrderByPositionAsc(workspace).stream()
+            .map(mapping -> TaskStatusResponse.from(mapping)).toList();
     }
 
     // Task 상태 수정
@@ -96,15 +105,28 @@ public class TaskService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        TaskStatus status = taskStatusRepository.findById(statusId)
+        WorkspaceTaskStatus mapping = workspaceTaskStatusRepository
+            .findById(new WorkspaceTaskStatusId(request.workspaceId(), statusId))
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
 
-        workspaceMemberRepository.findByWorkspaceAndUser(status.getWorkspace(), user)
+        workspaceMemberRepository.findByWorkspaceAndUser(mapping.getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        status.update(request.name(), request.category(), request.color());
+        TaskStatus newStatus = taskStatusRepository.save(
+            TaskStatus.builder().name(request.name()).category(request.category()).color(request.color()).build());
 
-        return TaskStatusResponse.from(status);
+        WorkspaceTaskStatus newMapping = WorkspaceTaskStatus.builder()
+            .id(new WorkspaceTaskStatusId(mapping.getWorkspace().getWorkspaceId(), newStatus.getStatusId()))
+            .workspace(mapping.getWorkspace()).taskStatus(newStatus).position(mapping.getPosition()).build();
+
+        workspaceTaskStatusRepository.delete(mapping);
+        workspaceTaskStatusRepository.save(newMapping);
+
+        taskRepository.findByStatusOrderByPositionAsc(mapping.getTaskStatus()).stream()
+            .filter(task -> task.getWorkspace().getWorkspaceId().equals(mapping.getWorkspace().getWorkspaceId()))
+            .forEach(task -> task.updateStatus(newStatus));
+
+        return TaskStatusResponse.from(newMapping);
     }
 
     // Task 상태 순서 변경
@@ -113,15 +135,19 @@ public class TaskService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        for (var item : request.statuses()) {
+        Workspace workspace = workspaceRepository.findById(request.workspaceId())
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
 
-            TaskStatus status = taskStatusRepository.findById(item.statusId())
+        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        for (TaskStatusReorderRequest.Item item : request.statuses()) {
+
+            WorkspaceTaskStatus mapping = workspaceTaskStatusRepository
+                .findById(new WorkspaceTaskStatusId(workspace.getWorkspaceId(), item.statusId()))
                 .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
 
-            workspaceMemberRepository.findByWorkspaceAndUser(status.getWorkspace(), user)
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
-
-            status.updatePosition(item.position());
+            mapping.updatePosition(item.position());
         }
     }
 
@@ -131,35 +157,40 @@ public class TaskService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        TaskStatus status = taskStatusRepository.findById(statusId)
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
+        Workspace workspace = workspaceRepository.findById(request.workspaceId())
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
 
-        TaskStatus targetStatus = taskStatusRepository.findById(request.targetStatusId())
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
-
-        workspaceMemberRepository.findByWorkspaceAndUser(status.getWorkspace(), user)
+        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        if (!status.getWorkspace().getWorkspaceId().equals(targetStatus.getWorkspace().getWorkspaceId())) {
-            throw new FlowSpaceException(ErrorCode.INVALID_TASK_STATUS);
-        }
+        WorkspaceTaskStatus sourceMapping = workspaceTaskStatusRepository
+            .findById(new WorkspaceTaskStatusId(workspace.getWorkspaceId(), statusId))
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
 
-        if (status.getStatusId().equals(targetStatus.getStatusId())) {
+        WorkspaceTaskStatus targetMapping = workspaceTaskStatusRepository
+            .findById(new WorkspaceTaskStatusId(workspace.getWorkspaceId(), request.targetStatusId()))
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
+
+        if (statusId.equals(request.targetStatusId())) {
             throw new FlowSpaceException(ErrorCode.INVALID_TASK_STATUS);
         }
 
         int position = taskRepository
-            .findByWorkspaceAndStatusOrderByPositionAsc(targetStatus.getWorkspace(), targetStatus).size();
+            .findByWorkspaceAndStatusOrderByPositionAsc(workspace, targetMapping.getTaskStatus()).size();
 
-        List<Task> tasks = taskRepository.findByStatusOrderByPositionAsc(status);
+        List<Task> tasks = taskRepository.findByStatusOrderByPositionAsc(sourceMapping.getTaskStatus());
 
         for (Task task : tasks) {
-            task.updateStatus(targetStatus);
+            if (!task.getWorkspace().getWorkspaceId().equals(workspace.getWorkspaceId())) {
+                continue;
+            }
+
+            task.updateStatus(targetMapping.getTaskStatus());
             task.updatePosition(BigDecimal.valueOf(position));
             position++;
         }
 
-        taskStatusRepository.delete(status);
+        workspaceTaskStatusRepository.delete(sourceMapping);
     }
 
     // Task 생성
@@ -174,14 +205,10 @@ public class TaskService {
         workspaceMemberRepository.findByWorkspaceAndUser(sprint.getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        TaskStatus status = taskStatusRepository.findById(request.statusId())
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
+        TaskStatus status = validateWorkspaceStatus(sprint.getWorkspace(), request.statusId());
 
-        if (!status.getWorkspace().getWorkspaceId().equals(sprint.getWorkspace().getWorkspaceId())) {
-            throw new FlowSpaceException(ErrorCode.INVALID_TASK_STATUS);
-        }
-
-        BigDecimal position = BigDecimal.valueOf(taskRepository.findBySprintOrderByPositionAsc(sprint).size());
+        BigDecimal position = BigDecimal
+            .valueOf(taskRepository.findByWorkspaceAndStatusOrderByPositionAsc(sprint.getWorkspace(), status).size());
 
         User assignee = null;
         if (request.assigneeId() != null) {
@@ -268,23 +295,18 @@ public class TaskService {
                 .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
         }
 
-        TaskStatus status = taskStatusRepository.findById(request.statusId())
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
-
-        if (!status.getWorkspace().getWorkspaceId().equals(task.getWorkspace().getWorkspaceId())) {
-            throw new FlowSpaceException(ErrorCode.INVALID_TASK_STATUS);
-        }
+        TaskStatus status = validateWorkspaceStatus(task.getWorkspace(), request.statusId());
 
         BigDecimal position = task.getPosition();
 
-        if (!Objects.equals(task.getSprint() == null ? null : task.getSprint().getSprintId(), request.sprintId())) {
+        boolean sprintChanged = !Objects.equals(task.getSprint() == null ? null : task.getSprint().getSprintId(),
+            request.sprintId());
 
-            if (sprint == null) {
-                position = BigDecimal.valueOf(
-                    taskRepository.findByWorkspaceAndSprintIsNullOrderByPositionAsc(task.getWorkspace()).size());
-            } else {
-                position = BigDecimal.valueOf(taskRepository.findBySprintOrderByPositionAsc(sprint).size());
-            }
+        boolean statusChanged = !task.getStatus().getStatusId().equals(request.statusId());
+
+        if (sprintChanged || statusChanged) {
+            position = BigDecimal
+                .valueOf(taskRepository.findByWorkspaceAndStatusOrderByPositionAsc(task.getWorkspace(), status).size());
         }
         task.update(sprint, assignee, status, request.description(), request.startDate(), request.endDate(),
             request.priority());
@@ -326,12 +348,7 @@ public class TaskService {
         workspaceMemberRepository.findByWorkspaceAndUser(task.getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        TaskStatus status = taskStatusRepository.findById(request.statusId())
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
-
-        if (!status.getWorkspace().getWorkspaceId().equals(task.getWorkspace().getWorkspaceId())) {
-            throw new FlowSpaceException(ErrorCode.INVALID_TASK_STATUS);
-        }
+        TaskStatus status = validateWorkspaceStatus(task.getWorkspace(), request.statusId());
 
         // 같은 Status면 변경하지 않음
         if (task.getStatus().getStatusId().equals(request.statusId())) {
@@ -500,10 +517,11 @@ public class TaskService {
         BigDecimal position;
 
         if (sprint == null) {
-            position = BigDecimal
-                .valueOf(taskRepository.findByWorkspaceAndSprintIsNullOrderByPositionAsc(task.getWorkspace()).size());
+            position = BigDecimal.valueOf(taskRepository
+                .findByWorkspaceAndStatusOrderByPositionAsc(task.getWorkspace(), task.getStatus()).size());
         } else {
-            position = BigDecimal.valueOf(taskRepository.findBySprintOrderByPositionAsc(sprint).size());
+            position = BigDecimal.valueOf(taskRepository
+                .findByWorkspaceAndStatusOrderByPositionAsc(task.getWorkspace(), task.getStatus()).size());
         }
 
         task.updateSprint(sprint);
@@ -528,15 +546,20 @@ public class TaskService {
             workspaceMemberRepository.findByWorkspaceAndUser(task.getWorkspace(), user)
                 .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-            TaskStatus status = taskStatusRepository.findById(item.statusId())
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
-
-            if (!task.getWorkspace().getWorkspaceId().equals(status.getWorkspace().getWorkspaceId())) {
-                throw new FlowSpaceException(ErrorCode.INVALID_TASK_STATUS);
-            }
+            TaskStatus status = validateWorkspaceStatus(task.getWorkspace(), item.statusId());
 
             task.updateStatus(status);
             task.updatePosition(item.position());
         }
+    }
+
+    // 공통 검증 메서드
+    private TaskStatus validateWorkspaceStatus(Workspace workspace, Long statusId) {
+
+        WorkspaceTaskStatus mapping = workspaceTaskStatusRepository
+            .findById(new WorkspaceTaskStatusId(workspace.getWorkspaceId(), statusId))
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.INVALID_TASK_STATUS));
+
+        return mapping.getTaskStatus();
     }
 }

@@ -11,6 +11,9 @@ import jakarta.validation.constraints.Size;
 // Task 상태 수정 요청 DTO
 public record TaskStatusEditRequest(
 
+    @NotBlank(message = "워크스페이스 아이디는 필수입니다.")
+    Long workspaceId,
+
     @NotBlank(message = "상태 이름은 필수입니다.")
     @Size(max = 50, message = "이름은 50자 이하입니다.")
     String name,

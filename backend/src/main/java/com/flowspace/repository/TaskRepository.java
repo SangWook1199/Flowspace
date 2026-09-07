@@ -7,6 +7,7 @@ import com.flowspace.entity.Workspace;
 import com.flowspace.entity.enums.TaskStatusCategory;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public interface TaskRepository extends JpaRepository<Task, Long> {
@@ -24,4 +25,10 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     long countBySprintAndStatus_Category(Sprint sprint, TaskStatusCategory category);
 
     long countByWorkspaceAndSprintIsNull(Workspace workspace);
+
+    List<Task> findBySprintAndStartDateBetweenOrderByStartDateAscPositionAsc(Sprint sprint, LocalDate start,
+        LocalDate end);
+
+    List<Task> findByWorkspaceAndSprintIsNullAndStartDateBetweenOrderByStartDateAscPositionAsc(Workspace workspace,
+        LocalDate start, LocalDate end);
 }

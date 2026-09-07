@@ -1,9 +1,6 @@
 package com.flowspace.entity;
 
-import com.flowspace.entity.enums.EventType;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
+import com.flowspace.entity.enums.WorkspaceColor;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -15,8 +12,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-@EntityListeners(AuditingEntityListener.class)
-public class Event {
+public class Event extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,10 +22,6 @@ public class Event {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "workspace_id", nullable = false)
     private Workspace workspace;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "page_id")
-    private Page page;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
@@ -42,24 +34,22 @@ public class Event {
     private String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "event_type", nullable = false, length = 20)
+    @Column(name = "color", nullable = false)
     @Builder.Default
-    private EventType eventType = EventType.CUSTOM;
+    private WorkspaceColor color = WorkspaceColor.PURPLE;
 
     @Column(name = "start_datetime", nullable = false)
     private LocalDateTime startDatetime;
 
-    @Column(name = "end_datetime")
+    @Column(name = "end_datetime", nullable = true)
     private LocalDateTime endDatetime;
 
-    @Column(name = "is_recurring", nullable = false)
-    @Builder.Default
-    private Boolean isRecurring = false;
-
-    @Column(name = "recurrence_rule", length = 100)
-    private String recurrenceRule;
-
-    @CreatedDate
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    public void update(String title, String description, WorkspaceColor color, LocalDateTime startDatetime,
+        LocalDateTime endDatetime) {
+        this.title = title;
+        this.description = description;
+        this.color = color;
+        this.startDatetime = startDatetime;
+        this.endDatetime = endDatetime;
+    }
 }
