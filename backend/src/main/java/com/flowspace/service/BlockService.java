@@ -183,7 +183,7 @@ public class BlockService {
         Block parent = null;
 
         if (request.parentBlockId() != null) {
-            parent = blockRepository.findById(request.parentBlockId())
+            parent = blockRepository.findByBlockId(request.parentBlockId())
                 .orElseThrow(() -> new FlowSpaceException(ErrorCode.BLOCK_NOT_FOUND));
 
             if (!parent.getPage().getPageId().equals(block.getPage().getPageId())) {

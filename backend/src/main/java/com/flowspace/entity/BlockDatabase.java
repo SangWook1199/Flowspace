@@ -1,5 +1,7 @@
 package com.flowspace.entity;
 
+import com.flowspace.entity.enums.DatabaseViewType;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -24,15 +26,16 @@ public class BlockDatabase extends BaseEntity {
     @Builder.Default
     private String title = "제목 없음";
 
-    @Column(name = "is_database", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "view_type", nullable = false, length = 20)
     @Builder.Default
-    private Boolean isDatabase = false;
+    private DatabaseViewType viewType = DatabaseViewType.TABLE;
 
     public void updateTitle(String title) {
         this.title = title;
     }
 
-    public void convertToDatabase() {
-        this.isDatabase = true;
+    public void updateViewType(DatabaseViewType viewType) {
+        this.viewType = viewType;
     }
 }

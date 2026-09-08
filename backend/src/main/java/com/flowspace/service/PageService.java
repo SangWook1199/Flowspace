@@ -6,13 +6,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.flowspace.dto.page.PageCreateRequest;
+import com.flowspace.dto.page.PageDetailResponse;
 import com.flowspace.dto.page.PageResponse;
 import com.flowspace.dto.page.PageUpdateRequest;
+import com.flowspace.entity.Block;
 import com.flowspace.entity.Page;
 import com.flowspace.entity.User;
 import com.flowspace.entity.Workspace;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
+import com.flowspace.repository.BlockRepository;
 import com.flowspace.repository.PageRepository;
 import com.flowspace.repository.UserRepository;
 import com.flowspace.repository.WorkspaceMemberRepository;
@@ -28,6 +31,7 @@ public class PageService {
     private final PageRepository pageRepository;
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
+    private final BlockRepository blockRepository;
     private final UserRepository userRepository;
 
     // 페이지 생성
@@ -149,6 +153,25 @@ public class PageService {
 
             current = current.getParentPage();
         }
+    }
+
+    // 페이지 정보와 블록 전체 조회
+    @Transactional(readOnly = true)
+    public PageDetailResponse getPageDetail(Long pageId, String email) {
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        Page page = pageRepository.findByPageIdAndIsDeletedFalse(pageId)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(page.getWorkspace(), user)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        List<Block> blocks = blockRepository.findByPageOrderByPositionAsc(page);
+        List<Page> childPages = pageRepository.findByParentPageAndIsDeletedFalse(page);
+
+        return PageDetailResponse.from(page, blocks, childPages);
     }
 
 }

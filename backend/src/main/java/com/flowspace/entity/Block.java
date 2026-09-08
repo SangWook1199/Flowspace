@@ -58,6 +58,9 @@ public class Block extends BaseEntity {
     @JoinColumn(name = "updated_by")
     private User updatedBy;
 
+    @OneToOne(mappedBy = "block", fetch = FetchType.LAZY)
+    private BlockDatabase database;
+
     public void update(BlockType type, String content, User updatedBy) {
         this.type = type;
         this.content = content;

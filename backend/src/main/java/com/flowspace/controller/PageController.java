@@ -7,6 +7,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import com.flowspace.dto.page.PageCreateRequest;
+import com.flowspace.dto.page.PageDetailResponse;
 import com.flowspace.dto.page.PageResponse;
 import com.flowspace.dto.page.PageUpdateRequest;
 import com.flowspace.service.PageService;
@@ -55,5 +56,12 @@ public class PageController {
     @DeleteMapping("/pages/{pageId}")
     public void deletePage(@PathVariable Long pageId, @AuthenticationPrincipal UserDetails userDetails) {
         pageService.deletePage(pageId, userDetails.getUsername());
+    }
+
+    @Operation(summary = "페이지 상세 조회")
+    @GetMapping("/pages/{pageId}/detail")
+    public PageDetailResponse getPageDetail(@PathVariable Long pageId,
+        @AuthenticationPrincipal UserDetails userDetails) {
+        return pageService.getPageDetail(pageId, userDetails.getUsername());
     }
 }
