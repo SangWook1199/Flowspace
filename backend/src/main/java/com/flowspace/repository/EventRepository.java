@@ -13,4 +13,6 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     List<Event> findByWorkspaceAndStartDatetimeBetweenOrderByStartDatetimeAsc(Workspace workspace, LocalDateTime start,
         LocalDateTime end);
+
+    List<Event> findByWorkspaceAndTitleContainingIgnoreCase(Workspace workspace, String keyword);
 }

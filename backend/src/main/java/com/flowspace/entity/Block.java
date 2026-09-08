@@ -26,12 +26,12 @@ public class Block extends BaseEntity {
     @JoinColumn(name = "page_id", nullable = false)
     private Page page;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "task_id", nullable = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "task_id")
     private Task task;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "event_id", nullable = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "event_id")
     private Event event;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -57,6 +57,12 @@ public class Block extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "updated_by")
     private User updatedBy;
+
+    public void update(BlockType type, String content, User updatedBy) {
+        this.type = type;
+        this.content = content;
+        this.updatedBy = updatedBy;
+    }
 
     public void updateContent(String content, User updatedBy) {
         this.content = content;

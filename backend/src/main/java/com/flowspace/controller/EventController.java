@@ -2,12 +2,16 @@ package com.flowspace.controller;
 
 import com.flowspace.dto.event.EventCreateRequest;
 import com.flowspace.dto.event.EventResponse;
+import com.flowspace.dto.event.EventSearchResponse;
 import com.flowspace.dto.event.EventUpdateRequest;
 import com.flowspace.service.EventService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
+import java.util.List;
+
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -44,5 +48,12 @@ public class EventController {
     @DeleteMapping("/events/{eventId}")
     public void deleteEvent(@PathVariable Long eventId, @AuthenticationPrincipal UserDetails userDetails) {
         eventService.deleteEvent(eventId, userDetails.getUsername());
+    }
+
+    @Operation(summary = "Event 검색")
+    @GetMapping("/workspaces/{workspaceId}/events/search")
+    public List<EventSearchResponse> searchEvents(@PathVariable Long workspaceId,
+        @RequestParam(required = false) String keyword, @AuthenticationPrincipal UserDetails userDetails) {
+        return eventService.searchEvents(workspaceId, keyword, userDetails.getUsername());
     }
 }

@@ -1,9 +1,11 @@
 package com.flowspace.service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import com.flowspace.dto.event.EventCreateRequest;
 import com.flowspace.dto.event.EventResponse;
+import com.flowspace.dto.event.EventSearchResponse;
 import com.flowspace.dto.event.EventUpdateRequest;
 import com.flowspace.entity.Event;
 import com.flowspace.entity.User;
@@ -107,5 +109,24 @@ public class EventService {
         if (end != null && end.isBefore(start)) {
             throw new FlowSpaceException(ErrorCode.INVALID_EVENT_TIME);
         }
+    }
+
+    // Event 검색
+    @Transactional(readOnly = true)
+    public List<EventSearchResponse> searchEvents(Long workspaceId, String keyword, String email) {
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        Workspace workspace = workspaceRepository.findById(workspaceId)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        String search = keyword == null ? "" : keyword;
+
+        return eventRepository.findByWorkspaceAndTitleContainingIgnoreCase(workspace, search).stream()
+            .map(EventSearchResponse::from).toList();
     }
 }

@@ -7,6 +7,7 @@ import java.util.Objects;
 import com.flowspace.dto.task.TaskCreateRequest;
 import com.flowspace.dto.task.TaskReorderRequest;
 import com.flowspace.dto.task.TaskResponse;
+import com.flowspace.dto.task.TaskSearchResponse;
 import com.flowspace.dto.task.TaskSprintUpdateRequest;
 import com.flowspace.dto.task.TaskStatusCreateRequest;
 import com.flowspace.dto.task.TaskStatusDeleteRequest;
@@ -561,5 +562,24 @@ public class TaskService {
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.INVALID_TASK_STATUS));
 
         return mapping.getTaskStatus();
+    }
+
+    // Task 검색
+    @Transactional(readOnly = true)
+    public List<TaskSearchResponse> searchTasks(Long workspaceId, String keyword, String email) {
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        Workspace workspace = workspaceRepository.findById(workspaceId)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        String search = keyword == null ? "" : keyword;
+
+        return taskRepository.findByWorkspaceAndDescriptionContainingIgnoreCase(workspace, search).stream()
+            .map(TaskSearchResponse::from).toList();
     }
 }

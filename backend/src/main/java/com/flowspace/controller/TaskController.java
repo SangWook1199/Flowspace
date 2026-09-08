@@ -7,6 +7,7 @@ import com.flowspace.dto.task.SubTaskUpdateRequest;
 import com.flowspace.dto.task.TaskCreateRequest;
 import com.flowspace.dto.task.TaskReorderRequest;
 import com.flowspace.dto.task.TaskResponse;
+import com.flowspace.dto.task.TaskSearchResponse;
 import com.flowspace.dto.task.TaskSprintUpdateRequest;
 import com.flowspace.dto.task.TaskStatusCreateRequest;
 import com.flowspace.dto.task.TaskStatusDeleteRequest;
@@ -189,5 +190,12 @@ public class TaskController {
 
         taskService.reorderTasks(request, userDetails.getUsername());
         return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Task 검색")
+    @GetMapping("/workspaces/{workspaceId}/tasks/search")
+    public List<TaskSearchResponse> searchTasks(@PathVariable Long workspaceId,
+        @RequestParam(required = false) String keyword, @AuthenticationPrincipal UserDetails userDetails) {
+        return taskService.searchTasks(workspaceId, keyword, userDetails.getUsername());
     }
 }
