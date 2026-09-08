@@ -58,4 +58,8 @@ public class Page extends BaseEntity {
         this.isDeleted = true;
         this.deletedAt = LocalDateTime.now();
     }
+
+    public void updateCover(File coverFile) {
+        this.coverFile = coverFile;
+    }
 }

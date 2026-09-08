@@ -4,12 +4,15 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import com.flowspace.dto.page.PageCoverUpdateRequest;
 import com.flowspace.dto.page.PageCreateRequest;
 import com.flowspace.dto.page.PageDetailResponse;
 import com.flowspace.dto.page.PageResponse;
 import com.flowspace.dto.page.PageUpdateRequest;
 import com.flowspace.entity.Block;
+import com.flowspace.entity.File;
 import com.flowspace.entity.Page;
 import com.flowspace.entity.User;
 import com.flowspace.entity.Workspace;
@@ -33,6 +36,7 @@ public class PageService {
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final BlockRepository blockRepository;
     private final UserRepository userRepository;
+    private final FileService fileService;
 
     // 페이지 생성
     public PageResponse createPage(Long workspaceId, PageCreateRequest request, String email) {
@@ -174,4 +178,69 @@ public class PageService {
         return PageDetailResponse.from(page, blocks, childPages);
     }
 
+    // 페이지 커버 업로드
+    public PageResponse uploadCover(Long pageId, MultipartFile file, String email) {
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        Page page = pageRepository.findByPageIdAndIsDeletedFalse(pageId)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(page.getWorkspace(), user)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        if (page.getCoverFile() != null) {
+            fileService.delete(page.getCoverFile());
+        }
+
+        File cover = fileService.upload(file, page.getWorkspace(), email);
+
+        page.updateCover(cover);
+
+        return PageResponse.from(page);
+    }
+
+    // 페이지 커버 삭제
+    public PageResponse deleteCover(Long pageId, String email) {
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        Page page = pageRepository.findByPageIdAndIsDeletedFalse(pageId)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(page.getWorkspace(), user)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        if (page.getCoverFile() != null) {
+            fileService.delete(page.getCoverFile());
+            page.updateCover(null);
+        }
+
+        return PageResponse.from(page);
+    }
+
+    // 기본 커버 적용
+    public PageResponse applyDefaultCover(Long pageId, PageCoverUpdateRequest request, String email) {
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        Page page = pageRepository.findByPageIdAndIsDeletedFalse(pageId)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(page.getWorkspace(), user)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        if (page.getCoverFile() != null) {
+            fileService.delete(page.getCoverFile());
+        }
+
+        File cover = fileService.createDefaultCover(request.coverName(), page.getWorkspace(), user);
+
+        page.updateCover(cover);
+
+        return PageResponse.from(page);
+    }
 }
