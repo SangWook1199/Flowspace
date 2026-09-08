@@ -11,7 +11,7 @@ import java.util.Optional;
 
 public interface BlockDatabaseCellRepository extends JpaRepository<BlockDatabaseCell, BlockDatabaseCellId> {
 
-    List<BlockDatabaseCell> findByRow(BlockDatabaseRow row);
+    List<BlockDatabaseCell> findByRowOrderByColumnPositionAsc(BlockDatabaseRow row);
 
     Optional<BlockDatabaseCell> findByRowAndColumn(BlockDatabaseRow row, BlockDatabaseColumn column);
 
