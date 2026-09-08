@@ -5,6 +5,8 @@ import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import com.flowspace.entity.enums.BlockType;
+
 import java.math.BigDecimal;
 
 @Entity
@@ -24,17 +26,22 @@ public class Block extends BaseEntity {
     @JoinColumn(name = "page_id", nullable = false)
     private Page page;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "task_id", unique = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "task_id")
     private Task task;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "event_id")
+    private Event event;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_block_id")
     private Block parentBlock;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, length = 30)
     @Builder.Default
-    private String type = "TEXT";
+    private BlockType type = BlockType.TEXT;
 
     @Column(name = "position", nullable = false, precision = 20, scale = 10)
     private BigDecimal position;
@@ -50,4 +57,27 @@ public class Block extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "updated_by")
     private User updatedBy;
+
+    public void update(BlockType type, String content, User updatedBy) {
+        this.type = type;
+        this.content = content;
+        this.updatedBy = updatedBy;
+    }
+
+    public void updateContent(String content, User updatedBy) {
+        this.content = content;
+        this.updatedBy = updatedBy;
+    }
+
+    public void updatePosition(BigDecimal position) {
+        this.position = position;
+    }
+
+    public void updateParent(Block parentBlock) {
+        this.parentBlock = parentBlock;
+    }
+
+    public void updateType(BlockType type) {
+        this.type = type;
+    }
 }

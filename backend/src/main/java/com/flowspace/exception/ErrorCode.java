@@ -32,7 +32,23 @@ public enum ErrorCode {
     // Task
     TASK_STATUS_NOT_FOUND(HttpStatus.NOT_FOUND, "Task 상태를 찾을 수 없습니다."),
     INVALID_TASK_STATUS(HttpStatus.BAD_REQUEST, "유효하지 않은 Task 상태입니다."),
-    TASK_NOT_FOUND(HttpStatus.NOT_FOUND, "Task를 찾을 수 없습니다."),;
+    TASK_NOT_FOUND(HttpStatus.NOT_FOUND, "Task를 찾을 수 없습니다."),
+    SUBTASK_NOT_FOUND(HttpStatus.NOT_FOUND, "서브태스크를 찾을 수 없습니다."),
+    INVALID_SPRINT(HttpStatus.BAD_REQUEST, "유효하지 않은 스프린트입니다."),
+
+    // Event
+    EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "이벤트를 찾을 수 없습니다."),
+    INVALID_EVENT_TIME(HttpStatus.BAD_REQUEST, "종료 시간은 시작 시간보다 빠를 수 없습니다."),
+
+    // Page
+    PAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "페이지를 찾을 수 없습니다."),
+    INVALID_PAGE_PARENT(HttpStatus.BAD_REQUEST, "자기 자신을 부모 페이지로 지정할 수 없습니다."),
+    BLOCK_NOT_FOUND(HttpStatus.NOT_FOUND, "블록을 찾을 수 없습니다."),
+    INVALID_BLOCK_PARENT(HttpStatus.BAD_REQUEST, "자기 자신 또는 하위 블록으로 이동할 수 없습니다."),
+    DATABASE_NOT_FOUND(HttpStatus.NOT_FOUND, "데이터베이스를 찾을 수 없습니다."),
+    DATABASE_COLUMN_NOT_FOUND(HttpStatus.NOT_FOUND, "데이터베이스 컬럼을 찾을 수 없습니다."),
+    DATABASE_ROW_NOT_FOUND(HttpStatus.NOT_FOUND, "데이터베이스 행을 찾을 수 없습니다."),
+    DATABASE_CELL_NOT_FOUND(HttpStatus.NOT_FOUND, "데이터베이스 셀을 찾을 수 없습니다."),;
 
     private final HttpStatus status;
     private final String message;

@@ -3,6 +3,7 @@ package com.flowspace.service;
 import com.flowspace.dto.workspace.*;
 import com.flowspace.entity.*;
 import com.flowspace.entity.enums.*;
+import com.flowspace.entity.id.WorkspaceTaskStatusId;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.repository.*;
@@ -22,6 +23,7 @@ public class WorkspaceService {
         private final UserRepository userRepository;
         private final WorkspaceInviteRepository workspaceInviteRepository;
         private final TaskStatusRepository taskStatusRepository;
+        private final WorkspaceTaskStatusRepository workspaceTaskStatusRepository;
 
         // 워크스페이스 생성
         public WorkspaceResponse createWorkspace(WorkspaceCreateRequest request, String email) {
@@ -40,15 +42,24 @@ public class WorkspaceService {
                 workspaceMemberRepository.save(member);
 
                 // 기본 Task 상태 생성
-                taskStatusRepository.saveAll(List.of(
-                        TaskStatus.builder().workspace(workspace).name("할 일").category(TaskStatusCategory.TODO)
-                                .color(WorkspaceColor.BLUE).position(0).build(),
+                TaskStatus todo = taskStatusRepository.findById(1L)
+                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
 
-                        TaskStatus.builder().workspace(workspace).name("진행 중").category(TaskStatusCategory.IN_PROGRESS)
-                                .color(WorkspaceColor.PURPLE).position(1).build(),
+                TaskStatus inProgress = taskStatusRepository.findById(2L)
+                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
 
-                        TaskStatus.builder().workspace(workspace).name("완료").category(TaskStatusCategory.DONE)
-                                .color(WorkspaceColor.GREEN).position(2).build()));
+                TaskStatus done = taskStatusRepository.findById(3L)
+                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
+
+                workspaceTaskStatusRepository.saveAll(List.of(
+                        WorkspaceTaskStatus.builder().id(new WorkspaceTaskStatusId(workspace.getWorkspaceId(), 1L))
+                                .workspace(workspace).taskStatus(todo).position(0).build(),
+
+                        WorkspaceTaskStatus.builder().id(new WorkspaceTaskStatusId(workspace.getWorkspaceId(), 2L))
+                                .workspace(workspace).taskStatus(inProgress).position(1).build(),
+
+                        WorkspaceTaskStatus.builder().id(new WorkspaceTaskStatusId(workspace.getWorkspaceId(), 3L))
+                                .workspace(workspace).taskStatus(done).position(2).build()));
 
                 user.updateLastWorkspace(workspace);
 

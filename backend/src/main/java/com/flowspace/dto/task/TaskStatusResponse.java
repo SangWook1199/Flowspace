@@ -1,37 +1,31 @@
 package com.flowspace.dto.task;
 
-import com.flowspace.entity.TaskStatus;
+import com.flowspace.entity.WorkspaceTaskStatus;
 import com.flowspace.entity.enums.TaskStatusCategory;
 import com.flowspace.entity.enums.WorkspaceColor;
 
-import java.time.LocalDateTime;
-
 // @formatter:off
 
-// Task 상태 응답 DTO
 public record TaskStatusResponse(
 
     Long statusId,
-    Long workspaceId,
     String name,
     TaskStatusCategory category,
     WorkspaceColor color,
-    Integer position,
-    LocalDateTime createdAt
+    Integer position
 
 ) {
 
-    public static TaskStatusResponse from(TaskStatus status) {
+    public static TaskStatusResponse from(WorkspaceTaskStatus mapping) {
         return new TaskStatusResponse(
-            status.getStatusId(),
-            status.getWorkspace().getWorkspaceId(),
-            status.getName(),
-            status.getCategory(),
-            status.getColor(),
-            status.getPosition(),
-            status.getCreatedAt()
+            mapping.getTaskStatus().getStatusId(),
+            mapping.getTaskStatus().getName(),
+            mapping.getTaskStatus().getCategory(),
+            mapping.getTaskStatus().getColor(),
+            mapping.getPosition()
         );
     }
+
 }
 
 // @formatter:on

@@ -6,6 +6,7 @@ import com.flowspace.entity.enums.TaskStatusCategory;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -29,6 +30,10 @@ public class Task extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "status_id", nullable = false)
     private TaskStatus status;
+
+    @Column(name = "position", nullable = false, precision = 20, scale = 10)
+    @Builder.Default
+    private BigDecimal position = BigDecimal.ZERO;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sprint_id")
@@ -89,5 +94,9 @@ public class Task extends BaseEntity {
 
     public void updateSprint(Sprint sprint) {
         this.sprint = sprint;
+    }
+
+    public void updatePosition(BigDecimal position) {
+        this.position = position;
     }
 }

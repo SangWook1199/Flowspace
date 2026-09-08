@@ -1,5 +1,6 @@
 package com.flowspace.service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.ArrayList;
@@ -9,6 +10,7 @@ import com.flowspace.dto.sprint.SprintResponse;
 import com.flowspace.dto.sprint.SprintStatusUpdateRequest;
 import com.flowspace.dto.sprint.SprintUpdateRequest;
 import com.flowspace.entity.Sprint;
+import com.flowspace.entity.Task;
 import com.flowspace.entity.User;
 import com.flowspace.entity.Workspace;
 import com.flowspace.entity.enums.SprintStatus;
@@ -124,10 +126,9 @@ public class SprintService {
 
         validateMember(sprint.getWorkspace(), user);
 
-        // 완료 시 모든 Task를 Backlog로 이동
         if (request.status() == SprintStatus.COMPLETED && sprint.getStatus() != SprintStatus.COMPLETED) {
 
-            taskRepository.findBySprint(sprint).forEach(task -> task.updateSprint(null));
+            moveTasksToBacklog(sprint);
         }
 
         sprint.updateStatus(request.status());
@@ -146,8 +147,7 @@ public class SprintService {
 
         validateMember(sprint.getWorkspace(), user);
 
-        // 스프린트의 모든 Task → Backlog
-        taskRepository.findBySprint(sprint).forEach(task -> task.updateSprint(null));
+        moveTasksToBacklog(sprint);
 
         sprintRepository.delete(sprint);
     }
@@ -175,5 +175,19 @@ public class SprintService {
         int progress = taskCount == 0 ? 0 : (completedTaskCount * 100) / taskCount;
 
         return SprintResponse.from(sprint, progress, taskCount, completedTaskCount);
+    }
+
+    // 스프린트 Task를 Backlog로 이동
+    private void moveTasksToBacklog(Sprint sprint) {
+
+        int position = taskRepository.findByWorkspaceAndSprintIsNullOrderByPositionAsc(sprint.getWorkspace()).size();
+
+        List<Task> sprintTasks = taskRepository.findBySprintOrderByPositionAsc(sprint);
+
+        for (Task task : sprintTasks) {
+            task.updateSprint(null);
+            task.updatePosition(BigDecimal.valueOf(position));
+            position++;
+        }
     }
 }

@@ -28,7 +28,7 @@ export default function LoginPage() {
     {
       image: calendar,
       title: "일정을 놓치지 마세요",
-      description: "팀 일정과 마감일을 월간 캘린더로 관리합니다.",
+      description: "팀 일정과 마감일을 월간 캘린더로 관리하세요.",
     },
     {
       image: document,

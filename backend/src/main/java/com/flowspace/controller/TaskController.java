@@ -1,7 +1,14 @@
 package com.flowspace.controller;
 
+import com.flowspace.dto.task.SubTaskCreateRequest;
+import com.flowspace.dto.task.SubTaskReorderRequest;
+import com.flowspace.dto.task.SubTaskResponse;
+import com.flowspace.dto.task.SubTaskUpdateRequest;
 import com.flowspace.dto.task.TaskCreateRequest;
+import com.flowspace.dto.task.TaskReorderRequest;
 import com.flowspace.dto.task.TaskResponse;
+import com.flowspace.dto.task.TaskSearchResponse;
+import com.flowspace.dto.task.TaskSprintUpdateRequest;
 import com.flowspace.dto.task.TaskStatusCreateRequest;
 import com.flowspace.dto.task.TaskStatusDeleteRequest;
 import com.flowspace.dto.task.TaskStatusEditRequest;
@@ -17,6 +24,8 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -123,4 +132,70 @@ public class TaskController {
         return taskService.getBacklogTasks(workspaceId, userDetails.getUsername());
     }
 
+    @Operation(summary = "SubTask 생성")
+    @PostMapping("/{taskId}/subtasks")
+    public ResponseEntity<SubTaskResponse> createSubTask(@PathVariable Long taskId,
+        @Valid @RequestBody SubTaskCreateRequest request, @AuthenticationPrincipal UserDetails userDetails) {
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(taskService.createSubTask(taskId, request, userDetails.getUsername()));
+    }
+
+    @Operation(summary = "SubTask 목록 조회")
+    @GetMapping("/{taskId}/subtasks")
+    public ResponseEntity<List<SubTaskResponse>> getSubTasks(@PathVariable Long taskId,
+        @AuthenticationPrincipal UserDetails userDetails) {
+
+        return ResponseEntity.ok(taskService.getSubTasks(taskId, userDetails.getUsername()));
+    }
+
+    @Operation(summary = "SubTask 수정")
+    @PatchMapping("/subtasks/{subtaskId}")
+    public ResponseEntity<SubTaskResponse> updateSubTask(@PathVariable Long subtaskId,
+        @Valid @RequestBody SubTaskUpdateRequest request, @AuthenticationPrincipal UserDetails userDetails) {
+
+        return ResponseEntity.ok(taskService.updateSubTask(subtaskId, request, userDetails.getUsername()));
+    }
+
+    @Operation(summary = "SubTask 순서 변경")
+    @PatchMapping("/subtasks/reorder")
+    public ResponseEntity<Void> reorderSubTasks(@Valid @RequestBody SubTaskReorderRequest request,
+        @AuthenticationPrincipal UserDetails userDetails) {
+
+        taskService.reorderSubTasks(request, userDetails.getUsername());
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "SubTask 삭제")
+    @DeleteMapping("/subtasks/{subtaskId}")
+    public ResponseEntity<Void> deleteSubTask(@PathVariable Long subtaskId,
+        @AuthenticationPrincipal UserDetails userDetails) {
+
+        taskService.deleteSubTask(subtaskId, userDetails.getUsername());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Task 스프린트 이동")
+    @PatchMapping("/{taskId}/sprint")
+    public ResponseEntity<TaskResponse> updateTaskSprint(@PathVariable Long taskId,
+        @Valid @RequestBody TaskSprintUpdateRequest request, @AuthenticationPrincipal UserDetails userDetails) {
+
+        return ResponseEntity.ok(taskService.updateTaskSprint(taskId, request, userDetails.getUsername()));
+    }
+
+    @Operation(summary = "Task 순서 변경")
+    @PatchMapping("/reorder")
+    public ResponseEntity<Void> reorderTasks(@Valid @RequestBody TaskReorderRequest request,
+        @AuthenticationPrincipal UserDetails userDetails) {
+
+        taskService.reorderTasks(request, userDetails.getUsername());
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Task 검색")
+    @GetMapping("/workspaces/{workspaceId}/tasks/search")
+    public List<TaskSearchResponse> searchTasks(@PathVariable Long workspaceId,
+        @RequestParam(required = false) String keyword, @AuthenticationPrincipal UserDetails userDetails) {
+        return taskService.searchTasks(workspaceId, keyword, userDetails.getUsername());
+    }
 }
