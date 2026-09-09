@@ -47,6 +47,9 @@ public class Task extends BaseEntity {
     @JoinColumn(name = "assignee_id")
     private User assignee;
 
+    @Column(name = "title", nullable = false, length = 200)
+    private String title;
+
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
@@ -64,12 +67,13 @@ public class Task extends BaseEntity {
     @Builder.Default
     private TaskPriority priority = TaskPriority.MEDIUM;
 
-    public void update(Sprint sprint, User assignee, TaskStatus status, String description, LocalDate startDate,
-        LocalDate endDate, TaskPriority priority) {
+    public void update(Sprint sprint, User assignee, TaskStatus status, String title, String description,
+        LocalDate startDate, LocalDate endDate, TaskPriority priority) {
 
         this.sprint = sprint;
         this.assignee = assignee;
         this.status = status;
+        this.title = title;
         this.description = description;
         this.startDate = startDate;
         this.endDate = endDate;

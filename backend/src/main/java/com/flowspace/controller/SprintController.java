@@ -1,9 +1,11 @@
 package com.flowspace.controller;
 
+import com.flowspace.dto.retrospective.RetrospectiveResponse;
 import com.flowspace.dto.sprint.SprintCreateRequest;
 import com.flowspace.dto.sprint.SprintResponse;
 import com.flowspace.dto.sprint.SprintStatusUpdateRequest;
 import com.flowspace.dto.sprint.SprintUpdateRequest;
+import com.flowspace.service.RetrospectiveService;
 import com.flowspace.service.SprintService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -22,6 +24,7 @@ import java.util.List;
 public class SprintController {
 
     private final SprintService sprintService;
+    private final RetrospectiveService retrospectiveService;
 
     @Operation(summary = "스프린트 생성")
     @PostMapping("/workspaces/{workspaceId}/sprints")
@@ -61,5 +64,12 @@ public class SprintController {
     @DeleteMapping("/sprints/{sprintId}")
     public void deleteSprint(@PathVariable Long sprintId, @AuthenticationPrincipal UserDetails userDetails) {
         sprintService.deleteSprint(sprintId, userDetails.getUsername());
+    }
+
+    @Operation(summary = "스프린트 회고 조회")
+    @GetMapping("/sprints/{sprintId}/retrospective")
+    public RetrospectiveResponse getSprintRetrospective(@PathVariable Long sprintId,
+        @AuthenticationPrincipal UserDetails userDetails) {
+        return retrospectiveService.getBySprint(sprintId, userDetails.getUsername());
     }
 }

@@ -26,6 +26,7 @@ public record TaskResponse(
 
     Long assigneeId,
 
+    String title,
     String description,
 
     LocalDate startDate,
@@ -54,6 +55,7 @@ public record TaskResponse(
             task.getStatus().getName(),
             task.getPosition(),
             task.getAssignee() == null ? null : task.getAssignee().getUserId(),
+            task.getTitle(),
             task.getDescription(),
             task.getStartDate(),
             task.getEndDate(),

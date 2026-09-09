@@ -8,7 +8,7 @@ import com.flowspace.entity.Task;
 public record TaskSearchResponse(
 
     Long taskId,
-    String description,
+    String title,
     Long statusId,
     String statusName,
     Long assigneeId,
@@ -19,7 +19,7 @@ public record TaskSearchResponse(
     public static TaskSearchResponse from(Task task) {
         return new TaskSearchResponse(
             task.getTaskId(),
-            task.getDescription(),
+            task.getTitle(),
             task.getStatus().getStatusId(),
             task.getStatus().getName(),
             task.getAssignee() == null ? null : task.getAssignee().getUserId(),

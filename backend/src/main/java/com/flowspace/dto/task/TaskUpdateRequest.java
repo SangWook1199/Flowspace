@@ -15,6 +15,8 @@ public record TaskUpdateRequest(
 
     Long statusId,
 
+    String title,
+
     String description,
 
     LocalDate startDate,

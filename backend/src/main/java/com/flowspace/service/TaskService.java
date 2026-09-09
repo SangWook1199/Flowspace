@@ -224,8 +224,8 @@ public class TaskService {
         }
 
         Task task = Task.builder().workspace(sprint.getWorkspace()).sprint(sprint).createdBy(user).assignee(assignee)
-            .status(status).position(position).description(request.description()).startDate(request.startDate())
-            .endDate(request.endDate()).priority(request.priority()).build();
+            .status(status).position(position).title(request.title()).description(request.description())
+            .startDate(request.startDate()).endDate(request.endDate()).priority(request.priority()).build();
 
         taskRepository.save(task);
 
@@ -316,8 +316,8 @@ public class TaskService {
             position = BigDecimal
                 .valueOf(taskRepository.findByWorkspaceAndStatusOrderByPositionAsc(task.getWorkspace(), status).size());
         }
-        task.update(sprint, assignee, status, request.description(), request.startDate(), request.endDate(),
-            request.priority());
+        task.update(sprint, assignee, status, request.title(), request.description(), request.startDate(),
+            request.endDate(), request.priority());
 
         task.updatePosition(position);
 
@@ -594,7 +594,7 @@ public class TaskService {
 
         String search = keyword == null ? "" : keyword;
 
-        return taskRepository.findByWorkspaceAndDescriptionContainingIgnoreCase(workspace, search).stream()
+        return taskRepository.findByWorkspaceAndTitleContainingIgnoreCase(workspace, search).stream()
             .map(TaskSearchResponse::from).toList();
     }
 

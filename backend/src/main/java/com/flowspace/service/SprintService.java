@@ -3,25 +3,51 @@ package com.flowspace.service;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.ArrayList;
 
 import com.flowspace.dto.sprint.SprintCreateRequest;
 import com.flowspace.dto.sprint.SprintResponse;
 import com.flowspace.dto.sprint.SprintStatusUpdateRequest;
 import com.flowspace.dto.sprint.SprintUpdateRequest;
+import com.flowspace.entity.Block;
+import com.flowspace.entity.BlockDatabase;
+import com.flowspace.entity.BlockDatabaseColumn;
+import com.flowspace.entity.Page;
+import com.flowspace.entity.Retrospective;
+import com.flowspace.entity.RetrospectiveStatusSnapshot;
 import com.flowspace.entity.Sprint;
 import com.flowspace.entity.Task;
+import com.flowspace.entity.TaskSnapshot;
 import com.flowspace.entity.User;
 import com.flowspace.entity.Workspace;
+import com.flowspace.entity.WorkspaceTaskStatus;
+import com.flowspace.entity.enums.BlockType;
+import com.flowspace.entity.enums.DatabaseColumnType;
+import com.flowspace.entity.enums.DatabaseViewType;
 import com.flowspace.entity.enums.SprintStatus;
 import com.flowspace.entity.enums.TaskStatusCategory;
+import com.flowspace.entity.BlockDatabaseRow;
+import com.flowspace.entity.BlockDatabaseCell;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
+import com.flowspace.repository.BlockDatabaseCellRepository;
+import com.flowspace.repository.BlockDatabaseColumnRepository;
+import com.flowspace.repository.BlockDatabaseRepository;
+import com.flowspace.repository.BlockDatabaseRowRepository;
+import com.flowspace.repository.BlockRepository;
+import com.flowspace.repository.PageRepository;
+import com.flowspace.repository.RetrospectiveRepository;
+import com.flowspace.repository.RetrospectiveStatusSnapshotRepository;
 import com.flowspace.repository.SprintRepository;
 import com.flowspace.repository.TaskRepository;
+import com.flowspace.repository.TaskSnapshotRepository;
 import com.flowspace.repository.UserRepository;
 import com.flowspace.repository.WorkspaceMemberRepository;
 import com.flowspace.repository.WorkspaceRepository;
+import com.flowspace.repository.WorkspaceTaskStatusRepository;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +61,16 @@ public class SprintService {
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final TaskRepository taskRepository;
+    private final PageRepository pageRepository;
+    private final BlockRepository blockRepository;
+    private final BlockDatabaseRepository blockDatabaseRepository;
+    private final BlockDatabaseRowRepository blockDatabaseRowRepository;
+    private final BlockDatabaseCellRepository blockDatabaseCellRepository;
+    private final BlockDatabaseColumnRepository blockDatabaseColumnRepository;
+    private final WorkspaceTaskStatusRepository workspaceTaskStatusRepository;
+    private final RetrospectiveRepository retrospectiveRepository;
+    private final RetrospectiveStatusSnapshotRepository statusSnapshotRepository;
+    private final TaskSnapshotRepository taskSnapshotRepository;
     private final UserRepository userRepository;
 
     // 스프린트 생성
@@ -128,9 +164,10 @@ public class SprintService {
 
         if (request.status() == SprintStatus.COMPLETED && sprint.getStatus() != SprintStatus.COMPLETED) {
 
+            createRetrospective(sprint, user);
+
             moveTasksToBacklog(sprint);
         }
-
         sprint.updateStatus(request.status());
 
         return toSprintResponse(sprint);
@@ -188,6 +225,113 @@ public class SprintService {
             task.updateSprint(null);
             task.updatePosition(BigDecimal.valueOf(position));
             position++;
+        }
+    }
+
+    // 회고 생성
+    private void createRetrospective(Sprint sprint, User user) {
+
+        Page page = createRetrospectivePage(sprint, user);
+
+        Retrospective retrospective = retrospectiveRepository
+            .save(Retrospective.builder().sprint(sprint).page(page).build());
+
+        createRetrospectiveTable(page, user);
+
+        List<RetrospectiveStatusSnapshot> snapshots = createStatusSnapshots(retrospective, sprint);
+
+        createTaskSnapshots(retrospective, sprint, snapshots);
+    }
+
+    // 회고 페이지 생성
+    private Page createRetrospectivePage(Sprint sprint, User user) {
+
+        Page page = Page.builder().workspace(sprint.getWorkspace()).parentPage(null).title(sprint.getName() + " 회고")
+            .icon("🚀").createdBy(user).build();
+
+        return pageRepository.save(page);
+    }
+
+    // 회고 기본 테이블 생성
+    private void createRetrospectiveTable(Page page, User user) {
+
+        BigDecimal position = BigDecimal.valueOf(blockRepository.findByPageOrderByPositionAsc(page).size());
+
+        Block block = Block.builder().page(page).type(BlockType.DATABASE).position(position).createdBy(user).build();
+
+        blockRepository.save(block);
+
+        BlockDatabase database = BlockDatabase.builder().block(block).title("회고").viewType(DatabaseViewType.TABLE)
+            .build();
+
+        blockDatabaseRepository.save(database);
+
+        List<BlockDatabaseColumn> columns = new ArrayList<>();
+
+        columns.add(blockDatabaseColumnRepository.save(BlockDatabaseColumn.builder().database(database).name("Keep")
+            .type(DatabaseColumnType.TEXT).position(0).build()));
+
+        columns.add(blockDatabaseColumnRepository.save(BlockDatabaseColumn.builder().database(database).name("Problem")
+            .type(DatabaseColumnType.TEXT).position(1).build()));
+
+        columns.add(blockDatabaseColumnRepository.save(BlockDatabaseColumn.builder().database(database).name("Try")
+            .type(DatabaseColumnType.TEXT).position(2).build()));
+
+        for (int i = 0; i < 4; i++) {
+
+            BlockDatabaseRow row = BlockDatabaseRow.builder().database(database).position(i).build();
+
+            blockDatabaseRowRepository.save(row);
+
+            for (BlockDatabaseColumn column : columns) {
+
+                blockDatabaseCellRepository
+                    .save(BlockDatabaseCell.builder().row(row).column(column).value(null).build());
+            }
+        }
+    }
+
+    // 상태 스냅샷 생성
+    private List<RetrospectiveStatusSnapshot> createStatusSnapshots(Retrospective retrospective, Sprint sprint) {
+
+        List<WorkspaceTaskStatus> statuses = workspaceTaskStatusRepository
+            .findByWorkspaceOrderByPositionAsc(sprint.getWorkspace());
+
+        List<RetrospectiveStatusSnapshot> result = new ArrayList<>();
+
+        for (WorkspaceTaskStatus status : statuses) {
+
+            RetrospectiveStatusSnapshot snapshot = statusSnapshotRepository
+                .save(RetrospectiveStatusSnapshot.builder().retrospective(retrospective)
+                    .originalStatusId(status.getTaskStatus().getStatusId()).name(status.getTaskStatus().getName())
+                    .color(status.getTaskStatus().getColor().name()).position(status.getPosition()).build());
+
+            result.add(snapshot);
+        }
+
+        return result;
+    }
+
+    // Task 스냅샷 생성
+    private void createTaskSnapshots(Retrospective retrospective, Sprint sprint,
+        List<RetrospectiveStatusSnapshot> snapshots) {
+
+        Map<Long, RetrospectiveStatusSnapshot> statusMap = snapshots.stream()
+            .collect(Collectors.toMap(s -> s.getOriginalStatusId(), s -> s));
+
+        List<Task> tasks = taskRepository.findBySprintOrderByPositionAsc(sprint);
+
+        for (Task task : tasks) {
+
+            User assignee = task.getAssignee();
+
+            taskSnapshotRepository.save(TaskSnapshot.builder().retrospective(retrospective)
+                .snapshotStatus(statusMap.get(task.getStatus().getStatusId())).originalTaskId(task.getTaskId())
+                .title(task.getTitle()).assigneeId(assignee == null ? null : assignee.getUserId())
+                .assigneeName(assignee == null ? null : assignee.getName())
+                .assigneeProfileFileId(assignee == null || assignee.getProfileFile() == null ? null
+                    : assignee.getProfileFile().getFileId())
+                .priority(task.getPriority().name()).position(task.getPosition()).build());
         }
     }
 }
