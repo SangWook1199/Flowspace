@@ -16,6 +16,7 @@ import com.flowspace.dto.task.TaskStatusReorderRequest;
 import com.flowspace.dto.task.TaskStatusResponse;
 import com.flowspace.dto.task.TaskStatusUpdateRequest;
 import com.flowspace.dto.task.TaskUpdateRequest;
+import com.flowspace.dto.comment.CommentResponse;
 import com.flowspace.dto.task.SubTaskCreateRequest;
 import com.flowspace.dto.task.SubTaskReorderRequest;
 import com.flowspace.dto.task.SubTaskResponse;
@@ -30,6 +31,7 @@ import com.flowspace.entity.WorkspaceTaskStatus;
 import com.flowspace.entity.id.WorkspaceTaskStatusId;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
+import com.flowspace.repository.CommentRepository;
 import com.flowspace.repository.SprintRepository;
 import com.flowspace.repository.SubTaskRepository;
 import com.flowspace.repository.TaskRepository;
@@ -55,6 +57,7 @@ public class TaskService {
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final SubTaskRepository subTaskRepository;
+    private final CommentRepository commentRepository;
     private final UserRepository userRepository;
 
     // Task 상태 생성
@@ -227,7 +230,9 @@ public class TaskService {
         taskRepository.save(task);
 
         List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
-        return TaskResponse.from(task, subtasks);
+        List<CommentResponse> comments = getTaskCommentResponses(task);
+
+        return TaskResponse.from(task, subtasks, comments);
     }
 
     // 스프린트 Task 목록 조회
@@ -245,7 +250,8 @@ public class TaskService {
 
         return taskRepository.findBySprintOrderByPositionAsc(sprint).stream().map(task -> {
             List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
-            return TaskResponse.from(task, subtasks);
+            List<CommentResponse> comments = getTaskCommentResponses(task);
+            return TaskResponse.from(task, subtasks, comments);
         }).toList();
     }
 
@@ -262,8 +268,9 @@ public class TaskService {
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
         List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
+        List<CommentResponse> comments = getTaskCommentResponses(task);
 
-        return TaskResponse.from(task, subtasks);
+        return TaskResponse.from(task, subtasks, comments);
     }
 
     // Task 수정
@@ -315,8 +322,9 @@ public class TaskService {
         task.updatePosition(position);
 
         List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
+        List<CommentResponse> comments = getTaskCommentResponses(task);
 
-        return TaskResponse.from(task, subtasks);
+        return TaskResponse.from(task, subtasks, comments);
     }
 
     // Backlog Task 목록 조회
@@ -334,7 +342,8 @@ public class TaskService {
 
         return taskRepository.findByWorkspaceAndSprintIsNullOrderByPositionAsc(workspace).stream().map(task -> {
             List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
-            return TaskResponse.from(task, subtasks);
+            List<CommentResponse> comments = getTaskCommentResponses(task);
+            return TaskResponse.from(task, subtasks, comments);
         }).toList();
     }
 
@@ -354,7 +363,9 @@ public class TaskService {
         // 같은 Status면 변경하지 않음
         if (task.getStatus().getStatusId().equals(request.statusId())) {
             List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
-            return TaskResponse.from(task, subtasks);
+            List<CommentResponse> comments = getTaskCommentResponses(task);
+
+            return TaskResponse.from(task, subtasks, comments);
         }
 
         BigDecimal position = BigDecimal
@@ -364,8 +375,9 @@ public class TaskService {
         task.updatePosition(position);
 
         List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
+        List<CommentResponse> comments = getTaskCommentResponses(task);
 
-        return TaskResponse.from(task, subtasks);
+        return TaskResponse.from(task, subtasks, comments);
     }
 
     // Task 삭제
@@ -501,7 +513,9 @@ public class TaskService {
         if (Objects.equals(task.getSprint() == null ? null : task.getSprint().getSprintId(), request.sprintId())) {
 
             List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
-            return TaskResponse.from(task, subtasks);
+            List<CommentResponse> comments = getTaskCommentResponses(task);
+
+            return TaskResponse.from(task, subtasks, comments);
         }
 
         Sprint sprint = null;
@@ -529,8 +543,9 @@ public class TaskService {
         task.updatePosition(position);
 
         List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
+        List<CommentResponse> comments = getTaskCommentResponses(task);
 
-        return TaskResponse.from(task, subtasks);
+        return TaskResponse.from(task, subtasks, comments);
     }
 
     // Task 순서 변경
@@ -581,5 +596,16 @@ public class TaskService {
 
         return taskRepository.findByWorkspaceAndDescriptionContainingIgnoreCase(workspace, search).stream()
             .map(TaskSearchResponse::from).toList();
+    }
+
+    // Task 댓글 조회
+    private List<CommentResponse> getTaskCommentResponses(Task task) {
+
+        return commentRepository.findByTaskAndParentCommentIsNullOrderByCreatedAtAsc(task).stream().map(comment -> {
+            List<CommentResponse> replies = commentRepository.findByParentCommentOrderByCreatedAtAsc(comment).stream()
+                .map(reply -> CommentResponse.from(reply, List.of())).toList();
+
+            return CommentResponse.from(comment, replies);
+        }).toList();
     }
 }

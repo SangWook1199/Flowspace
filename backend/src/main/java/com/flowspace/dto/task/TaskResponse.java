@@ -1,5 +1,6 @@
 package com.flowspace.dto.task;
 
+import com.flowspace.dto.comment.CommentResponse;
 import com.flowspace.entity.SubTask;
 import com.flowspace.entity.Task;
 import com.flowspace.entity.enums.TaskPriority;
@@ -35,11 +36,16 @@ public record TaskResponse(
     LocalDateTime completedAt,
     LocalDateTime createdAt,
 
-    List<SubTaskResponse> subtasks
+    List<SubTaskResponse> subtasks,
+    List<CommentResponse> comments
 
 ) {
 
-    public static TaskResponse from(Task task, List<SubTask> subtasks) {
+    public static TaskResponse from(
+        Task task, 
+        List<SubTask> subtasks, 
+        List<CommentResponse> comments
+    ) {
         return new TaskResponse(
             task.getTaskId(),
             task.getWorkspace().getWorkspaceId(),
@@ -55,8 +61,9 @@ public record TaskResponse(
             task.getCompletedAt(),
             task.getCreatedAt(),
             subtasks.stream()
-            .map(SubTaskResponse::from)
-            .toList()
+                .map(SubTaskResponse::from)
+                .toList(),
+            comments
         );
     }
 }

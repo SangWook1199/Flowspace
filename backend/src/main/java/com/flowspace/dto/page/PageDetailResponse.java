@@ -3,6 +3,7 @@ package com.flowspace.dto.page;
 import java.math.BigDecimal;
 import java.util.List;
 
+import com.flowspace.dto.comment.CommentResponse;
 import com.flowspace.entity.Block;
 import com.flowspace.entity.Page;
 
@@ -29,11 +30,15 @@ public record PageDetailResponse(
         Long eventId,
         Long databaseId,
         String imageUrl,
-        Long parentBlockId
+        Long parentBlockId,
+        List<CommentResponse> comments
 
     ) {
 
-        public static BlockItem from(Block block) {
+        public static BlockItem from(
+            Block block,
+            List<CommentResponse> comments
+        ) {
             return new BlockItem(
                 block.getBlockId(),
                 block.getType().name(),
@@ -43,7 +48,8 @@ public record PageDetailResponse(
                 block.getEvent() == null ? null : block.getEvent().getEventId(),
                 block.getDatabase() == null ? null : block.getDatabase().getDatabaseId(),
                 block.getImageFile() == null ? null : block.getImageFile().getFileUrl(),
-                block.getParentBlock() == null ? null : block.getParentBlock().getBlockId()
+                block.getParentBlock() == null ? null : block.getParentBlock().getBlockId(),
+                comments
             );
         }
 
@@ -69,7 +75,7 @@ public record PageDetailResponse(
 
     public static PageDetailResponse from(
         Page page,
-        List<Block> blocks,
+        List<BlockItem> blockItems,
         List<Page> childPages
     ) {
 
@@ -78,7 +84,7 @@ public record PageDetailResponse(
             page.getTitle(),
             page.getIcon(),
             page.getCoverFile() == null ? null : page.getCoverFile().getFileUrl(),
-            blocks.stream().map(BlockItem::from).toList(),
+            blockItems,
             childPages.stream().map(ChildPageItem::from).toList()
         );
     }
