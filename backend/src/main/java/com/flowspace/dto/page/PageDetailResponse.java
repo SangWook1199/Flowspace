@@ -28,6 +28,7 @@ public record PageDetailResponse(
         Long taskId,
         Long eventId,
         Long databaseId,
+        String imageUrl,
         Long parentBlockId
 
     ) {
@@ -41,6 +42,7 @@ public record PageDetailResponse(
                 block.getTask() == null ? null : block.getTask().getTaskId(),
                 block.getEvent() == null ? null : block.getEvent().getEventId(),
                 block.getDatabase() == null ? null : block.getDatabase().getDatabaseId(),
+                block.getImageFile() == null ? null : block.getImageFile().getFileUrl(),
                 block.getParentBlock() == null ? null : block.getParentBlock().getBlockId()
             );
         }
