@@ -1,6 +1,9 @@
 package com.flowspace.entity;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+import org.springframework.data.annotation.CreatedDate;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -29,21 +32,16 @@ public class TaskSnapshot {
     @Column(name = "original_task_id")
     private Long originalTaskId;
 
-    @Column(nullable = false, length = 200)
+    @Column(name = "title", nullable = false, length = 200)
     private String title;
 
-    @Column(name = "assignee_id")
-    private Long assigneeId;
-
-    @Column(name = "assignee_name", length = 50)
-    private String assigneeName;
-
-    @Column(name = "assignee_profile_file_id")
-    private Long assigneeProfileFileId;
-
-    @Column(nullable = false, length = 20)
+    @Column(name = "priority", nullable = false, length = 20)
     private String priority;
 
-    @Column(nullable = false, precision = 20, scale = 10)
+    @Column(name = "position", nullable = false, precision = 20, scale = 10)
     private BigDecimal position;
+
+    @CreatedDate
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 }

@@ -8,20 +8,26 @@ import com.flowspace.entity.enums.WorkspaceRole;
 // 워크스페이스 멤버 응답 DTO
 public record WorkspaceMemberResponse(
 
-  Long userId,
-  String name,
-  String nickname,
-  WorkspaceRole role
+    Long userId,
+    String name,
+    String nickname,
+    Long profileFileId,
+    WorkspaceRole role
+
 ) {
 
-  public static WorkspaceMemberResponse from(WorkspaceMember member) {
-    return new WorkspaceMemberResponse(
-      member.getUser().getUserId(),
-      member.getUser().getName(),
-      member.getUser().getNickname(),
-      member.getRole()
-    );
-  }
+    public static WorkspaceMemberResponse from(WorkspaceMember member) {
+        return new WorkspaceMemberResponse(
+            member.getUser().getUserId(),
+            member.getUser().getName(),
+            member.getUser().getNickname(),
+            member.getUser().getProfileFile() == null
+                ? null
+                : member.getUser().getProfileFile().getFileId(),
+            member.getRole()
+        );
+    }
+
 }
 
 // @formatter:on

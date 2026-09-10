@@ -23,6 +23,8 @@ public class RetrospectiveService {
     private final RetrospectiveRepository retrospectiveRepository;
     private final RetrospectiveStatusSnapshotRepository statusSnapshotRepository;
     private final TaskSnapshotRepository taskSnapshotRepository;
+    private final TaskSnapshotAssigneeRepository taskSnapshotAssigneeRepository;
+    private final SubTaskSnapshotRepository subTaskSnapshotRepository;
     private final UserRepository userRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final PageService pageService;
@@ -50,9 +52,18 @@ public class RetrospectiveService {
 
         PageDetailResponse page = pageService.getPageDetail(retrospective.getPage().getPageId(), email);
 
+        List<TaskSnapshotItem> taskItems = snapshots.stream().map(snapshot -> {
+
+            List<TaskSnapshotAssignee> assignees = taskSnapshotAssigneeRepository
+                .findBySnapshotOrderBySnapshotAssigneeIdAsc(snapshot);
+
+            List<SubTaskSnapshot> subtasks = subTaskSnapshotRepository.findBySnapshotOrderByPositionAsc(snapshot);
+
+            return TaskSnapshotItem.from(snapshot, assignees, subtasks);
+        }).toList();
+
         return RetrospectiveResponse.from(retrospective, summary,
-            statuses.stream().map(StatusSnapshotItem::from).toList(),
-            snapshots.stream().map(TaskSnapshotItem::from).toList(), page);
+            statuses.stream().map(StatusSnapshotItem::from).toList(), taskItems, page);
     }
 
     // 회고 요약 생성
@@ -66,13 +77,27 @@ public class RetrospectiveService {
 
         int completionRate = total == 0 ? 0 : Math.round((completed * 100f) / total);
 
-        List<ParticipantItem> participants = snapshots.stream().filter(s -> s.getAssigneeId() != null)
-            .collect(Collectors.toMap(s -> s.getAssigneeId(),
-                s -> new ParticipantItem(s.getAssigneeId(), s.getAssigneeName(), s.getAssigneeProfileFileId()),
-                (a, b) -> a, LinkedHashMap::new))
-            .values().stream().toList();
+        Map<Long, ParticipantItem> participantMap = new LinkedHashMap<>();
 
-        return new RetrospectiveSummary(completionRate, completed, incomplete, total, participants);
+        for (TaskSnapshot snapshot : snapshots) {
+
+            List<TaskSnapshotAssignee> assignees = taskSnapshotAssigneeRepository
+                .findBySnapshotOrderBySnapshotAssigneeIdAsc(snapshot);
+
+            for (TaskSnapshotAssignee assignee : assignees) {
+
+                if (assignee.getOriginalUserId() == null) {
+                    continue;
+                }
+
+                participantMap.putIfAbsent(assignee.getOriginalUserId(),
+                    new ParticipantItem(assignee.getOriginalUserId(), assignee.getName(),
+                        assignee.getProfileFile() == null ? null : assignee.getProfileFile().getFileId()));
+            }
+        }
+
+        return new RetrospectiveSummary(completionRate, completed, incomplete, total,
+            new ArrayList<>(participantMap.values()));
     }
 
     // 스프린트 회고 조회

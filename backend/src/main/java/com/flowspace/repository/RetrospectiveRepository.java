@@ -11,4 +11,6 @@ public interface RetrospectiveRepository extends JpaRepository<Retrospective, Lo
 
     Optional<Retrospective> findBySprint(Sprint sprint);
 
+    boolean existsBySprint(Sprint sprint);
+
 }

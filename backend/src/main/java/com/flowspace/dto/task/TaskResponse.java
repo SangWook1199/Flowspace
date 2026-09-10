@@ -3,6 +3,7 @@ package com.flowspace.dto.task;
 import com.flowspace.dto.comment.CommentResponse;
 import com.flowspace.entity.SubTask;
 import com.flowspace.entity.Task;
+import com.flowspace.entity.TaskAssignee;
 import com.flowspace.entity.enums.TaskPriority;
 
 import java.math.BigDecimal;
@@ -24,7 +25,7 @@ public record TaskResponse(
 
     BigDecimal position,
 
-    Long assigneeId,
+    List<AssigneeItem> assignees,
 
     String title,
     String description,
@@ -43,8 +44,9 @@ public record TaskResponse(
 ) {
 
     public static TaskResponse from(
-        Task task, 
-        List<SubTask> subtasks, 
+        Task task,
+        List<TaskAssignee> assignees,
+        List<SubTask> subtasks,
         List<CommentResponse> comments
     ) {
         return new TaskResponse(
@@ -54,7 +56,9 @@ public record TaskResponse(
             task.getStatus().getStatusId(),
             task.getStatus().getName(),
             task.getPosition(),
-            task.getAssignee() == null ? null : task.getAssignee().getUserId(),
+            assignees.stream()
+                .map(AssigneeItem::from)
+                .toList(),
             task.getTitle(),
             task.getDescription(),
             task.getStartDate(),
@@ -68,6 +72,7 @@ public record TaskResponse(
             comments
         );
     }
+
 }
 
 // @formatter:on

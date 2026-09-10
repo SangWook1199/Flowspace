@@ -18,8 +18,12 @@ import com.flowspace.entity.Page;
 import com.flowspace.entity.Retrospective;
 import com.flowspace.entity.RetrospectiveStatusSnapshot;
 import com.flowspace.entity.Sprint;
+import com.flowspace.entity.SubTask;
+import com.flowspace.entity.SubTaskSnapshot;
 import com.flowspace.entity.Task;
+import com.flowspace.entity.TaskAssignee;
 import com.flowspace.entity.TaskSnapshot;
+import com.flowspace.entity.TaskSnapshotAssignee;
 import com.flowspace.entity.User;
 import com.flowspace.entity.Workspace;
 import com.flowspace.entity.WorkspaceTaskStatus;
@@ -41,7 +45,11 @@ import com.flowspace.repository.PageRepository;
 import com.flowspace.repository.RetrospectiveRepository;
 import com.flowspace.repository.RetrospectiveStatusSnapshotRepository;
 import com.flowspace.repository.SprintRepository;
+import com.flowspace.repository.SubTaskRepository;
+import com.flowspace.repository.SubTaskSnapshotRepository;
+import com.flowspace.repository.TaskAssigneeRepository;
 import com.flowspace.repository.TaskRepository;
+import com.flowspace.repository.TaskSnapshotAssigneeRepository;
 import com.flowspace.repository.TaskSnapshotRepository;
 import com.flowspace.repository.UserRepository;
 import com.flowspace.repository.WorkspaceMemberRepository;
@@ -71,6 +79,10 @@ public class SprintService {
     private final RetrospectiveRepository retrospectiveRepository;
     private final RetrospectiveStatusSnapshotRepository statusSnapshotRepository;
     private final TaskSnapshotRepository taskSnapshotRepository;
+    private final TaskSnapshotAssigneeRepository taskSnapshotAssigneeRepository;
+    private final SubTaskSnapshotRepository subTaskSnapshotRepository;
+    private final TaskAssigneeRepository taskAssigneeRepository;
+    private final SubTaskRepository subTaskRepository;
     private final UserRepository userRepository;
 
     // 스프린트 생성
@@ -164,10 +176,15 @@ public class SprintService {
 
         if (request.status() == SprintStatus.COMPLETED && sprint.getStatus() != SprintStatus.COMPLETED) {
 
+            if (retrospectiveRepository.existsBySprint(sprint)) {
+                throw new FlowSpaceException(ErrorCode.RETROSPECTIVE_ALREADY_EXISTS);
+            }
+
             createRetrospective(sprint, user);
 
             moveTasksToBacklog(sprint);
         }
+
         sprint.updateStatus(request.status());
 
         return toSprintResponse(sprint);
@@ -317,21 +334,48 @@ public class SprintService {
         List<RetrospectiveStatusSnapshot> snapshots) {
 
         Map<Long, RetrospectiveStatusSnapshot> statusMap = snapshots.stream()
-            .collect(Collectors.toMap(s -> s.getOriginalStatusId(), s -> s));
+            .collect(Collectors.toMap(RetrospectiveStatusSnapshot::getOriginalStatusId, s -> s));
 
         List<Task> tasks = taskRepository.findBySprintOrderByPositionAsc(sprint);
 
         for (Task task : tasks) {
 
-            User assignee = task.getAssignee();
-
-            taskSnapshotRepository.save(TaskSnapshot.builder().retrospective(retrospective)
+            TaskSnapshot snapshot = taskSnapshotRepository.save(TaskSnapshot.builder().retrospective(retrospective)
                 .snapshotStatus(statusMap.get(task.getStatus().getStatusId())).originalTaskId(task.getTaskId())
-                .title(task.getTitle()).assigneeId(assignee == null ? null : assignee.getUserId())
-                .assigneeName(assignee == null ? null : assignee.getName())
-                .assigneeProfileFileId(assignee == null || assignee.getProfileFile() == null ? null
-                    : assignee.getProfileFile().getFileId())
-                .priority(task.getPriority().name()).position(task.getPosition()).build());
+                .title(task.getTitle()).priority(task.getPriority().name()).position(task.getPosition()).build());
+
+            createTaskSnapshotAssignees(snapshot, task);
+            createSubTaskSnapshots(snapshot, task);
+        }
+    }
+
+    // Task 담당자 스냅샷 생성
+    private void createTaskSnapshotAssignees(TaskSnapshot snapshot, Task task) {
+
+        List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task);
+
+        for (TaskAssignee assignee : assignees) {
+
+            taskSnapshotAssigneeRepository
+                .save(TaskSnapshotAssignee.builder().snapshot(snapshot).originalUserId(assignee.getUser().getUserId())
+                    .name(assignee.getUser().getName()).profileFile(assignee.getUser().getProfileFile()).build());
+        }
+    }
+
+    // SubTask 스냅샷 생성
+    private void createSubTaskSnapshots(TaskSnapshot snapshot, Task task) {
+
+        List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
+
+        for (SubTask subtask : subtasks) {
+
+            User assignee = subtask.getAssignee();
+
+            subTaskSnapshotRepository.save(SubTaskSnapshot.builder().snapshot(snapshot)
+                .originalSubtaskId(subtask.getSubtaskId()).content(subtask.getContent())
+                .isCompleted(subtask.getIsCompleted()).assigneeName(assignee == null ? null : assignee.getName())
+                .assigneeProfileFile(assignee == null ? null : assignee.getProfileFile())
+                .position(subtask.getPosition()).build());
         }
     }
 }

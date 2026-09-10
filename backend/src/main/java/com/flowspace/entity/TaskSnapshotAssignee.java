@@ -8,33 +8,31 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "retrospective_status_snapshots")
+@Table(name = "task_snapshot_assignees")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-public class RetrospectiveStatusSnapshot {
+public class TaskSnapshotAssignee {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "snapshot_status_id")
-    private Long snapshotStatusId;
+    @Column(name = "snapshot_assignee_id")
+    private Long snapshotAssigneeId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "retrospective_id", nullable = false)
-    private Retrospective retrospective;
+    @JoinColumn(name = "snapshot_id", nullable = false)
+    private TaskSnapshot snapshot;
 
-    @Column(name = "original_status_id")
-    private Long originalStatusId;
+    @Column(name = "original_user_id")
+    private Long originalUserId;
 
-    @Column(nullable = false, length = 50)
+    @Column(name = "name", nullable = false, length = 50)
     private String name;
 
-    @Column(nullable = false, length = 20)
-    private String color;
-
-    @Column(nullable = false)
-    private Integer position;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "profile_file_id")
+    private File profileFile;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)

@@ -11,6 +11,7 @@ import com.flowspace.dto.calendar.CalendarItemResponse;
 import com.flowspace.entity.Event;
 import com.flowspace.entity.Sprint;
 import com.flowspace.entity.Task;
+import com.flowspace.entity.TaskAssignee;
 import com.flowspace.entity.User;
 import com.flowspace.entity.Workspace;
 import com.flowspace.entity.enums.SprintStatus;
@@ -18,6 +19,7 @@ import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.repository.EventRepository;
 import com.flowspace.repository.SprintRepository;
+import com.flowspace.repository.TaskAssigneeRepository;
 import com.flowspace.repository.TaskRepository;
 import com.flowspace.repository.UserRepository;
 import com.flowspace.repository.WorkspaceMemberRepository;
@@ -33,11 +35,11 @@ public class CalendarService {
 
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
-    private final UserRepository userRepository;
-
+    private final TaskAssigneeRepository taskAssigneeRepository;
     private final SprintRepository sprintRepository;
     private final TaskRepository taskRepository;
     private final EventRepository eventRepository;
+    private final UserRepository userRepository;
 
     // 캘린더 조회
     public List<CalendarItemResponse> getCalendar(Long workspaceId, Integer year, Integer month, Long sprintId,
@@ -69,7 +71,12 @@ public class CalendarService {
             : taskRepository.findBySprintAndStartDateBetweenOrderByStartDateAscPositionAsc(targetSprint, startDate,
                 endDate);
 
-        tasks.stream().map(CalendarItemResponse::from).forEach(result::add);
+        tasks.stream().map(task -> {
+
+            List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task);
+
+            return CalendarItemResponse.from(task, assignees);
+        }).forEach(result::add);
 
         List<Event> events = eventRepository.findByWorkspaceAndStartDatetimeBetweenOrderByStartDatetimeAsc(workspace,
             startDateTime, endDateTime);

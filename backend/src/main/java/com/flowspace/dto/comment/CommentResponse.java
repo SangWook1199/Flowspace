@@ -14,6 +14,7 @@ public record CommentResponse(
     Long parentCommentId,
     Long userId,
     String userName,
+    Long profileFileId,
     String content,
     LocalDateTime createdAt,
     LocalDateTime updatedAt,
@@ -30,6 +31,9 @@ public record CommentResponse(
             comment.getParentComment() == null ? null : comment.getParentComment().getCommentId(),
             comment.getUser().getUserId(),
             comment.getUser().getName(),
+            comment.getUser().getProfileFile() == null
+                ? null
+                : comment.getUser().getProfileFile().getFileId(),
             comment.getContent(),
             comment.getCreatedAt(),
             comment.getUpdatedAt(),

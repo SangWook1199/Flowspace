@@ -1,5 +1,9 @@
 package com.flowspace.entity;
 
+import java.time.LocalDateTime;
+
+import org.springframework.data.annotation.CreatedDate;
+
 import com.flowspace.entity.enums.DatabaseColumnType;
 import jakarta.persistence.*;
 import lombok.*;
@@ -32,6 +36,10 @@ public class BlockDatabaseColumn {
     @Column(name = "position", nullable = false)
     @Builder.Default
     private Integer position = 0;
+
+    @CreatedDate
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
     public void update(String name, DatabaseColumnType type) {
         this.name = name;

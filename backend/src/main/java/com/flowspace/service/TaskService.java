@@ -24,6 +24,7 @@ import com.flowspace.dto.task.SubTaskUpdateRequest;
 import com.flowspace.entity.Sprint;
 import com.flowspace.entity.SubTask;
 import com.flowspace.entity.Task;
+import com.flowspace.entity.TaskAssignee;
 import com.flowspace.entity.TaskStatus;
 import com.flowspace.entity.User;
 import com.flowspace.entity.Workspace;
@@ -34,6 +35,7 @@ import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.repository.CommentRepository;
 import com.flowspace.repository.SprintRepository;
 import com.flowspace.repository.SubTaskRepository;
+import com.flowspace.repository.TaskAssigneeRepository;
 import com.flowspace.repository.TaskRepository;
 import com.flowspace.repository.TaskStatusRepository;
 import com.flowspace.repository.UserRepository;
@@ -58,6 +60,7 @@ public class TaskService {
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final SubTaskRepository subTaskRepository;
     private final CommentRepository commentRepository;
+    private final TaskAssigneeRepository taskAssigneeRepository;
     private final UserRepository userRepository;
 
     // Task 상태 생성
@@ -214,25 +217,28 @@ public class TaskService {
         BigDecimal position = BigDecimal
             .valueOf(taskRepository.findByWorkspaceAndStatusOrderByPositionAsc(sprint.getWorkspace(), status).size());
 
-        User assignee = null;
-        if (request.assigneeId() != null) {
-            assignee = userRepository.findById(request.assigneeId())
+        Task task = Task.builder().workspace(sprint.getWorkspace()).sprint(sprint).createdBy(user).status(status)
+            .position(position).title(request.title()).description(request.description()).startDate(request.startDate())
+            .endDate(request.endDate()).priority(request.priority()).build();
+
+        taskRepository.save(task);
+
+        for (Long assigneeId : request.assigneeIds()) {
+
+            User assignee = userRepository.findById(assigneeId)
                 .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
             workspaceMemberRepository.findByWorkspaceAndUser(sprint.getWorkspace(), assignee)
                 .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+            taskAssigneeRepository.save(TaskAssignee.builder().task(task).user(assignee).build());
         }
-
-        Task task = Task.builder().workspace(sprint.getWorkspace()).sprint(sprint).createdBy(user).assignee(assignee)
-            .status(status).position(position).title(request.title()).description(request.description())
-            .startDate(request.startDate()).endDate(request.endDate()).priority(request.priority()).build();
-
-        taskRepository.save(task);
 
         List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
         List<CommentResponse> comments = getTaskCommentResponses(task);
+        List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task);
 
-        return TaskResponse.from(task, subtasks, comments);
+        return TaskResponse.from(task, assignees, subtasks, comments);
     }
 
     // 스프린트 Task 목록 조회
@@ -251,7 +257,9 @@ public class TaskService {
         return taskRepository.findBySprintOrderByPositionAsc(sprint).stream().map(task -> {
             List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
             List<CommentResponse> comments = getTaskCommentResponses(task);
-            return TaskResponse.from(task, subtasks, comments);
+            List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task);
+
+            return TaskResponse.from(task, assignees, subtasks, comments);
         }).toList();
     }
 
@@ -269,8 +277,9 @@ public class TaskService {
 
         List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
         List<CommentResponse> comments = getTaskCommentResponses(task);
+        List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task);
 
-        return TaskResponse.from(task, subtasks, comments);
+        return TaskResponse.from(task, assignees, subtasks, comments);
     }
 
     // Task 수정
@@ -285,6 +294,7 @@ public class TaskService {
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
         Sprint sprint = null;
+
         if (request.sprintId() != null) {
             sprint = sprintRepository.findById(request.sprintId())
                 .orElseThrow(() -> new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND));
@@ -292,15 +302,6 @@ public class TaskService {
             if (!sprint.getWorkspace().getWorkspaceId().equals(task.getWorkspace().getWorkspaceId())) {
                 throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
             }
-        }
-
-        User assignee = null;
-        if (request.assigneeId() != null) {
-            assignee = userRepository.findById(request.assigneeId())
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
-
-            workspaceMemberRepository.findByWorkspaceAndUser(task.getWorkspace(), assignee)
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
         }
 
         TaskStatus status = validateWorkspaceStatus(task.getWorkspace(), request.statusId());
@@ -316,15 +317,30 @@ public class TaskService {
             position = BigDecimal
                 .valueOf(taskRepository.findByWorkspaceAndStatusOrderByPositionAsc(task.getWorkspace(), status).size());
         }
-        task.update(sprint, assignee, status, request.title(), request.description(), request.startDate(),
-            request.endDate(), request.priority());
+
+        task.update(sprint, status, request.title(), request.description(), request.startDate(), request.endDate(),
+            request.priority());
 
         task.updatePosition(position);
 
+        taskAssigneeRepository.deleteByTask(task);
+
+        for (Long assigneeId : request.assigneeIds()) {
+
+            User assignee = userRepository.findById(assigneeId)
+                .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+            workspaceMemberRepository.findByWorkspaceAndUser(task.getWorkspace(), assignee)
+                .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+            taskAssigneeRepository.save(TaskAssignee.builder().task(task).user(assignee).build());
+        }
+
         List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
         List<CommentResponse> comments = getTaskCommentResponses(task);
+        List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task);
 
-        return TaskResponse.from(task, subtasks, comments);
+        return TaskResponse.from(task, assignees, subtasks, comments);
     }
 
     // Backlog Task 목록 조회
@@ -343,7 +359,9 @@ public class TaskService {
         return taskRepository.findByWorkspaceAndSprintIsNullOrderByPositionAsc(workspace).stream().map(task -> {
             List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
             List<CommentResponse> comments = getTaskCommentResponses(task);
-            return TaskResponse.from(task, subtasks, comments);
+            List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task);
+
+            return TaskResponse.from(task, assignees, subtasks, comments);
         }).toList();
     }
 
@@ -364,8 +382,9 @@ public class TaskService {
         if (task.getStatus().getStatusId().equals(request.statusId())) {
             List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
             List<CommentResponse> comments = getTaskCommentResponses(task);
+            List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task);
 
-            return TaskResponse.from(task, subtasks, comments);
+            return TaskResponse.from(task, assignees, subtasks, comments);
         }
 
         BigDecimal position = BigDecimal
@@ -376,8 +395,9 @@ public class TaskService {
 
         List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
         List<CommentResponse> comments = getTaskCommentResponses(task);
+        List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task);
 
-        return TaskResponse.from(task, subtasks, comments);
+        return TaskResponse.from(task, assignees, subtasks, comments);
     }
 
     // Task 삭제
@@ -424,9 +444,21 @@ public class TaskService {
         workspaceMemberRepository.findByWorkspaceAndUser(task.getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        int position = (int) subTaskRepository.countByTask(task);
+        User assignee = null;
 
-        SubTask subTask = SubTask.builder().task(task).content(request.content()).position(position).build();
+        if (request.assigneeId() != null) {
+            assignee = userRepository.findById(request.assigneeId())
+                .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+            if (!taskAssigneeRepository.existsByTaskAndUser(task, assignee)) {
+                throw new FlowSpaceException(ErrorCode.INVALID_SUBTASK_ASSIGNEE);
+            }
+        }
+
+        int position = subTaskRepository.findByTaskOrderByPositionAsc(task).size();
+
+        SubTask subTask = SubTask.builder().task(task).assignee(assignee).content(request.content()).position(position)
+            .build();
 
         subTaskRepository.save(subTask);
 
@@ -449,18 +481,29 @@ public class TaskService {
     }
 
     // SubTask 수정
-    public SubTaskResponse updateSubTask(Long subtaskId, SubTaskUpdateRequest request, String email) {
+    public SubTaskResponse updateSubTask(Long subTaskId, SubTaskUpdateRequest request, String email) {
 
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        SubTask subTask = subTaskRepository.findById(subtaskId)
+        SubTask subTask = subTaskRepository.findById(subTaskId)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.SUBTASK_NOT_FOUND));
 
         workspaceMemberRepository.findByWorkspaceAndUser(subTask.getTask().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        subTask.update(request.content());
+        User assignee = null;
+
+        if (request.assigneeId() != null) {
+            assignee = userRepository.findById(request.assigneeId())
+                .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+            if (!taskAssigneeRepository.existsByTaskAndUser(subTask.getTask(), assignee)) {
+                throw new FlowSpaceException(ErrorCode.INVALID_SUBTASK_ASSIGNEE);
+            }
+        }
+
+        subTask.update(request.content(), assignee);
         subTask.updateCompleted(request.isCompleted());
 
         return SubTaskResponse.from(subTask);
@@ -514,8 +557,9 @@ public class TaskService {
 
             List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
             List<CommentResponse> comments = getTaskCommentResponses(task);
+            List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task);
 
-            return TaskResponse.from(task, subtasks, comments);
+            return TaskResponse.from(task, assignees, subtasks, comments);
         }
 
         Sprint sprint = null;
@@ -544,8 +588,9 @@ public class TaskService {
 
         List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
         List<CommentResponse> comments = getTaskCommentResponses(task);
+        List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task);
 
-        return TaskResponse.from(task, subtasks, comments);
+        return TaskResponse.from(task, assignees, subtasks, comments);
     }
 
     // Task 순서 변경
@@ -594,8 +639,11 @@ public class TaskService {
 
         String search = keyword == null ? "" : keyword;
 
-        return taskRepository.findByWorkspaceAndTitleContainingIgnoreCase(workspace, search).stream()
-            .map(TaskSearchResponse::from).toList();
+        return taskRepository.findByWorkspaceAndTitleContainingIgnoreCase(workspace, search).stream().map(task -> {
+            List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task);
+
+            return TaskSearchResponse.from(task, assignees);
+        }).toList();
     }
 
     // Task 댓글 조회

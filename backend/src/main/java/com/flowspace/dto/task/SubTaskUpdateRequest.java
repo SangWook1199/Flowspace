@@ -7,7 +7,8 @@ import jakarta.validation.constraints.Size;
 // @formatter:off
 
 public record SubTaskUpdateRequest(
-
+    Long assigneeId,
+    
     @NotBlank(message = "내용은 필수입니다.")
     @Size(max = 300, message = "내용은 300자 이하입니다.")
     String content,

@@ -20,6 +20,10 @@ public class SubTask {
     @JoinColumn(name = "task_id", nullable = false)
     private Task task;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assignee_id", nullable = true)
+    private User assignee;
+
     @Column(name = "content", nullable = false, length = 300)
     private String content;
 
@@ -31,8 +35,9 @@ public class SubTask {
     @Builder.Default
     private Integer position = 0;
 
-    public void update(String content) {
+    public void update(String content, User assignee) {
         this.content = content;
+        this.assignee = assignee;
     }
 
     public void updateCompleted(Boolean isCompleted) {

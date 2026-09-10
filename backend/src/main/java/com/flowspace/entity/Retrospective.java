@@ -1,5 +1,9 @@
 package com.flowspace.entity;
 
+import java.time.LocalDateTime;
+
+import org.springframework.data.annotation.CreatedDate;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -23,4 +27,8 @@ public class Retrospective {
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "page_id", nullable = false)
     private Page page;
+
+    @CreatedDate
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 }

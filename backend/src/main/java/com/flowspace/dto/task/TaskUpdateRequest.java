@@ -3,6 +3,7 @@ package com.flowspace.dto.task;
 import com.flowspace.entity.enums.TaskPriority;
 
 import java.time.LocalDate;
+import java.util.List;
 
 // @formatter:off
 
@@ -11,7 +12,7 @@ public record TaskUpdateRequest(
 
     Long sprintId,      // null = Backlog
 
-    Long assigneeId,
+    List<Long> assigneeIds,
 
     Long statusId,
 
