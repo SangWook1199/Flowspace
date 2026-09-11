@@ -5,15 +5,19 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
+import java.util.List;
 
 // @formatter:off
 
 // Task 생성 요청 DTO
 public record TaskCreateRequest(
-    Long assigneeId,
+    List<Long> assigneeIds,
 
     @NotNull(message = "상태는 필수입니다.")
     Long statusId,
+
+    @NotNull(message = "제목은 필수입니다.")
+    String title,
 
     @Size(max = 1000, message = "설명은 1000자 이하입니다.")
     String description,

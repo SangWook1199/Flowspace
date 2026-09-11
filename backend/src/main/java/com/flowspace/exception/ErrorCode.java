@@ -28,6 +28,7 @@ public enum ErrorCode {
     // Sprint
     SPRINT_NOT_FOUND(HttpStatus.NOT_FOUND, "스프린트를 찾을 수 없습니다."),
     INVALID_SPRINT_DATE(HttpStatus.BAD_REQUEST, "종료일은 시작일보다 빠를 수 없습니다."),
+    RETROSPECTIVE_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 회고가 생성된 스프린트입니다."),
 
     // Task
     TASK_STATUS_NOT_FOUND(HttpStatus.NOT_FOUND, "Task 상태를 찾을 수 없습니다."),
@@ -35,6 +36,8 @@ public enum ErrorCode {
     TASK_NOT_FOUND(HttpStatus.NOT_FOUND, "Task를 찾을 수 없습니다."),
     SUBTASK_NOT_FOUND(HttpStatus.NOT_FOUND, "서브태스크를 찾을 수 없습니다."),
     INVALID_SPRINT(HttpStatus.BAD_REQUEST, "유효하지 않은 스프린트입니다."),
+    INVALID_SUBTASK_ASSIGNEE(HttpStatus.BAD_REQUEST, "SubTask 담당자는 Task 담당자 중에서만 선택할 수 있습니다."),
+    DEFAULT_TASK_STATUS_CANNOT_DELETE(HttpStatus.BAD_REQUEST, "기본 Task 상태는 삭제할 수 없습니다."),
 
     // Event
     EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "이벤트를 찾을 수 없습니다."),
@@ -48,7 +51,19 @@ public enum ErrorCode {
     DATABASE_NOT_FOUND(HttpStatus.NOT_FOUND, "데이터베이스를 찾을 수 없습니다."),
     DATABASE_COLUMN_NOT_FOUND(HttpStatus.NOT_FOUND, "데이터베이스 컬럼을 찾을 수 없습니다."),
     DATABASE_ROW_NOT_FOUND(HttpStatus.NOT_FOUND, "데이터베이스 행을 찾을 수 없습니다."),
-    DATABASE_CELL_NOT_FOUND(HttpStatus.NOT_FOUND, "데이터베이스 셀을 찾을 수 없습니다."),;
+    DATABASE_CELL_NOT_FOUND(HttpStatus.NOT_FOUND, "데이터베이스 셀을 찾을 수 없습니다."),
+
+    // File
+    FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "파일 업로드에 실패했습니다."),
+    FILE_DELETE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "파일 삭제에 실패했습니다."),
+    FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "파일을 찾을 수 없습니다."),
+    INVALID_IMAGE_FILE(HttpStatus.BAD_REQUEST, "이미지 파일만 업로드할 수 있습니다."),
+
+    // Retrospective
+    RETROSPECTIVE_NOT_FOUND(HttpStatus.NOT_FOUND, "회고를 찾을 수 없습니다."),
+
+    // Comment
+    COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다."),;
 
     private final HttpStatus status;
     private final String message;

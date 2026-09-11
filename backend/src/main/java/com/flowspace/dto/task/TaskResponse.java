@@ -1,7 +1,9 @@
 package com.flowspace.dto.task;
 
+import com.flowspace.dto.comment.CommentResponse;
 import com.flowspace.entity.SubTask;
 import com.flowspace.entity.Task;
+import com.flowspace.entity.TaskAssignee;
 import com.flowspace.entity.enums.TaskPriority;
 
 import java.math.BigDecimal;
@@ -23,8 +25,9 @@ public record TaskResponse(
 
     BigDecimal position,
 
-    Long assigneeId,
+    List<AssigneeItem> assignees,
 
+    String title,
     String description,
 
     LocalDate startDate,
@@ -35,11 +38,17 @@ public record TaskResponse(
     LocalDateTime completedAt,
     LocalDateTime createdAt,
 
-    List<SubTaskResponse> subtasks
+    List<SubTaskResponse> subtasks,
+    List<CommentResponse> comments
 
 ) {
 
-    public static TaskResponse from(Task task, List<SubTask> subtasks) {
+    public static TaskResponse from(
+        Task task,
+        List<TaskAssignee> assignees,
+        List<SubTask> subtasks,
+        List<CommentResponse> comments
+    ) {
         return new TaskResponse(
             task.getTaskId(),
             task.getWorkspace().getWorkspaceId(),
@@ -47,7 +56,10 @@ public record TaskResponse(
             task.getStatus().getStatusId(),
             task.getStatus().getName(),
             task.getPosition(),
-            task.getAssignee() == null ? null : task.getAssignee().getUserId(),
+            assignees.stream()
+                .map(AssigneeItem::from)
+                .toList(),
+            task.getTitle(),
             task.getDescription(),
             task.getStartDate(),
             task.getEndDate(),
@@ -55,10 +67,12 @@ public record TaskResponse(
             task.getCompletedAt(),
             task.getCreatedAt(),
             subtasks.stream()
-            .map(SubTaskResponse::from)
-            .toList()
+                .map(SubTaskResponse::from)
+                .toList(),
+            comments
         );
     }
+
 }
 
 // @formatter:on

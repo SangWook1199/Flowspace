@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.flowspace.dto.block.BlockCreateRequest;
 import com.flowspace.dto.block.BlockIndentRequest;
@@ -64,5 +65,18 @@ public class BlockController {
     public BlockResponse moveBlock(@PathVariable Long blockId, @Valid @RequestBody BlockIndentRequest request,
         @AuthenticationPrincipal UserDetails userDetails) {
         return blockService.moveBlock(blockId, request, userDetails.getUsername());
+    }
+
+    @Operation(summary = "블록 이미지 업로드")
+    @PostMapping("/blocks/{blockId}/image")
+    public BlockResponse uploadImage(@PathVariable Long blockId, @RequestParam("file") MultipartFile file,
+        @AuthenticationPrincipal UserDetails userDetails) {
+        return blockService.uploadImage(blockId, file, userDetails.getUsername());
+    }
+
+    @Operation(summary = "블록 이미지 삭제")
+    @DeleteMapping("/blocks/{blockId}/image")
+    public BlockResponse deleteImage(@PathVariable Long blockId, @AuthenticationPrincipal UserDetails userDetails) {
+        return blockService.deleteImage(blockId, userDetails.getUsername());
     }
 }

@@ -9,13 +9,18 @@ import org.springframework.transaction.annotation.Transactional;
 import com.flowspace.dto.database.BlockDatabaseCellResponse;
 import com.flowspace.dto.database.BlockDatabaseCellUpdateRequest;
 import com.flowspace.dto.database.BlockDatabaseColumnCreateRequest;
+import com.flowspace.dto.database.BlockDatabaseColumnOrderItem;
+import com.flowspace.dto.database.BlockDatabaseColumnReorderRequest;
 import com.flowspace.dto.database.BlockDatabaseColumnResponse;
 import com.flowspace.dto.database.BlockDatabaseColumnUpdateRequest;
+import com.flowspace.dto.database.BlockDatabaseRowOrderItem;
+import com.flowspace.dto.database.BlockDatabaseRowReorderRequest;
 import com.flowspace.dto.database.BlockDatabaseRowResponse;
 import com.flowspace.dto.database.DatabaseCreateRequest;
 import com.flowspace.dto.database.DatabaseDetailResponse;
 import com.flowspace.dto.database.DatabaseResponse;
 import com.flowspace.dto.database.DatabaseUpdateRequest;
+import com.flowspace.dto.database.DatabaseViewUpdateRequest;
 import com.flowspace.entity.Block;
 import com.flowspace.entity.BlockDatabase;
 import com.flowspace.entity.BlockDatabaseCell;
@@ -25,6 +30,7 @@ import com.flowspace.entity.Page;
 import com.flowspace.entity.User;
 import com.flowspace.entity.enums.BlockType;
 import com.flowspace.entity.enums.DatabaseColumnType;
+import com.flowspace.entity.enums.DatabaseViewType;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.repository.BlockDatabaseCellRepository;
@@ -70,7 +76,10 @@ public class BlockDatabaseService {
 
         blockRepository.save(block);
 
-        BlockDatabase database = BlockDatabase.builder().block(block).title(request.title()).build();
+        String title = (request.title() == null || request.title().isBlank()) ? "제목 없음" : request.title();
+
+        BlockDatabase database = BlockDatabase.builder().block(block).title(title)
+            .viewType(request.viewType() == null ? DatabaseViewType.TABLE : request.viewType()).build();
 
         blockDatabaseRepository.save(database);
 
@@ -181,6 +190,31 @@ public class BlockDatabaseService {
         return BlockDatabaseColumnResponse.from(column);
     }
 
+    // 컬럼 순서 변경
+    public void reorderColumns(Long databaseId, BlockDatabaseColumnReorderRequest request, String email) {
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        BlockDatabase database = blockDatabaseRepository.findById(databaseId)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.DATABASE_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(database.getBlock().getPage().getWorkspace(), user)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        for (BlockDatabaseColumnOrderItem item : request.columns()) {
+
+            BlockDatabaseColumn column = columnRepository.findById(item.columnId())
+                .orElseThrow(() -> new FlowSpaceException(ErrorCode.DATABASE_COLUMN_NOT_FOUND));
+
+            if (!column.getDatabase().getDatabaseId().equals(databaseId)) {
+                throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
+            }
+
+            column.updatePosition(item.position());
+        }
+    }
+
     // 컬럼 삭제
     public void deleteColumn(Long columnId, String email) {
 
@@ -223,6 +257,31 @@ public class BlockDatabaseService {
         }
 
         return BlockDatabaseRowResponse.from(row);
+    }
+
+    // 행 순서 변경
+    public void reorderRows(Long databaseId, BlockDatabaseRowReorderRequest request, String email) {
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        BlockDatabase database = blockDatabaseRepository.findById(databaseId)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.DATABASE_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(database.getBlock().getPage().getWorkspace(), user)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        for (BlockDatabaseRowOrderItem item : request.rows()) {
+
+            BlockDatabaseRow row = rowRepository.findById(item.rowId())
+                .orElseThrow(() -> new FlowSpaceException(ErrorCode.DATABASE_ROW_NOT_FOUND));
+
+            if (!row.getDatabase().getDatabaseId().equals(databaseId)) {
+                throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
+            }
+
+            row.updatePosition(item.position());
+        }
     }
 
     // 행 삭제
@@ -294,6 +353,24 @@ public class BlockDatabaseService {
                     .toList()))
             .toList();
 
-        return new DatabaseDetailResponse(database.getDatabaseId(), database.getTitle(), columns, rows);
+        return new DatabaseDetailResponse(database.getDatabaseId(), database.getTitle(), database.getViewType(),
+            columns, rows);
+    }
+
+    // 데이터베이스 View 변경
+    public DatabaseResponse updateViewType(Long databaseId, DatabaseViewUpdateRequest request, String email) {
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        BlockDatabase database = blockDatabaseRepository.findById(databaseId)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.DATABASE_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(database.getBlock().getPage().getWorkspace(), user)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        database.updateViewType(request.viewType());
+
+        return DatabaseResponse.from(database);
     }
 }

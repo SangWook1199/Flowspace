@@ -13,6 +13,12 @@ public record BlockResponse(
 
     Long blockId,
     Long pageId,
+
+    Long taskId,
+    Long eventId,
+    Long databaseId,
+    String imageUrl,
+
     Long parentBlockId,
     BlockType type,
     BigDecimal position,
@@ -27,6 +33,12 @@ public record BlockResponse(
         return new BlockResponse(
             block.getBlockId(),
             block.getPage().getPageId(),
+
+            block.getTask() == null ? null : block.getTask().getTaskId(),
+            block.getEvent() == null ? null : block.getEvent().getEventId(),
+            block.getDatabase() == null ? null : block.getDatabase().getDatabaseId(),
+            block.getImageFile() == null ? null : block.getImageFile().getFileUrl(),
+
             block.getParentBlock() == null ? null : block.getParentBlock().getBlockId(),
             block.getType(),
             block.getPosition(),

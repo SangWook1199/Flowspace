@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.flowspace.dto.block.BlockCreateRequest;
 import com.flowspace.dto.block.BlockIndentRequest;
@@ -16,6 +17,7 @@ import com.flowspace.entity.Block;
 import com.flowspace.entity.Event;
 import com.flowspace.entity.Page;
 import com.flowspace.entity.Task;
+import com.flowspace.entity.File;
 import com.flowspace.entity.User;
 import com.flowspace.entity.enums.BlockType;
 import com.flowspace.exception.ErrorCode;
@@ -40,6 +42,7 @@ public class BlockService {
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final TaskRepository taskRepository;
     private final EventRepository eventRepository;
+    private final FileService fileService;
 
     // 블록 생성
     public BlockResponse createBlock(Long pageId, BlockCreateRequest request, String email) {
@@ -140,6 +143,10 @@ public class BlockService {
         workspaceMemberRepository.findByWorkspaceAndUser(block.getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
+        if (block.getImageFile() != null) {
+            fileService.delete(block.getImageFile());
+        }
+
         blockRepository.delete(block);
     }
 
@@ -212,5 +219,54 @@ public class BlockService {
 
             current = current.getParentBlock();
         }
+    }
+
+    // 블록 이미지 업로드
+    public BlockResponse uploadImage(Long blockId, MultipartFile multipartFile, String email) {
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        Block block = blockRepository.findById(blockId)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.BLOCK_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(block.getPage().getWorkspace(), user)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        // 이미지 파일만 허용
+        if (multipartFile.getContentType() == null || !multipartFile.getContentType().startsWith("image/")) {
+            throw new FlowSpaceException(ErrorCode.INVALID_IMAGE_FILE);
+        }
+
+        // 기존 이미지 삭제
+        if (block.getImageFile() != null) {
+            fileService.delete(block.getImageFile());
+        }
+
+        File image = fileService.upload(multipartFile, block.getPage().getWorkspace(), email);
+
+        block.updateImage(image);
+
+        return BlockResponse.from(block);
+    }
+
+    // 블록 이미지 삭제
+    public BlockResponse deleteImage(Long blockId, String email) {
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        Block block = blockRepository.findById(blockId)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.BLOCK_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(block.getPage().getWorkspace(), user)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        if (block.getImageFile() != null) {
+            fileService.delete(block.getImageFile());
+            block.updateImage(null);
+        }
+
+        return BlockResponse.from(block);
     }
 }

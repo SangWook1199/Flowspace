@@ -29,6 +29,10 @@ public class WorkspaceTaskStatus {
     @Builder.Default
     private Integer position = 0;
 
+    @Column(name = "is_default", nullable = false)
+    @Builder.Default
+    private Boolean isDefault = false;
+
     public void updatePosition(Integer position) {
         this.position = position;
     }

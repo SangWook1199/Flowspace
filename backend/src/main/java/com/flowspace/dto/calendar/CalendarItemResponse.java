@@ -1,10 +1,13 @@
 package com.flowspace.dto.calendar;
 
+import com.flowspace.dto.task.AssigneeItem;
 import com.flowspace.entity.Event;
 import com.flowspace.entity.Task;
+import com.flowspace.entity.TaskAssignee;
 import com.flowspace.entity.enums.WorkspaceColor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 // @formatter:off
 
@@ -22,21 +25,27 @@ public record CalendarItemResponse(
 
     Long sprintId,
     Long statusId,
-    Long assigneeId
+
+    List<AssigneeItem> assignees
 
 ) {
 
-    public static CalendarItemResponse from(Task task) {
+    public static CalendarItemResponse from(
+        Task task,
+        List<TaskAssignee> assignees
+    ) {
         return new CalendarItemResponse(
             task.getTaskId(),
             "TASK",
-            task.getDescription(),
+            task.getTitle(),
             task.getStatus().getColor(),
             task.getStartDate().atStartOfDay(),
             task.getEndDate() == null ? null : task.getEndDate().atTime(23, 59),
             task.getSprint() == null ? null : task.getSprint().getSprintId(),
             task.getStatus().getStatusId(),
-            task.getAssignee() == null ? null : task.getAssignee().getUserId()
+            assignees.stream()
+                .map(AssigneeItem::from)
+                .toList()
         );
     }
 
@@ -50,7 +59,7 @@ public record CalendarItemResponse(
             event.getEndDatetime(),
             null,
             null,
-            null
+            List.of()
         );
     }
 

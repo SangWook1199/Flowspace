@@ -1,6 +1,7 @@
 package com.flowspace.dto.database;
 
 import com.flowspace.entity.BlockDatabase;
+import com.flowspace.entity.enums.DatabaseViewType;
 
 // @formatter:off
 
@@ -9,7 +10,8 @@ public record DatabaseResponse(
 
     Long databaseId,
     Long blockId,
-    String name
+    String name,
+    DatabaseViewType viewType
 
 ) {
 
@@ -17,7 +19,8 @@ public record DatabaseResponse(
         return new DatabaseResponse(
             blockDatabase.getDatabaseId(),
             blockDatabase.getBlock().getBlockId(),
-            blockDatabase.getTitle()
+            blockDatabase.getTitle(),
+            blockDatabase.getViewType()
         );
     }
 

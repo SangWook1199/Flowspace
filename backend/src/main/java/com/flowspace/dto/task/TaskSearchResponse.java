@@ -1,6 +1,9 @@
 package com.flowspace.dto.task;
 
 import com.flowspace.entity.Task;
+import com.flowspace.entity.TaskAssignee;
+
+import java.util.List;
 
 // @formatter:off
 
@@ -8,22 +11,27 @@ import com.flowspace.entity.Task;
 public record TaskSearchResponse(
 
     Long taskId,
-    String description,
+    String title,
+
     Long statusId,
     String statusName,
-    Long assigneeId,
-    String assigneeName
+
+    List<AssigneeItem> assignees
 
 ) {
 
-    public static TaskSearchResponse from(Task task) {
+    public static TaskSearchResponse from(
+        Task task,
+        List<TaskAssignee> assignees
+    ) {
         return new TaskSearchResponse(
             task.getTaskId(),
-            task.getDescription(),
+            task.getTitle(),
             task.getStatus().getStatusId(),
             task.getStatus().getName(),
-            task.getAssignee() == null ? null : task.getAssignee().getUserId(),
-            task.getAssignee() == null ? null : task.getAssignee().getName()
+            assignees.stream()
+                .map(AssigneeItem::from)
+                .toList()
         );
     }
 

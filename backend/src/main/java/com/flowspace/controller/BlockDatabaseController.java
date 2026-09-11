@@ -7,13 +7,16 @@ import org.springframework.web.bind.annotation.*;
 import com.flowspace.dto.database.BlockDatabaseCellResponse;
 import com.flowspace.dto.database.BlockDatabaseCellUpdateRequest;
 import com.flowspace.dto.database.BlockDatabaseColumnCreateRequest;
+import com.flowspace.dto.database.BlockDatabaseColumnReorderRequest;
 import com.flowspace.dto.database.BlockDatabaseColumnResponse;
 import com.flowspace.dto.database.BlockDatabaseColumnUpdateRequest;
+import com.flowspace.dto.database.BlockDatabaseRowReorderRequest;
 import com.flowspace.dto.database.BlockDatabaseRowResponse;
 import com.flowspace.dto.database.DatabaseCreateRequest;
 import com.flowspace.dto.database.DatabaseDetailResponse;
 import com.flowspace.dto.database.DatabaseResponse;
 import com.flowspace.dto.database.DatabaseUpdateRequest;
+import com.flowspace.dto.database.DatabaseViewUpdateRequest;
 import com.flowspace.service.BlockDatabaseService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -72,6 +75,14 @@ public class BlockDatabaseController {
         return blockDatabaseService.updateColumn(columnId, request, userDetails.getUsername());
     }
 
+    @Operation(summary = "데이터베이스 컬럼 순서 변경")
+    @PatchMapping("/databases/{databaseId}/columns/reorder")
+    public void reorderColumns(@PathVariable Long databaseId,
+        @Valid @RequestBody BlockDatabaseColumnReorderRequest request,
+        @AuthenticationPrincipal UserDetails userDetails) {
+        blockDatabaseService.reorderColumns(databaseId, request, userDetails.getUsername());
+    }
+
     @Operation(summary = "데이터베이스 컬럼 삭제")
     @DeleteMapping("/databases/{databaseId}/columns/{columnId}")
     public void deleteColumn(@PathVariable Long databaseId, @PathVariable Long columnId,
@@ -84,6 +95,13 @@ public class BlockDatabaseController {
     public BlockDatabaseRowResponse createRow(@PathVariable Long databaseId,
         @AuthenticationPrincipal UserDetails userDetails) {
         return blockDatabaseService.createRow(databaseId, userDetails.getUsername());
+    }
+
+    @Operation(summary = "데이터베이스 행 순서 변경")
+    @PatchMapping("/databases/{databaseId}/rows/reorder")
+    public void reorderRows(@PathVariable Long databaseId, @Valid @RequestBody BlockDatabaseRowReorderRequest request,
+        @AuthenticationPrincipal UserDetails userDetails) {
+        blockDatabaseService.reorderRows(databaseId, request, userDetails.getUsername());
     }
 
     @Operation(summary = "데이터베이스 행 삭제")
@@ -105,5 +123,12 @@ public class BlockDatabaseController {
     public DatabaseDetailResponse getDatabaseDetail(@PathVariable Long databaseId,
         @AuthenticationPrincipal UserDetails userDetails) {
         return blockDatabaseService.getDatabaseDetail(databaseId, userDetails.getUsername());
+    }
+
+    @Operation(summary = "표 / 데이터베이스 전환")
+    @PatchMapping("/databases/{databaseId}/view")
+    public DatabaseResponse updateViewType(@PathVariable Long databaseId,
+        @Valid @RequestBody DatabaseViewUpdateRequest request, @AuthenticationPrincipal UserDetails userDetails) {
+        return blockDatabaseService.updateViewType(databaseId, request, userDetails.getUsername());
     }
 }

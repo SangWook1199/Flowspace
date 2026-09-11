@@ -1,5 +1,9 @@
 package com.flowspace.entity;
 
+import java.time.LocalDateTime;
+
+import org.springframework.data.annotation.CreatedDate;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -9,7 +13,7 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-public class BlockDatabaseRow extends BaseEntity {
+public class BlockDatabaseRow {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -23,6 +27,10 @@ public class BlockDatabaseRow extends BaseEntity {
     @Column(name = "position", nullable = false)
     @Builder.Default
     private Integer position = 0;
+
+    @CreatedDate
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
     public void updatePosition(Integer position) {
         this.position = position;

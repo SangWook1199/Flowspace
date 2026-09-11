@@ -14,6 +14,7 @@ public record PageResponse(
     Long parentPageId,
     String title,
     String icon,
+    String coverUrl,
     Long createdBy,
     LocalDateTime createdAt,
     LocalDateTime updatedAt
@@ -27,6 +28,7 @@ public record PageResponse(
             page.getParentPage() == null ? null : page.getParentPage().getPageId(),
             page.getTitle(),
             page.getIcon(),
+            page.getCoverFile() == null ? null : page.getCoverFile().getFileUrl(),
             page.getCreatedBy().getUserId(),
             page.getCreatedAt(),
             page.getUpdatedAt()

@@ -17,7 +17,11 @@ public class Comment extends BaseEntity {
     private Long commentId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "block_id", nullable = false)
+    @JoinColumn(name = "task_id", nullable = true)
+    private Task task;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "block_id", nullable = true)
     private Block block;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -30,4 +34,8 @@ public class Comment extends BaseEntity {
 
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
+
+    public void update(String content) {
+        this.content = content;
+    }
 }

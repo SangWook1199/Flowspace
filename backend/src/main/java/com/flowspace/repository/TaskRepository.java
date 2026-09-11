@@ -32,5 +32,5 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     List<Task> findByWorkspaceAndSprintIsNullAndStartDateBetweenOrderByStartDateAscPositionAsc(Workspace workspace,
         LocalDate start, LocalDate end);
 
-    List<Task> findByWorkspaceAndDescriptionContainingIgnoreCase(Workspace workspace, String keyword);
+    List<Task> findByWorkspaceAndTitleContainingIgnoreCase(Workspace workspace, String keyword);
 }
