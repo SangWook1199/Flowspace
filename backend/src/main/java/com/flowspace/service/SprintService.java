@@ -371,9 +371,9 @@ public class SprintService {
 
         for (TaskAssignee assignee : assignees) {
 
-            taskSnapshotAssigneeRepository
-                .save(TaskSnapshotAssignee.builder().snapshot(snapshot).originalUserId(assignee.getUser().getUserId())
-                    .name(assignee.getUser().getName()).profileFile(assignee.getUser().getProfileFile()).build());
+            taskSnapshotAssigneeRepository.save(TaskSnapshotAssignee.builder().snapshot(snapshot)
+                .originalUserId(assignee.getUser().getUserId()).nickname(assignee.getUser().getNickname())
+                .profileFile(assignee.getUser().getProfileFile()).build());
         }
     }
 
@@ -388,7 +388,7 @@ public class SprintService {
 
             subTaskSnapshotRepository.save(SubTaskSnapshot.builder().snapshot(snapshot)
                 .originalSubtaskId(subtask.getSubtaskId()).content(subtask.getContent())
-                .isCompleted(subtask.getIsCompleted()).assigneeName(assignee == null ? null : assignee.getName())
+                .isCompleted(subtask.getIsCompleted()).assigneeName(assignee == null ? null : assignee.getNickname())
                 .assigneeProfileFile(assignee == null ? null : assignee.getProfileFile())
                 .position(subtask.getPosition()).build());
         }

@@ -9,11 +9,9 @@ import com.flowspace.dto.auth.TokenRequest;
 import com.flowspace.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.http.MediaType;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,10 +25,10 @@ public class AuthController {
     private final AuthService authService;
 
     // 회원가입
+    @Operation(summary = "회원가입")
     @PostMapping("/signup")
-    @ResponseStatus(HttpStatus.CREATED)
-    public void signup(@Valid @RequestBody SignupRequest request) {
-        authService.signup(request);
+    public LoginResponse signup(@Valid @RequestBody SignupRequest request) {
+        return authService.signup(request);
     }
 
     // 로그인
@@ -42,8 +40,7 @@ public class AuthController {
 
     // Swagger OAuth2 로그인
     @PostMapping(value = "/token", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
-    public TokenResponse token(
-            @Valid @ModelAttribute TokenRequest request) {
+    public TokenResponse token(@Valid @ModelAttribute TokenRequest request) {
         return authService.loginForSwagger(request);
     }
 
@@ -51,8 +48,7 @@ public class AuthController {
     @Operation(summary = "내 정보 조회")
     @SecurityRequirement(name = "OAuth2")
     @GetMapping("/me")
-    public UserResponse getMe(
-            @AuthenticationPrincipal UserDetails userDetails) {
+    public UserResponse getMe(@AuthenticationPrincipal UserDetails userDetails) {
         return authService.getMe(userDetails.getUsername());
     }
 }

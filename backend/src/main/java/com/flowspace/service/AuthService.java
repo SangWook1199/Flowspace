@@ -6,8 +6,10 @@ import com.flowspace.dto.auth.SignupRequest;
 import com.flowspace.dto.auth.UserResponse;
 import com.flowspace.dto.auth.TokenResponse;
 import com.flowspace.dto.auth.TokenRequest;
+import com.flowspace.entity.Page;
 import com.flowspace.entity.RefreshToken;
 import com.flowspace.entity.User;
+import com.flowspace.entity.Workspace;
 import com.flowspace.entity.enums.Provider;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
@@ -30,34 +32,39 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
+    private final WorkspaceService workspaceService;
+    private final PageService pageService;
 
     // 회원가입
-    public void signup(SignupRequest request) {
+    @Transactional
+    public LoginResponse signup(SignupRequest request) {
 
         if (userRepository.existsByEmail(request.email())) {
             throw new FlowSpaceException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
 
-        if (userRepository.existsByNickname(request.nickname())) {
-            throw new FlowSpaceException(ErrorCode.NICKNAME_ALREADY_EXISTS);
-        }
-
-        User user = User.builder()
-                .email(request.email())
-                .password(passwordEncoder.encode(request.password()))
-                .name(request.name())
-                .nickname(request.nickname())
-                .provider(Provider.LOCAL)
-                .build();
+        User user = User.builder().email(request.email()).password(passwordEncoder.encode(request.password()))
+            .nickname(request.nickname()).provider(Provider.LOCAL).build();
 
         userRepository.save(user);
+
+        // 개인 워크스페이스 자동 생성
+        Workspace workspace = workspaceService.createPersonalWorkspace(user);
+
+        String accessToken = jwtProvider.createAccessToken(user);
+        String refreshToken = jwtProvider.createRefreshToken(user);
+
+        refreshTokenRepository.save(
+            RefreshToken.builder().user(user).token(refreshToken).expiredAt(LocalDateTime.now().plusDays(14)).build());
+
+        return LoginResponse.from(user, accessToken, refreshToken, workspace.getWorkspaceId());
     }
 
     // 로그인 및 JWT 발급
     public LoginResponse login(LoginRequest request) {
 
         User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.INVALID_LOGIN));
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.INVALID_LOGIN));
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new FlowSpaceException(ErrorCode.INVALID_LOGIN);
@@ -68,22 +75,19 @@ public class AuthService {
 
         refreshTokenRepository.deleteByUser(user);
 
-        RefreshToken token = RefreshToken.builder()
-                .user(user)
-                .token(refreshToken)
-                .expiredAt(LocalDateTime.now().plusDays(14))
-                .build();
+        RefreshToken token = RefreshToken.builder().user(user).token(refreshToken)
+            .expiredAt(LocalDateTime.now().plusDays(14)).build();
 
         refreshTokenRepository.save(token);
 
-        return LoginResponse.from(user, accessToken, refreshToken);
+        return LoginResponse.from(user, accessToken, refreshToken, user.getLastWorkspace().getWorkspaceId());
     }
 
     // Swagger OAuth2 로그인
     public TokenResponse loginForSwagger(TokenRequest request) {
 
         User user = userRepository.findByEmail(request.username())
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.INVALID_LOGIN));
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.INVALID_LOGIN));
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new FlowSpaceException(ErrorCode.INVALID_LOGIN);
@@ -94,11 +98,8 @@ public class AuthService {
 
         refreshTokenRepository.deleteByUser(user);
 
-        RefreshToken token = RefreshToken.builder()
-                .user(user)
-                .token(refreshToken)
-                .expiredAt(LocalDateTime.now().plusDays(14))
-                .build();
+        RefreshToken token = RefreshToken.builder().user(user).token(refreshToken)
+            .expiredAt(LocalDateTime.now().plusDays(14)).build();
 
         refreshTokenRepository.save(token);
 
@@ -110,7 +111,7 @@ public class AuthService {
     public UserResponse getMe(String email) {
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
         return UserResponse.from(user);
     }

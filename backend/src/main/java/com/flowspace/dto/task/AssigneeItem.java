@@ -15,7 +15,7 @@ public record AssigneeItem(
     public static AssigneeItem from(TaskAssignee assignee) {
         return new AssigneeItem(
             assignee.getUser().getUserId(),
-            assignee.getUser().getName(),
+            assignee.getUser().getNickname(),
             assignee.getUser().getProfileFile() == null
                 ? null
                 : assignee.getUser().getProfileFile().getFileId()

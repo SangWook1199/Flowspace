@@ -37,7 +37,7 @@ public record TaskSnapshotItem(
             assignees.stream()
                 .map(assignee -> new AssigneeItem(
                     assignee.getOriginalUserId(),
-                    assignee.getName(),
+                    assignee.getNickname(),
                     assignee.getProfileFile() == null
                         ? null
                         : assignee.getProfileFile().getFileId()

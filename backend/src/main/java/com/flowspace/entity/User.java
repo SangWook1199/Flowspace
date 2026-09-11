@@ -25,10 +25,7 @@ public class User extends BaseEntity {
     @Column(name = "password", length = 255)
     private String password;
 
-    @Column(name = "name", nullable = false, length = 30)
-    private String name;
-
-    @Column(name = "nickname", unique = true, length = 30)
+    @Column(name = "nickname", nullable = false, length = 30)
     private String nickname;
 
     @Enumerated(EnumType.STRING)
