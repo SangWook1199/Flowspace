@@ -12,6 +12,8 @@ import com.flowspace.entity.Block;
 import com.flowspace.entity.Comment;
 import com.flowspace.entity.Task;
 import com.flowspace.entity.User;
+import com.flowspace.entity.enums.ActivityTargetType;
+import com.flowspace.entity.enums.ActivityType;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.repository.BlockRepository;
@@ -32,6 +34,8 @@ public class CommentService {
     private final BlockRepository blockRepository;
     private final UserRepository userRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
+
+    private final ActivityService activityService;
 
     // Task 댓글 작성
     public CommentResponse createTaskComment(Long taskId, CommentCreateRequest request, String email) {
@@ -55,6 +59,9 @@ public class CommentService {
             .build();
 
         commentRepository.save(comment);
+
+        activityService.log(task.getWorkspace(), user, ActivityType.COMMENT_CREATED, ActivityTargetType.COMMENT,
+            comment.getCommentId());
 
         return CommentResponse.from(comment, List.of());
     }
@@ -82,6 +89,9 @@ public class CommentService {
             .build();
 
         commentRepository.save(comment);
+
+        activityService.log(block.getPage().getWorkspace(), user, ActivityType.COMMENT_CREATED,
+            ActivityTargetType.COMMENT, comment.getCommentId());
 
         return CommentResponse.from(comment, List.of());
     }

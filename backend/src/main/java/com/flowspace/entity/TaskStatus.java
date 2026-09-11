@@ -41,6 +41,7 @@ public class TaskStatus {
 
     public void update(String name, TaskStatusCategory category, WorkspaceColor color) {
         this.name = name;
+        this.category = category;
         this.color = color;
     }
 }

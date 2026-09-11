@@ -37,6 +37,7 @@ public enum ErrorCode {
     SUBTASK_NOT_FOUND(HttpStatus.NOT_FOUND, "서브태스크를 찾을 수 없습니다."),
     INVALID_SPRINT(HttpStatus.BAD_REQUEST, "유효하지 않은 스프린트입니다."),
     INVALID_SUBTASK_ASSIGNEE(HttpStatus.BAD_REQUEST, "SubTask 담당자는 Task 담당자 중에서만 선택할 수 있습니다."),
+    DEFAULT_TASK_STATUS_CANNOT_DELETE(HttpStatus.BAD_REQUEST, "기본 Task 상태는 삭제할 수 없습니다."),
 
     // Event
     EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "이벤트를 찾을 수 없습니다."),

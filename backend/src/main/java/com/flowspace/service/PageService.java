@@ -16,6 +16,8 @@ import com.flowspace.entity.File;
 import com.flowspace.entity.Page;
 import com.flowspace.entity.User;
 import com.flowspace.entity.Workspace;
+import com.flowspace.entity.enums.ActivityTargetType;
+import com.flowspace.entity.enums.ActivityType;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.repository.BlockRepository;
@@ -39,6 +41,8 @@ public class PageService {
     private final UserRepository userRepository;
     private final FileService fileService;
     private final CommentRepository commentRepository;
+
+    private final ActivityService activityService;
 
     // 페이지 생성
     public PageResponse createPage(Long workspaceId, PageCreateRequest request, String email) {
@@ -66,6 +70,8 @@ public class PageService {
             .createdBy(user).build();
 
         pageRepository.save(page);
+
+        activityService.log(workspace, user, ActivityType.PAGE_CREATED, ActivityTargetType.PAGE, page.getPageId());
 
         return PageResponse.from(page);
     }

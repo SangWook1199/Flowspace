@@ -1,5 +1,6 @@
 package com.flowspace.entity;
 
+import com.flowspace.entity.enums.ActivityTargetType;
 import com.flowspace.entity.enums.ActivityType;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -32,11 +33,12 @@ public class Activity {
     private User user;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "type", nullable = false, length = 20)
+    @Column(name = "type", length = 50, nullable = false)
     private ActivityType type;
 
-    @Column(name = "target_type", nullable = false, length = 30)
-    private String targetType;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "target_type", nullable = false, length = 20)
+    private ActivityTargetType targetType;
 
     @Column(name = "target_id", nullable = false)
     private Long targetId;

@@ -29,6 +29,9 @@ import com.flowspace.entity.TaskStatus;
 import com.flowspace.entity.User;
 import com.flowspace.entity.Workspace;
 import com.flowspace.entity.WorkspaceTaskStatus;
+import com.flowspace.entity.enums.ActivityTargetType;
+import com.flowspace.entity.enums.ActivityType;
+import com.flowspace.entity.enums.TaskStatusCategory;
 import com.flowspace.entity.id.WorkspaceTaskStatusId;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
@@ -62,6 +65,8 @@ public class TaskService {
     private final CommentRepository commentRepository;
     private final TaskAssigneeRepository taskAssigneeRepository;
     private final UserRepository userRepository;
+
+    private final ActivityService activityService;
 
     // Task 상태 생성
     public TaskStatusResponse createStatus(Long workspaceId, TaskStatusCreateRequest request, String email) {
@@ -119,21 +124,26 @@ public class TaskService {
         workspaceMemberRepository.findByWorkspaceAndUser(mapping.getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        TaskStatus newStatus = taskStatusRepository.save(
-            TaskStatus.builder().name(request.name()).category(request.category()).color(request.color()).build());
+        // 기본 상태(1,2,3) 수정 → 새 상태 생성
+        if (mapping.getIsDefault()) {
 
-        WorkspaceTaskStatus newMapping = WorkspaceTaskStatus.builder()
-            .id(new WorkspaceTaskStatusId(mapping.getWorkspace().getWorkspaceId(), newStatus.getStatusId()))
-            .workspace(mapping.getWorkspace()).taskStatus(newStatus).position(mapping.getPosition()).build();
+            TaskStatus newStatus = taskStatusRepository.save(
+                TaskStatus.builder().name(request.name()).category(request.category()).color(request.color()).build());
 
-        workspaceTaskStatusRepository.delete(mapping);
-        workspaceTaskStatusRepository.save(newMapping);
+            WorkspaceTaskStatus newMapping = WorkspaceTaskStatus.builder()
+                .id(new WorkspaceTaskStatusId(mapping.getWorkspace().getWorkspaceId(), newStatus.getStatusId()))
+                .workspace(mapping.getWorkspace()).taskStatus(newStatus).position(mapping.getPosition() + 1)
+                .isDefault(false).build();
 
-        taskRepository.findByStatusOrderByPositionAsc(mapping.getTaskStatus()).stream()
-            .filter(task -> task.getWorkspace().getWorkspaceId().equals(mapping.getWorkspace().getWorkspaceId()))
-            .forEach(task -> task.updateStatus(newStatus));
+            workspaceTaskStatusRepository.save(newMapping);
 
-        return TaskStatusResponse.from(newMapping);
+            return TaskStatusResponse.from(newMapping);
+        }
+
+        // 커스텀 상태 수정
+        mapping.getTaskStatus().update(request.name(), request.category(), request.color());
+
+        return TaskStatusResponse.from(mapping);
     }
 
     // Task 상태 순서 변경
@@ -164,40 +174,29 @@ public class TaskService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        Workspace workspace = workspaceRepository.findById(request.workspaceId())
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+        WorkspaceTaskStatus mapping = workspaceTaskStatusRepository
+            .findById(new WorkspaceTaskStatusId(request.workspaceId(), statusId))
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
 
-        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
+        workspaceMemberRepository.findByWorkspaceAndUser(mapping.getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        WorkspaceTaskStatus sourceMapping = workspaceTaskStatusRepository
-            .findById(new WorkspaceTaskStatusId(workspace.getWorkspaceId(), statusId))
-            .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
+        // 기본 상태는 삭제 불가
+        if (mapping.getIsDefault()) {
+            throw new FlowSpaceException(ErrorCode.DEFAULT_TASK_STATUS_CANNOT_DELETE);
+        }
 
         WorkspaceTaskStatus targetMapping = workspaceTaskStatusRepository
-            .findById(new WorkspaceTaskStatusId(workspace.getWorkspaceId(), request.targetStatusId()))
+            .findById(new WorkspaceTaskStatusId(request.workspaceId(), request.targetStatusId()))
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
 
-        if (statusId.equals(request.targetStatusId())) {
-            throw new FlowSpaceException(ErrorCode.INVALID_TASK_STATUS);
-        }
+        // 같은 워크스페이스 Task만 이동
+        taskRepository.findByStatusOrderByPositionAsc(mapping.getTaskStatus()).stream()
+            .filter(task -> task.getWorkspace().getWorkspaceId().equals(request.workspaceId()))
+            .forEach(task -> task.updateStatus(targetMapping.getTaskStatus()));
 
-        int position = taskRepository
-            .findByWorkspaceAndStatusOrderByPositionAsc(workspace, targetMapping.getTaskStatus()).size();
-
-        List<Task> tasks = taskRepository.findByStatusOrderByPositionAsc(sourceMapping.getTaskStatus());
-
-        for (Task task : tasks) {
-            if (!task.getWorkspace().getWorkspaceId().equals(workspace.getWorkspaceId())) {
-                continue;
-            }
-
-            task.updateStatus(targetMapping.getTaskStatus());
-            task.updatePosition(BigDecimal.valueOf(position));
-            position++;
-        }
-
-        workspaceTaskStatusRepository.delete(sourceMapping);
+        workspaceTaskStatusRepository.delete(mapping);
+        taskStatusRepository.delete(mapping.getTaskStatus());
     }
 
     // Task 생성
@@ -222,6 +221,9 @@ public class TaskService {
             .endDate(request.endDate()).priority(request.priority()).build();
 
         taskRepository.save(task);
+
+        activityService.log(sprint.getWorkspace(), user, ActivityType.TASK_CREATED, ActivityTargetType.TASK,
+            task.getTaskId());
 
         for (Long assigneeId : request.assigneeIds()) {
 
@@ -391,6 +393,13 @@ public class TaskService {
             .valueOf(taskRepository.findByWorkspaceAndStatusOrderByPositionAsc(task.getWorkspace(), status).size());
 
         task.updateStatus(status);
+
+        if (status.getCategory() == TaskStatusCategory.DONE) {
+            activityService.log(task.getWorkspace(), user, ActivityType.TASK_COMPLETED, ActivityTargetType.TASK,
+                task.getTaskId());
+
+        }
+
         task.updatePosition(position);
 
         List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);

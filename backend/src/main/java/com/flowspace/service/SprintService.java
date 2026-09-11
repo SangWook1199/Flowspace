@@ -27,6 +27,8 @@ import com.flowspace.entity.TaskSnapshotAssignee;
 import com.flowspace.entity.User;
 import com.flowspace.entity.Workspace;
 import com.flowspace.entity.WorkspaceTaskStatus;
+import com.flowspace.entity.enums.ActivityTargetType;
+import com.flowspace.entity.enums.ActivityType;
 import com.flowspace.entity.enums.BlockType;
 import com.flowspace.entity.enums.DatabaseColumnType;
 import com.flowspace.entity.enums.DatabaseViewType;
@@ -85,6 +87,8 @@ public class SprintService {
     private final SubTaskRepository subTaskRepository;
     private final UserRepository userRepository;
 
+    private final ActivityService activityService;
+
     // 스프린트 생성
     public SprintResponse createSprint(Long workspaceId, SprintCreateRequest request, String email) {
 
@@ -102,6 +106,9 @@ public class SprintService {
             .endDate(request.endDate()).status(request.status()).build();
 
         sprintRepository.save(sprint);
+
+        activityService.log(workspace, user, ActivityType.SPRINT_CREATED, ActivityTargetType.SPRINT,
+            sprint.getSprintId());
 
         return toSprintResponse(sprint);
     }
@@ -183,6 +190,9 @@ public class SprintService {
             createRetrospective(sprint, user);
 
             moveTasksToBacklog(sprint);
+
+            activityService.log(sprint.getWorkspace(), user, ActivityType.SPRINT_COMPLETED, ActivityTargetType.SPRINT,
+                sprint.getSprintId());
         }
 
         sprint.updateStatus(request.status());
@@ -266,7 +276,12 @@ public class SprintService {
         Page page = Page.builder().workspace(sprint.getWorkspace()).parentPage(null).title(sprint.getName() + " 회고")
             .icon("🚀").createdBy(user).build();
 
-        return pageRepository.save(page);
+        page = pageRepository.save(page);
+
+        activityService.log(sprint.getWorkspace(), user, ActivityType.PAGE_CREATED, ActivityTargetType.PAGE,
+            page.getPageId());
+
+        return page;
     }
 
     // 회고 기본 테이블 생성
@@ -334,7 +349,7 @@ public class SprintService {
         List<RetrospectiveStatusSnapshot> snapshots) {
 
         Map<Long, RetrospectiveStatusSnapshot> statusMap = snapshots.stream()
-            .collect(Collectors.toMap(RetrospectiveStatusSnapshot::getOriginalStatusId, s -> s));
+            .collect(Collectors.toMap(s -> s.getOriginalStatusId(), s -> s));
 
         List<Task> tasks = taskRepository.findBySprintOrderByPositionAsc(sprint);
 
