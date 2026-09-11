@@ -2,11 +2,12 @@ package com.flowspace.service;
 
 import com.flowspace.dto.auth.LoginRequest;
 import com.flowspace.dto.auth.LoginResponse;
+import com.flowspace.dto.auth.ProfileUpdateRequest;
 import com.flowspace.dto.auth.SignupRequest;
 import com.flowspace.dto.auth.UserResponse;
 import com.flowspace.dto.auth.TokenResponse;
 import com.flowspace.dto.auth.TokenRequest;
-import com.flowspace.entity.Page;
+import com.flowspace.entity.File;
 import com.flowspace.entity.RefreshToken;
 import com.flowspace.entity.User;
 import com.flowspace.entity.Workspace;
@@ -20,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 
@@ -33,7 +35,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
     private final WorkspaceService workspaceService;
-    private final PageService pageService;
+    private final FileService fileService;
 
     // 회원가입
     @Transactional
@@ -112,6 +114,51 @@ public class AuthService {
 
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        return UserResponse.from(user);
+    }
+
+    // 프로필 이미지 수정
+    @Transactional
+    public UserResponse updateProfileImage(MultipartFile image, String email) {
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        File file = fileService.upload(image, user.getLastWorkspace(), email);
+
+        user.updateProfileImage(file);
+
+        return UserResponse.from(user);
+    }
+
+    // 프로필 수정
+    public UserResponse updateProfile(ProfileUpdateRequest request, MultipartFile image, String email) {
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        File profileFile = user.getProfileFile();
+
+        if (image != null && !image.isEmpty()) {
+            profileFile = fileService.upload(image, user.getLastWorkspace(), email);
+        }
+
+        user.updateProfile(request.nickname(), profileFile);
+
+        return UserResponse.from(user);
+    }
+
+    // 프로필 이미지 삭제
+    public UserResponse deleteProfileImage(String email) {
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        if (user.getProfileFile() != null) {
+            fileService.delete(user.getProfileFile());
+            user.removeProfileImage();
+        }
 
         return UserResponse.from(user);
     }

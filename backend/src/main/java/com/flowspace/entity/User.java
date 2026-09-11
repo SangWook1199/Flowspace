@@ -56,4 +56,20 @@ public class User extends BaseEntity {
     public void updateLastWorkspace(Workspace workspace) {
         this.lastWorkspace = workspace;
     }
+
+    // 프로필 이미지 수정
+    public void updateProfileImage(File profileFile) {
+        this.profileFile = profileFile;
+    }
+
+    // 프로필 수정
+    public void updateProfile(String nickname, File profileFile) {
+        this.nickname = nickname;
+        this.profileFile = profileFile;
+    }
+
+    // 프로필 이미지 삭제
+    public void removeProfileImage() {
+        this.profileFile = null;
+    }
 }
