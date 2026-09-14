@@ -135,4 +135,28 @@ public class FileService {
             throw new FlowSpaceException(ErrorCode.FILE_NOT_FOUND);
         }
     }
+
+    // Google 프로필 이미지 저장
+    public File uploadGoogleProfile(byte[] imageBytes, Workspace workspace, User user) {
+
+        try {
+
+            String storedName = UUID.randomUUID() + ".jpg";
+
+            Path directory = Paths.get(uploadDir);
+            Files.createDirectories(directory);
+
+            Path target = directory.resolve(storedName);
+            Files.write(target, imageBytes);
+
+            File file = File.builder().workspace(workspace).uploadedBy(user).originalName("google-profile.jpg")
+                .storedName(storedName).mimeType("image/jpeg").size((long) imageBytes.length).width(null).height(null)
+                .fileUrl("/uploads/" + storedName).build();
+
+            return fileRepository.save(file);
+
+        } catch (IOException e) {
+            throw new FlowSpaceException(ErrorCode.FILE_UPLOAD_FAILED);
+        }
+    }
 }

@@ -1,5 +1,7 @@
 package com.flowspace.service;
 
+import com.flowspace.dto.auth.GoogleLoginRequest;
+import com.flowspace.dto.auth.GoogleUserInfo;
 import com.flowspace.dto.auth.LoginRequest;
 import com.flowspace.dto.auth.LoginResponse;
 import com.flowspace.dto.auth.ProfileUpdateRequest;
@@ -18,9 +20,12 @@ import com.flowspace.repository.RefreshTokenRepository;
 import com.flowspace.repository.UserRepository;
 import com.flowspace.security.JwtProvider;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
@@ -36,6 +41,7 @@ public class AuthService {
     private final JwtProvider jwtProvider;
     private final WorkspaceService workspaceService;
     private final FileService fileService;
+    private final GoogleOAuthService googleOAuthService;
 
     // 회원가입
     @Transactional
@@ -161,5 +167,62 @@ public class AuthService {
         }
 
         return UserResponse.from(user);
+    }
+
+    // Google 로그인
+    public LoginResponse googleLogin(GoogleLoginRequest request) {
+
+        GoogleUserInfo googleUser = googleOAuthService.verify(request.idToken());
+
+        User user = userRepository.findByProviderAndProviderId(Provider.GOOGLE, googleUser.providerId())
+            .orElseGet(() -> createGoogleUser(googleUser));
+
+        String accessToken = jwtProvider.createAccessToken(user);
+        String refreshToken = jwtProvider.createRefreshToken(user);
+
+        refreshTokenRepository.deleteByUser(user);
+
+        refreshTokenRepository.save(
+            RefreshToken.builder().user(user).token(refreshToken).expiredAt(LocalDateTime.now().plusDays(14)).build());
+
+        return LoginResponse.from(user, accessToken, refreshToken, user.getLastWorkspace().getWorkspaceId());
+    }
+
+    // Google 회원 생성
+    private User createGoogleUser(GoogleUserInfo googleUser) {
+
+        User user = User.builder().email(googleUser.email()).password(null).nickname(googleUser.nickname())
+            .provider(Provider.GOOGLE).providerId(googleUser.providerId()).build();
+
+        userRepository.save(user);
+
+        Workspace workspace = workspaceService.createPersonalWorkspace(user);
+
+        if (googleUser.pictureUrl() != null) {
+            uploadGoogleProfile(user, workspace, googleUser.pictureUrl());
+        }
+
+        return user;
+    }
+
+    // Google 프로필 저장
+    private void uploadGoogleProfile(User user, Workspace workspace, String imageUrl) {
+
+        try {
+
+            RestTemplate restTemplate = new RestTemplate();
+
+            ResponseEntity<byte[]> response = restTemplate.getForEntity(imageUrl, byte[].class);
+
+            if (response.getBody() == null) {
+                return;
+            }
+
+            File profile = fileService.uploadGoogleProfile(response.getBody(), workspace, user);
+
+            user.updateProfileImage(profile);
+
+        } catch (Exception ignored) {
+        }
     }
 }

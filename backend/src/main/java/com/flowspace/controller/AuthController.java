@@ -1,5 +1,6 @@
 package com.flowspace.controller;
 
+import com.flowspace.dto.auth.GoogleLoginRequest;
 import com.flowspace.dto.auth.LoginRequest;
 import com.flowspace.dto.auth.LoginResponse;
 import com.flowspace.dto.auth.ProfileUpdateRequest;
@@ -72,5 +73,11 @@ public class AuthController {
     public UserResponse deleteProfileImage(@AuthenticationPrincipal UserDetails userDetails) {
 
         return authService.deleteProfileImage(userDetails.getUsername());
+    }
+
+    @Operation(summary = "Google 로그인")
+    @PostMapping("/google")
+    public LoginResponse googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
+        return authService.googleLogin(request);
     }
 }

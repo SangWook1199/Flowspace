@@ -37,6 +37,9 @@ dependencies {
 	runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.7")
 	runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.7")
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.13")
+
+	implementation("com.google.api-client:google-api-client:2.7.0")
+	implementation("com.google.oauth-client:google-oauth-client:1.36.0")
 }
 
 tasks.withType<Test> {
