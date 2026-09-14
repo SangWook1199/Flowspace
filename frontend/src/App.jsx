@@ -13,30 +13,33 @@ import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 
 import MainLayout from "./layout/MainLayout";
+import { AuthProvider } from "./context/AuthProvider";
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route element={<MainLayout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="sprints" element={<SprintList />} />
-          <Route path="sprints/:sprintId" element={<SprintDetail />} />
-          <Route path="sprints/:sprintId/tasks" element={<SprintTasks />} />
-          <Route path="sprints/new" element={<SprintCreate />} />
-          <Route path="kanban" element={<KanbanBoard />} />
-          <Route path="calendar" element={<Calendar />} />
-          <Route path="/retrospectives" element={<RetrospectiveList />} />
-          <Route
-            path="/retrospectives/:sprintId"
-            element={<RetrospectiveDetailPage />}
-          />
-        </Route>
-        <Route path="/workspace/create" element={<WorkspaceCreatePage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
-      </Routes>
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route element={<MainLayout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="sprints" element={<SprintList />} />
+            <Route path="sprints/:sprintId" element={<SprintDetail />} />
+            <Route path="sprints/:sprintId/tasks" element={<SprintTasks />} />
+            <Route path="sprints/new" element={<SprintCreate />} />
+            <Route path="kanban" element={<KanbanBoard />} />
+            <Route path="calendar" element={<Calendar />} />
+            <Route path="/retrospectives" element={<RetrospectiveList />} />
+            <Route
+              path="/retrospectives/:sprintId"
+              element={<RetrospectiveDetailPage />}
+            />
+          </Route>
+          <Route path="/workspace/create" element={<WorkspaceCreatePage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 
