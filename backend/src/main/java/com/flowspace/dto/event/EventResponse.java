@@ -35,7 +35,7 @@ public record EventResponse(
             event.getColor(),
             event.getStartDatetime(),
             event.getEndDatetime(),
-            event.getCreatedBy().getName(),
+            event.getCreatedBy().getNickname(),
             event.getCreatedAt()
         );
     }

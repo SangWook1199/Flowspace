@@ -4,13 +4,16 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+// @formatter:off
 public record SignupRequest(
 
-        @NotBlank @Email @Size(max = 100) String email,
+        @NotBlank @Email @Size(max = 100) 
+        String email,
 
-        @NotBlank @Size(min = 8, max = 20) String password,
+        @NotBlank @Size(min = 8, max = 20) 
+        String password,
 
-        @NotBlank @Size(max = 30) String name,
-
-        @NotBlank @Size(max = 30) String nickname) {
-}
+        @NotBlank 
+        @Size(max = 30) 
+        String nickname
+) {}

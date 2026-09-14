@@ -1,7 +1,6 @@
 package com.flowspace.service;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -91,7 +90,7 @@ public class RetrospectiveService {
                 }
 
                 participantMap.putIfAbsent(assignee.getOriginalUserId(),
-                    new ParticipantItem(assignee.getOriginalUserId(), assignee.getName(),
+                    new ParticipantItem(assignee.getOriginalUserId(), assignee.getNickname(),
                         assignee.getProfileFile() == null ? null : assignee.getProfileFile().getFileId()));
             }
         }

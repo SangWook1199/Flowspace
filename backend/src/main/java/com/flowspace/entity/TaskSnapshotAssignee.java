@@ -27,8 +27,8 @@ public class TaskSnapshotAssignee {
     @Column(name = "original_user_id")
     private Long originalUserId;
 
-    @Column(name = "name", nullable = false, length = 50)
-    private String name;
+    @Column(name = "nickname", nullable = false, length = 30)
+    private String nickname;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "profile_file_id")

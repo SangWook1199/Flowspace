@@ -2,23 +2,29 @@ package com.flowspace.dto.auth;
 
 import com.flowspace.entity.User;
 
+// @formatter:off
 public record LoginResponse(
-        Long userId,
-        String email,
-        String name,
-        String nickname,
-        String accessToken,
-        String refreshToken) {
+
+    UserResponse user,
+
+    String accessToken,
+    String refreshToken,
+
+    Long workspaceId
+
+) {
+
     public static LoginResponse from(
-            User user,
-            String accessToken,
-            String refreshToken) {
+        User user,
+        String accessToken,
+        String refreshToken,
+        Long workspaceId
+    ) {
         return new LoginResponse(
-                user.getUserId(),
-                user.getEmail(),
-                user.getName(),
-                user.getNickname(),
-                accessToken,
-                refreshToken);
+            UserResponse.from(user),
+            accessToken,
+            refreshToken,
+            workspaceId
+        );
     }
 }

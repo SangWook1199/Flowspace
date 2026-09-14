@@ -25,10 +25,7 @@ public class User extends BaseEntity {
     @Column(name = "password", length = 255)
     private String password;
 
-    @Column(name = "name", nullable = false, length = 30)
-    private String name;
-
-    @Column(name = "nickname", unique = true, length = 30)
+    @Column(name = "nickname", nullable = false, length = 30)
     private String nickname;
 
     @Enumerated(EnumType.STRING)
@@ -58,5 +55,21 @@ public class User extends BaseEntity {
     // 마지막 워크스페이스 변경
     public void updateLastWorkspace(Workspace workspace) {
         this.lastWorkspace = workspace;
+    }
+
+    // 프로필 이미지 수정
+    public void updateProfileImage(File profileFile) {
+        this.profileFile = profileFile;
+    }
+
+    // 프로필 수정
+    public void updateProfile(String nickname, File profileFile) {
+        this.nickname = nickname;
+        this.profileFile = profileFile;
+    }
+
+    // 프로필 이미지 삭제
+    public void removeProfileImage() {
+        this.profileFile = null;
     }
 }

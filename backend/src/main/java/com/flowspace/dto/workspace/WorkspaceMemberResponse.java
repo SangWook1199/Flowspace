@@ -19,7 +19,7 @@ public record WorkspaceMemberResponse(
     public static WorkspaceMemberResponse from(WorkspaceMember member) {
         return new WorkspaceMemberResponse(
             member.getUser().getUserId(),
-            member.getUser().getName(),
+            member.getUser().getNickname(),
             member.getUser().getNickname(),
             member.getUser().getProfileFile() == null
                 ? null

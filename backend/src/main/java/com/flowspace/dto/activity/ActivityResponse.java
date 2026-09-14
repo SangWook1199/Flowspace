@@ -29,7 +29,7 @@ public record ActivityResponse(
             activity.getActivityId(),
 
             activity.getUser().getUserId(),
-            activity.getUser().getName(),
+            activity.getUser().getNickname(),
             activity.getUser().getProfileFile() == null
                 ? null
                 : activity.getUser().getProfileFile().getFileId(),

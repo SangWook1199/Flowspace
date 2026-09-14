@@ -30,7 +30,7 @@ public record CommentResponse(
             comment.getCommentId(),
             comment.getParentComment() == null ? null : comment.getParentComment().getCommentId(),
             comment.getUser().getUserId(),
-            comment.getUser().getName(),
+            comment.getUser().getNickname(),
             comment.getUser().getProfileFile() == null
                 ? null
                 : comment.getUser().getProfileFile().getFileId(),

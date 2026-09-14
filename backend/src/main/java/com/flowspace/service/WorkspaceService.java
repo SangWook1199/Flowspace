@@ -8,6 +8,7 @@ import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.repository.*;
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,7 +42,35 @@ public class WorkspaceService {
 
                 workspaceMemberRepository.save(member);
 
-                // 기본 Task 상태 생성
+                // 공통 메서드 호출
+                createDefaultStatuses(workspace);
+
+                user.updateLastWorkspace(workspace);
+
+                return WorkspaceResponse.from(workspace, WorkspaceRole.OWNER);
+        }
+
+        // 개인 워크스페이스 생성 (회원가입 전용)
+        public Workspace createPersonalWorkspace(User user) {
+
+                Workspace workspace = Workspace.builder().owner(user).name(user.getNickname() + "의 워크스페이스")
+                        .initials(user.getNickname().substring(0, 1)).color(WorkspaceColor.BLUE).build();
+
+                workspaceRepository.save(workspace);
+
+                workspaceMemberRepository.save(
+                        WorkspaceMember.builder().workspace(workspace).user(user).role(WorkspaceRole.OWNER).build());
+
+                createDefaultStatuses(workspace);
+
+                user.updateLastWorkspace(workspace);
+
+                return workspace;
+        }
+
+        // 기본 Task 상태 생성
+        private void createDefaultStatuses(Workspace workspace) {
+
                 TaskStatus todo = taskStatusRepository.findById(1L)
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
 
@@ -52,18 +81,15 @@ public class WorkspaceService {
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
 
                 workspaceTaskStatusRepository.saveAll(List.of(
+
                         WorkspaceTaskStatus.builder().id(new WorkspaceTaskStatusId(workspace.getWorkspaceId(), 1L))
-                                .workspace(workspace).taskStatus(todo).position(0).build(),
+                                .workspace(workspace).taskStatus(todo).position(0).isDefault(true).build(),
 
                         WorkspaceTaskStatus.builder().id(new WorkspaceTaskStatusId(workspace.getWorkspaceId(), 2L))
-                                .workspace(workspace).taskStatus(inProgress).position(1).build(),
+                                .workspace(workspace).taskStatus(inProgress).position(1).isDefault(true).build(),
 
                         WorkspaceTaskStatus.builder().id(new WorkspaceTaskStatusId(workspace.getWorkspaceId(), 3L))
-                                .workspace(workspace).taskStatus(done).position(2).build()));
-
-                user.updateLastWorkspace(workspace);
-
-                return WorkspaceResponse.from(workspace, WorkspaceRole.OWNER);
+                                .workspace(workspace).taskStatus(done).position(2).isDefault(true).build()));
         }
 
         // 내 워크스페이스 목록 조회
