@@ -3,6 +3,7 @@ package com.flowspace.controller;
 import com.flowspace.dto.auth.GoogleLoginRequest;
 import com.flowspace.dto.auth.LoginRequest;
 import com.flowspace.dto.auth.LoginResponse;
+import com.flowspace.dto.auth.MicrosoftLoginRequest;
 import com.flowspace.dto.auth.ProfileUpdateRequest;
 import com.flowspace.dto.auth.SignupRequest;
 import com.flowspace.dto.auth.UserResponse;
@@ -79,5 +80,12 @@ public class AuthController {
     @PostMapping("/google")
     public LoginResponse googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
         return authService.googleLogin(request);
+    }
+
+    // Microsoft 로그인
+    @Operation(summary = "Microsoft 로그인")
+    @PostMapping("/microsoft")
+    public LoginResponse microsoftLogin(@Valid @RequestBody MicrosoftLoginRequest request) {
+        return authService.microsoftLogin(request);
     }
 }

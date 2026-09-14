@@ -4,6 +4,8 @@ import com.flowspace.dto.auth.GoogleLoginRequest;
 import com.flowspace.dto.auth.GoogleUserInfo;
 import com.flowspace.dto.auth.LoginRequest;
 import com.flowspace.dto.auth.LoginResponse;
+import com.flowspace.dto.auth.MicrosoftLoginRequest;
+import com.flowspace.dto.auth.MicrosoftUserInfo;
 import com.flowspace.dto.auth.ProfileUpdateRequest;
 import com.flowspace.dto.auth.SignupRequest;
 import com.flowspace.dto.auth.UserResponse;
@@ -19,8 +21,17 @@ import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.repository.RefreshTokenRepository;
 import com.flowspace.repository.UserRepository;
 import com.flowspace.security.JwtProvider;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.gson.GsonFactory;
+
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -29,6 +40,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 
 @Service
 @RequiredArgsConstructor
@@ -41,7 +53,11 @@ public class AuthService {
     private final JwtProvider jwtProvider;
     private final WorkspaceService workspaceService;
     private final FileService fileService;
-    private final GoogleOAuthService googleOAuthService;
+
+    @Value("${google.client-id}")
+    private String googleClientId;
+    @Value("${microsoft.client-id}")
+    private String microsoftClientId;
 
     // 회원가입
     @Transactional
@@ -172,7 +188,7 @@ public class AuthService {
     // Google 로그인
     public LoginResponse googleLogin(GoogleLoginRequest request) {
 
-        GoogleUserInfo googleUser = googleOAuthService.verify(request.idToken());
+        GoogleUserInfo googleUser = verifyGoogleToken(request.idToken());
 
         User user = userRepository.findByProviderAndProviderId(Provider.GOOGLE, googleUser.providerId())
             .orElseGet(() -> createGoogleUser(googleUser));
@@ -218,11 +234,119 @@ public class AuthService {
                 return;
             }
 
-            File profile = fileService.uploadGoogleProfile(response.getBody(), workspace, user);
+            File profile = fileService.uploadProfileImage(response.getBody(), workspace, user);
 
             user.updateProfileImage(profile);
 
         } catch (Exception ignored) {
+        }
+    }
+
+    // Google ID Token 검증
+    private GoogleUserInfo verifyGoogleToken(String idToken) {
+
+        try {
+
+            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(),
+                GsonFactory.getDefaultInstance()).setAudience(Collections.singletonList(googleClientId)).build();
+
+            GoogleIdToken token = verifier.verify(idToken);
+
+            if (token == null) {
+                throw new FlowSpaceException(ErrorCode.INVALID_LOGIN);
+            }
+
+            GoogleIdToken.Payload payload = token.getPayload();
+
+            return new GoogleUserInfo(payload.getSubject(), payload.getEmail(), (String) payload.get("name"),
+                (String) payload.get("picture"));
+
+        } catch (Exception e) {
+            throw new FlowSpaceException(ErrorCode.INVALID_LOGIN);
+        }
+    }
+
+    // Microsoft 로그인
+    public LoginResponse microsoftLogin(MicrosoftLoginRequest request) {
+
+        MicrosoftUserInfo microsoftUser = verifyMicrosoftToken(request.idToken());
+
+        User user = userRepository.findByProviderAndProviderId(Provider.MICROSOFT, microsoftUser.providerId())
+            .orElseGet(() -> createMicrosoftUser(microsoftUser, request.accessToken()));
+
+        String accessToken = jwtProvider.createAccessToken(user);
+        String refreshToken = jwtProvider.createRefreshToken(user);
+
+        refreshTokenRepository.deleteByUser(user);
+
+        refreshTokenRepository.save(
+            RefreshToken.builder().user(user).token(refreshToken).expiredAt(LocalDateTime.now().plusDays(14)).build());
+
+        return LoginResponse.from(user, accessToken, refreshToken, user.getLastWorkspace().getWorkspaceId());
+    }
+
+    // Microsoft 회원 생성
+    private User createMicrosoftUser(MicrosoftUserInfo microsoftUser, String accessToken) {
+
+        User user = User.builder().email(microsoftUser.email()).password(null).nickname(microsoftUser.nickname())
+            .provider(Provider.MICROSOFT).providerId(microsoftUser.providerId()).build();
+
+        userRepository.save(user);
+
+        Workspace workspace = workspaceService.createPersonalWorkspace(user);
+
+        uploadMicrosoftProfile(user, workspace, accessToken);
+
+        return user;
+    }
+
+    // Microsoft 프로필 저장
+    private void uploadMicrosoftProfile(User user, Workspace workspace, String accessToken) {
+
+        try {
+
+            RestTemplate restTemplate = new RestTemplate();
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(accessToken);
+
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<byte[]> response = restTemplate.exchange("https://graph.microsoft.com/v1.0/me/photo/$value",
+                HttpMethod.GET, entity, byte[].class);
+
+            if (response.getBody() == null) {
+                return;
+            }
+
+            File profile = fileService.uploadProfileImage(response.getBody(), workspace, user);
+
+            user.updateProfileImage(profile);
+
+        } catch (Exception ignored) {
+        }
+    }
+
+    // Microsoft ID Token 검증
+    private MicrosoftUserInfo verifyMicrosoftToken(String idToken) {
+
+        try {
+
+            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(),
+                GsonFactory.getDefaultInstance()).setAudience(Collections.singletonList(microsoftClientId)).build();
+
+            GoogleIdToken token = verifier.verify(idToken);
+
+            if (token == null) {
+                throw new FlowSpaceException(ErrorCode.INVALID_LOGIN);
+            }
+
+            GoogleIdToken.Payload payload = token.getPayload();
+
+            return new MicrosoftUserInfo(payload.getSubject(), payload.getEmail(), (String) payload.get("name"));
+
+        } catch (Exception e) {
+            throw new FlowSpaceException(ErrorCode.INVALID_LOGIN);
         }
     }
 }

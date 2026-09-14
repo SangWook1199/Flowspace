@@ -32,11 +32,11 @@ import lombok.RequiredArgsConstructor;
 @Transactional
 public class FileService {
 
-    @Value("${file.upload-dir}")
-    private String uploadDir;
-
     private final FileRepository fileRepository;
     private final UserRepository userRepository;
+
+    @Value("${file.upload-dir}")
+    private String uploadDir;
 
     // 파일 업로드
     public File upload(MultipartFile multipartFile, Workspace workspace, String email) {
@@ -136,8 +136,8 @@ public class FileService {
         }
     }
 
-    // Google 프로필 이미지 저장
-    public File uploadGoogleProfile(byte[] imageBytes, Workspace workspace, User user) {
+    // 프로필 이미지 저장
+    public File uploadProfileImage(byte[] imageBytes, Workspace workspace, User user) {
 
         try {
 
@@ -149,7 +149,7 @@ public class FileService {
             Path target = directory.resolve(storedName);
             Files.write(target, imageBytes);
 
-            File file = File.builder().workspace(workspace).uploadedBy(user).originalName("google-profile.jpg")
+            File file = File.builder().workspace(workspace).uploadedBy(user).originalName("profile.jpg")
                 .storedName(storedName).mimeType("image/jpeg").size((long) imageBytes.length).width(null).height(null)
                 .fileUrl("/uploads/" + storedName).build();
 
