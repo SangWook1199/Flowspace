@@ -56,17 +56,65 @@ export const sprints = [
     icon: "Hourglass",
   },
 ];
+
+export const backlog = {
+  id: "backlog",
+  name: "백로그",
+  taskCount: 12,
+  description: "아직 스프린트에 배정되지 않은 작업",
+  color: "slate",
+};
+
 export const sprintSummary = [
   { label: "진행 중", value: 1, tone: "indigo" },
   { label: "계획됨", value: 2, tone: "sky" },
-  { label: "완료", value: 12, tone: "green" },
+  { label: "완료", value: 1, tone: "green" },
+];
+export const backlogSprint = {
+  id: "backlog",
+  name: "백로그",
+  status: "BACKLOG", // 이 값이 핵심
+  goal: "아직 스프린트에 배정되지 않은 작업",
+  startDate: "",
+  endDate: "",
+  remaining: "스프린트 미배정",
+  progress: 0,
+  total: 12,
+  completed: 0,
+  color: "gray",
+  icon: "Archive",
+};
+
+export const backlogTasks = [
+  {
+    id: 101,
+    title: "회원 탈퇴 API",
+    priority: "HIGH",
+    status: "TODO",
+    assignees: ["상", "민"],
+    start: "2026.09.01",
+    end: "2026.09.02",
+    complete: 0,
+    total: 2,
+  },
+  {
+    id: 102,
+    title: "프로젝트 초대 기능",
+    priority: "MEDIUM",
+    status: "DONE",
+    assignees: ["서"],
+    start: "2026.09.03",
+    end: "2026.09.04",
+    complete: 1,
+    total: 1,
+  },
 ];
 
 export const sprintTasks = [
   {
     id: 1,
     title: "JWT 로그인 API 구현",
-    assignee: "상욱",
+    assignees: ["상", "욱"],
     priority: "높음",
     start: "2026.09.01",
     end: "2026.09.02",
@@ -78,7 +126,7 @@ export const sprintTasks = [
   {
     id: 2,
     title: "블록 드래그 기능",
-    assignee: "민수",
+    assignees: ["민", "수"],
     priority: "보통",
     start: "2026.09.03",
     end: "2026.09.05",
@@ -89,7 +137,7 @@ export const sprintTasks = [
   {
     id: 3,
     title: "Sprint UI 디자인",
-    assignee: "서연",
+    assignees: ["서", "연"],
     priority: "보통",
     start: "2026.09.02",
     end: "2026.09.06",
@@ -100,7 +148,7 @@ export const sprintTasks = [
   {
     id: 4,
     title: "파일 업로드 테스트",
-    assignee: "지민",
+    assignees: ["지", "민"],
     priority: "낮음",
     start: "2026.09.08",
     end: "2026.09.09",
@@ -111,7 +159,7 @@ export const sprintTasks = [
   {
     id: 5,
     title: "OAuth 연동",
-    assignee: "상욱",
+    assignees: ["상", "욱"],
     priority: "높음",
     start: "2026.09.10",
     end: "2026.09.12",

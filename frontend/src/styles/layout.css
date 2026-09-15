@@ -69,13 +69,18 @@
   margin-bottom: 25px;
 }
 .workspaceIcon {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  background: #e6ebf4;
-  display: grid;
-  place-items: center;
-  font-size: 17px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff; /* 핵심 */
+  flex-shrink: 0;
 }
 .workspace span:nth-child(2) {
   display: grid;
@@ -258,4 +263,104 @@
   display: grid;
   place-items: center;
   border: 3px solid #eef1f6;
+}
+/* =====================================================
+   Workspace Dropdown
+===================================================== */
+
+.workspaceSwitcher {
+  position: relative;
+  margin-bottom: 24px;
+}
+
+.workspaceDropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 100%;
+  background: #fff;
+  border: 1px solid #e6ebf4;
+  border-radius: 14px;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.12);
+  padding: 10px;
+  z-index: 999;
+}
+
+.workspaceDropdown p {
+  margin: 2px 8px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.workspaceItem {
+  width: 100%;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 8px;
+  cursor: pointer;
+}
+
+.workspaceItem:hover {
+  background: #f8fafc;
+}
+
+.workspaceAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.workspaceName {
+  flex: 1;
+  text-align: left;
+  font-size: 14px;
+  color: #1e293b;
+}
+
+.workspaceCheck {
+  color: #4f46e5;
+}
+
+.workspaceDivider {
+  height: 1px;
+  background: #eef2f7;
+  margin: 8px 0;
+}
+
+.workspaceCreate {
+  width: 100%;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 8px;
+  color: #4f46e5;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.workspaceCreate:hover {
+  background: #eef2ff;
+}
+
+.rotate {
+  transform: rotate(180deg);
+  transition: transform 0.2s;
 }

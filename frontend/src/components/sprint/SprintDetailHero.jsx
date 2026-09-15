@@ -1,30 +1,66 @@
-import { CalendarDays, Ellipsis, Flag } from "lucide-react";
+import { CalendarDays, Ellipsis, Flag, Archive } from "lucide-react";
 import SprintProgress from "./SprintProgress";
+
+const STATUS_LABEL = {
+  PLANNING: "계획됨",
+  ACTIVE: "진행 중",
+  COMPLETED: "완료",
+};
+
 export default function SprintDetailHero({ sprint }) {
+  const isBacklog = sprint.status === "BACKLOG";
+
   return (
     <section className="detailHero">
-      <div className="detailIcon">
-        <Flag size={36} />
+      <div className={`detailIcon ${isBacklog ? "gray" : sprint.color}`}>
+        {isBacklog ? <Archive size={36} /> : <Flag size={36} />}
       </div>
+
       <div className="detailTitle">
         <h1>
-          {sprint.name} <span>계획됨</span>
+          {sprint.name}
+          {!isBacklog && <span>{STATUS_LABEL[sprint.status]}</span>}
         </h1>
+
         <p>{sprint.goal}</p>
+
         <small>
-          <CalendarDays size={15} /> 2026.09.01 (화) ~ 2026.09.14 (월)　·　14일
-          남음
+          <CalendarDays size={15} />
+          {isBacklog
+            ? "스프린트 미배정"
+            : `${sprint.startDate} ~ ${sprint.endDate} · ${sprint.remaining}`}
         </small>
       </div>
+
       <div className="detailProgress">
         <div>
           <button>
             <Ellipsis size={20} />
           </button>
-          <button>스프린트 편집</button>
+          <button>{isBacklog ? "백로그 편집" : "스프린트 편집"}</button>
         </div>
-        <SprintProgress progress={0} color="indigo" />
-        <b>0 / 15 완료</b>
+
+        {isBacklog ? (
+          <>
+            <div className="backlogSummary">
+              <small>미배정 작업</small>
+              <h2>{sprint.total}개</h2>
+            </div>
+
+            <div className="backlogBar">
+              <div />
+            </div>
+
+            <b>모든 작업이 아직 Sprint에 배정되지 않았습니다.</b>
+          </>
+        ) : (
+          <>
+            <SprintProgress progress={sprint.progress} color={sprint.color} />
+            <b>
+              {sprint.completed} / {sprint.total} 완료
+            </b>
+          </>
+        )}
       </div>
     </section>
   );
