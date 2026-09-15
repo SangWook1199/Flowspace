@@ -1,9 +1,9 @@
 import { ArrowRight } from "lucide-react";
-import styles from "../../styles/classes.js";
+import styles from "../../styles/classes";
 
 export default function ActivityCard({ activities }) {
   return (
-    <section className={`${styles.panel} ${styles.activity}`}>
+    <section className={styles.panel}>
       <div className={styles.panelHeader}>
         <h2>최근 활동</h2>
 
@@ -13,18 +13,20 @@ export default function ActivityCard({ activities }) {
         </button>
       </div>
 
-      {activities.map(([initial, text, time, tone], index) => (
-        <div className={styles.activityRow} key={index}>
-          <span className={`${styles.avatar} ${styles[tone]}`}>
-            {initial}
-          </span>
+      <div className={styles.activityList}>
+        {activities.map((item) => (
+          <div key={item.id} className={styles.activityItem}>
+            <div className={`${styles.avatar} ${styles[item.color]}`}>
+              {item.initial}
+            </div>
 
-          <div>
-            <p>{text}</p>
-            <small>{time}</small>
+            <div className={styles.activityContent}>
+              <p>{item.text}</p>
+              <span>{item.time}</span>
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </section>
   );
 }
