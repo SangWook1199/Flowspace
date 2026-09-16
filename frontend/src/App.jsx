@@ -4,7 +4,7 @@ import SprintCreate from "./pages/SprintCreate";
 import SprintList from "./pages/SprintList";
 import SprintDetail from "./pages/SprintDetail";
 import SprintTasks from "./pages/SprintTasks";
-import KanbanBoard from "./pages/KanbanBoard";
+import Kanban from "./pages/Kanban";
 import Calendar from "./pages/Calendar";
 import RetrospectiveList from "./pages/RetrospectiveList";
 import RetrospectiveDetailPage from "./pages/RetrospectiveDetailPage";
@@ -26,7 +26,7 @@ function App() {
             <Route path="sprints/:sprintId" element={<SprintDetail />} />
             <Route path="sprints/:sprintId/tasks" element={<SprintTasks />} />
             <Route path="sprints/new" element={<SprintCreate />} />
-            <Route path="kanban" element={<KanbanBoard />} />
+            <Route path="kanban" element={<Kanban />} />
             <Route path="calendar" element={<Calendar />} />
             <Route path="/retrospectives" element={<RetrospectiveList />} />
             <Route

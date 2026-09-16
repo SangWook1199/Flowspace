@@ -1,81 +1,74 @@
 import { useState } from "react";
-import SubtaskList from "./SubtaskList";
+import {
+  CalendarDays,
+  ChevronDown,
+  ChevronRight,
+  MoreHorizontal,
+} from "lucide-react";
+
+import SubTaskList from "./SubTaskList";
+
+const priorityLabel = {
+  HIGH: "높음",
+  MEDIUM: "보통",
+  LOW: "낮음",
+};
 
 export default function TaskCard({ task }) {
-  const [expanded, setExpanded] = useState(false);
+  const [open, setOpen] = useState(false);
 
-  const completed = task.subtasks.filter((item) => item.done).length;
-  const total = task.subtasks.length;
-  const progress = total === 0 ? 0 : (completed / total) * 100;
-
-  const priorityClass = {
-    HIGH: "high",
-    MEDIUM: "medium",
-    LOW: "low",
-  }[task.priority];
-
-  const priorityLabel = {
-    HIGH: "높음",
-    MEDIUM: "보통",
-    LOW: "낮음",
-  }[task.priority];
+  const percent = (task.complete / task.total) * 100;
 
   return (
-    <article className="task-card">
-      <div className="task-card__top">
-        <span className="task-id">{task.id}</span>
+    <article className="kanbanCard">
+      <div className="cardTop">
+        <small className="cardKey">{task.code}</small>
 
-        <button className="task-more">⋯</button>
+        <button className="cardMenu">
+          <MoreHorizontal size={16} />
+        </button>
       </div>
 
-      <h4 className="task-title">{task.title}</h4>
+      <h4 className="cardTitle">{task.title}</h4>
 
-      {/* ---------- Task Info ---------- */}
-      <div className="task-info">
-        {/* 1줄 : 담당자 + 우선순위 */}
-        <div className="task-info__top">
-          <div className="task-user-group">
-            <div className="task-user">
-              <div className="avatar">{task.assignee.avatar}</div>
-              <span>{task.assignee.name}</span>
-            </div>
-
-            <span className={`priority ${priorityClass}`}>{priorityLabel}</span>
-          </div>
-        </div>
-
-        {/* 2줄 : 날짜 + 하위 작업 */}
-        <div className="task-info__bottom">
-          <span className="task-date">
-            {task.startDate} ~ {task.endDate}
-          </span>
-
-          <button
-            className="subtask-summary"
-            onClick={() => setExpanded(!expanded)}
-          >
-            <span>
-              {completed} / {total}
+      <div className="cardMeta">
+        <div className="cardMembers">
+          {task.assignees.map((user) => (
+            <span key={user.id} className="cardAvatar" title={user.name}>
+              {user.initial}
             </span>
-            <span className={`arrow ${expanded ? "open" : ""}`}>▼</span>
-          </button>
+          ))}
+        </div>
+
+        <span className={`priority ${task.priority.toLowerCase()}`}>
+          {priorityLabel[task.priority]}
+        </span>
+      </div>
+
+      <div className="cardDate">
+        <CalendarDays size={13} />
+        {task.start} ~ {task.end}
+      </div>
+
+      <div className="cardProgress">
+        <div>
+          <span>하위 작업</span>
+          <b>
+            {task.complete}/{task.total}
+          </b>
+        </div>
+
+        <div className="progressBar">
+          <div className="progressFill" style={{ width: `${percent}%` }} />
         </div>
       </div>
 
-      {/* 진행 중 / 완료만 진행률 표시 */}
-      {(task.status === "DOING" || task.status === "DONE") && (
-        <div className="task-progress">
-          <div
-            className={`task-progress__fill ${
-              task.status === "DONE" ? "done" : "doing"
-            }`}
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      )}
+      <button className="subtaskToggle" onClick={() => setOpen(!open)}>
+        {open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+        하위 작업 {task.subtasks?.length ?? 0}개
+      </button>
 
-      {/* 하위 작업 펼치기 */}
-      {expanded && <SubtaskList subtasks={task.subtasks} />}
+      {open && <SubTaskList subtasks={task.subtasks ?? []} />}
     </article>
   );
 }
