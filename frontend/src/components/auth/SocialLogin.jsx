@@ -1,12 +1,12 @@
 import googleIcon from "../../assets/login/google-icon.png";
-import kakaoIcon from "../../assets/login/kakao-icon.png";
+import microsoftIcon from "../../assets/login/microsoft-icon.png";
 
 export default function SocialLogin() {
   const handleGoogleLogin = () => {
     // TODO : Google OAuth API
   };
 
-  const handleKakaoLogin = () => {
+  const handleMicrosoftLogin = () => {
     // TODO : Kakao OAuth API
   };
 
@@ -28,11 +28,11 @@ export default function SocialLogin() {
 
         <button
           type="button"
-          className="social-button kakao"
-          onClick={handleKakaoLogin}
+          className="social-button microsoft"
+          onClick={handleMicrosoftLogin}
         >
-          <img src={kakaoIcon} alt="Kakao" />
-          Kakao
+          <img src={microsoftIcon} alt="Microsoft" />
+          Microsoft
         </button>
       </div>
     </div>

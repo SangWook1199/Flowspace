@@ -13,6 +13,7 @@ export default function WorkspaceSwitcher({
   return (
     <div className="workspace-switcher">
       <button
+        type="button"
         className="workspace-switcher__button"
         onClick={() => setOpen(!open)}
       >
@@ -28,20 +29,16 @@ export default function WorkspaceSwitcher({
           <span>워크스페이스</span>
         </div>
 
-        <ChevronDown
-          size={18}
-          className={open ? "rotate" : ""}
-        />
+        <ChevronDown size={18} className={open ? "rotate" : ""} />
       </button>
 
       {open && (
         <div className="workspace-dropdown">
-          <span className="workspace-dropdown__title">
-            내 워크스페이스
-          </span>
+          <p className="workspace-dropdown__title">내 워크스페이스</p>
 
           {workspaces.map((workspace) => (
             <button
+              type="button"
               key={workspace.id}
               className="workspace-item"
               onClick={() => {
@@ -67,11 +64,11 @@ export default function WorkspaceSwitcher({
           <div className="workspace-divider" />
 
           <button
+            type="button"
             className="workspace-create"
             onClick={() => navigate("/workspace/create")}
           >
-            <PlusCircle size={18} />
-            새 워크스페이스 만들기
+            <PlusCircle size={18} />새 워크스페이스 만들기
           </button>
         </div>
       )}

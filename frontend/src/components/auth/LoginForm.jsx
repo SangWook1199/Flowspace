@@ -11,6 +11,7 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const isValid = email.trim() !== "" && password.trim() !== "";
 
   const handleLogin = () => {
     // TODO : Spring Login API
@@ -67,13 +68,15 @@ export default function LoginForm() {
           로그인 상태 유지
         </label>
 
-        <button type="button">비밀번호 찾기</button>
+        <button type="button" className="forgot-password">
+          비밀번호 찾기
+        </button>
       </div>
 
       <button
         className="login-button"
         onClick={handleLogin}
-        disabled={!email || !password}
+        disabled={!isValid}
       >
         로그인
       </button>

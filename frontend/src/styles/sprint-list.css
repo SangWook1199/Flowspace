@@ -187,10 +187,9 @@
   border-radius: 13px;
   background: #fff;
   display: grid;
-  grid-template-columns: minmax(285px, 1.45fr) minmax(155px, 0.75fr) minmax(
-      260px,
-      1fr
-    ) 76px;
+  grid-template-columns:
+    minmax(285px, 1.45fr) minmax(155px, 0.75fr) minmax(260px, 1fr)
+    76px;
   align-items: center;
   gap: 20px;
   padding: 16px 17px;
@@ -320,6 +319,73 @@
   text-align: center;
   color: #718099;
 }
+/* =====================================================
+   Backlog Card
+===================================================== */
+
+.backlogCard {
+  border: 1px solid #d8ddff;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #f5f7ff 0%, #eef2ff 100%);
+  padding: 14px 18px;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+.backlogCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(79, 92, 246, 0.12);
+}
+
+.backlogTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.backlogIcon {
+  width: 42px;
+  height: 44px;
+  border-radius: 12px;
+  background: #4f5cf6;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.backlogCount {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #fff;
+  color: #4f5cf6;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.backlogCard h3 {
+  margin: 0;
+  font-size: 20px;
+  color: #111827;
+}
+
+.backlogCard p {
+  margin: 6px 0 12px;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.backlogBottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 @media (max-width: 1150px) {
   .sprintCard {
     grid-template-columns: 1.3fr 0.7fr 1fr;

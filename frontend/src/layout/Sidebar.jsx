@@ -70,11 +70,13 @@ export default function Sidebar({ navigation, pages, members }) {
         >
           <span
             className={styles.workspaceIcon}
-            style={{ background: currentWorkspace.color }}
+            style={{
+              background: currentWorkspace.color,
+              color: "#fff", // 추가
+            }}
           >
             {currentWorkspace.initials}
           </span>
-
           <span>
             <b>{currentWorkspace.name}</b>
             <small>워크스페이스</small>

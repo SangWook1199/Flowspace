@@ -1,32 +1,43 @@
-import { ArrowRight, Video } from "lucide-react";
-import styles from "../../styles/classes.js";
+import { ArrowLeft, ArrowRight } from "lucide-react";
+import styles from "../../styles/classes";
 
 export default function CalendarCard({ events }) {
   return (
-    <section className={`${styles.panel} ${styles.calendarCard}`}>
+    <section className={styles.panel}>
       <div className={styles.panelHeader}>
-        <div>
-          <h2>캘린더</h2>
-          <b>9월 5일 (금)</b>
-        </div>
+        <h2>오늘의 일정</h2>
 
-        <button className={styles.more}>
-          전체 보기
-          <ArrowRight size={15} />
+        <button className={styles.more}>전체 보기</button>
+      </div>
+
+      {/* 날짜 */}
+      <div className={styles.calendarDate}>
+        <button>
+          <ArrowLeft size={16} />
+        </button>
+
+        <span>2025.05.28 (수)</span>
+
+        <button>
+          <ArrowRight size={16} />
         </button>
       </div>
 
-      {events.map(([time, title, tone]) => (
-        <div className={styles.event} key={title}>
-          <i className={styles[tone]} />
-          <time>{time}</time>
+      {/* 타임라인 */}
+      <div className={styles.timeline}>
+        {events.map((event) => (
+          <div key={event.time} className={styles.timelineRow}>
+            <time>{event.time}</time>
 
-          <span>
-            <Video size={13} />
-            {title}
-          </span>
-        </div>
-      ))}
+            <div className={`${styles.timelineBar} ${styles[event.color]}`} />
+
+            <div className={styles.timelineCard}>
+              <h4>{event.title}</h4>
+              <p>{event.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
