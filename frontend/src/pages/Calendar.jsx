@@ -1,145 +1,295 @@
 import { useMemo, useState } from "react";
+import { Plus } from "lucide-react";
+
 import CalendarToolbar from "../components/calendar/CalendarToolbar";
-import SprintTimeline from "../components/calendar/SprintTimeline";
+import CalendarSprintBanner from "../components/calendar/CalendarSprintBanner";
 import CalendarGrid from "../components/calendar/CalendarGrid";
-import CalendarSidebar from "../components/calendar/CalendarSidebar";
-import "../styles/calendar.css";
+import DaySidebar from "../components/calendar/DaySidebar";
 
-/* ---------- Mock Data ---------- */
+import {
+  calendarSprints,
+  calendarTasks,
+  calendarEvents,
+} from "../mock/calendar";
 
-const sprint = {
-  id: 1,
-  name: "Sprint 1",
-  start: "2026-09-01",
-  end: "2026-09-14",
-  progress: 72,
-  dday: 5,
-};
-
-const events = [
-  {
-    id: 1,
-    type: "task",
-    title: "JWT 로그인 API 구현",
-    start: "2026-09-09",
-    end: "2026-09-11",
-    color: "blue",
-    assignee: "상욱",
-    status: "진행중",
-  },
-  {
-    id: 2,
-    type: "task",
-    title: "Sprint UI 디자인",
-    start: "2026-09-09",
-    end: "2026-09-18",
-    color: "yellow",
-    assignee: "서연",
-    status: "예정",
-  },
-  {
-    id: 3,
-    type: "task",
-    title: "대시보드 퍼블리싱",
-    start: "2026-09-09",
-    end: "2026-09-16",
-    color: "green",
-    assignee: "지민",
-    status: "진행중",
-  },
-  {
-    id: 4,
-    type: "meeting",
-    title: "주간 스크럼",
-    start: "2026-09-08",
-    end: "2026-09-08",
-    time: "09:30",
-    color: "purple",
-  },
-  {
-    id: 5,
-    type: "meeting",
-    title: "OAuth 연동 회의",
-    start: "2026-09-04",
-    end: "2026-09-04",
-    time: "10:00",
-    color: "purple",
-  },
-  {
-    id: 6,
-    type: "milestone",
-    title: "중간 발표",
-    start: "2026-09-12",
-    end: "2026-09-12",
-    time: "14:00",
-    color: "pink",
-  },
+const EVENT_COLORS = [
+  "BLUE",
+  "PURPLE",
+  "GREEN",
+  "RED",
+  "ORANGE",
+  "PINK",
+  "GRAY",
 ];
 
-/* ---------- Calendar Page ---------- */
-
 export default function Calendar() {
-  const today = new Date();
+  const TODAY = new Date();
 
+  const [selectedSprint, setSelectedSprint] = useState(1);
+  const [selectedDate, setSelectedDate] = useState(formatDate(TODAY));
   const [currentMonth, setCurrentMonth] = useState(
-    new Date(today.getFullYear(), today.getMonth(), 1),
+    new Date(TODAY.getFullYear(), TODAY.getMonth(), 1),
   );
 
-  const [selectedDate, setSelectedDate] = useState(today);
+  const [events, setEvents] = useState(calendarEvents);
+  const [openModal, setOpenModal] = useState(false);
 
-  const monthLabel = useMemo(
-    () => `${currentMonth.getFullYear()}년 ${currentMonth.getMonth() + 1}월`,
-    [currentMonth],
+  const [newEvent, setNewEvent] = useState({
+    title: "",
+    description: "",
+    start_datetime: `${formatDate(TODAY)}T09:00`,
+    end_datetime: `${formatDate(TODAY)}T10:00`,
+    color: "PURPLE",
+  });
+
+  const sprint = useMemo(
+    () => calendarSprints.find((s) => s.id === selectedSprint),
+    [selectedSprint],
   );
 
-  /* ---------- Month Navigation ---------- */
+  const sprintTasks = useMemo(
+    () => calendarTasks.filter((t) => t.sprintId === selectedSprint),
+    [selectedSprint],
+  );
 
-  const prevMonth = () => {
-    setCurrentMonth(
-      (prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1),
-    );
-  };
+  const todayTasks = useMemo(
+    () =>
+      sprintTasks.filter(
+        (task) => selectedDate >= task.start && selectedDate <= task.end,
+      ),
+    [sprintTasks, selectedDate],
+  );
 
-  const nextMonth = () => {
-    setCurrentMonth(
-      (prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1),
-    );
+  const todayEvents = useMemo(
+    () =>
+      events.filter((event) => {
+        const start = event.start_datetime.slice(0, 10);
+        const end = (event.end_datetime ?? event.start_datetime).slice(0, 10);
+
+        return selectedDate >= start && selectedDate <= end;
+      }),
+    [events, selectedDate],
+  );
+
+  const moveMonth = (diff) => {
+    const next = new Date(currentMonth);
+    next.setMonth(next.getMonth() + diff);
+    setCurrentMonth(next);
   };
 
   const goToday = () => {
-    const today = new Date();
+    setCurrentMonth(new Date(TODAY.getFullYear(), TODAY.getMonth(), 1));
+    setSelectedDate(formatDate(TODAY));
+  };
 
-    setCurrentMonth(new Date(today.getFullYear(), today.getMonth(), 1));
+  const createEvent = () => {
+    if (!newEvent.title.trim()) return;
 
-    setSelectedDate(today);
+    if (
+      newEvent.end_datetime &&
+      newEvent.end_datetime < newEvent.start_datetime
+    ) {
+      alert("종료 일시는 시작 일시보다 늦어야 합니다.");
+      return;
+    }
+
+    setEvents((prev) => [
+      ...prev,
+      {
+        event_id: Date.now(),
+        workspace_id: 1,
+        created_by: 1,
+        title: newEvent.title,
+        description: newEvent.description,
+        color: newEvent.color,
+        start_datetime: newEvent.start_datetime,
+        end_datetime: newEvent.end_datetime || null,
+      },
+    ]);
+
+    setOpenModal(false);
+
+    setNewEvent({
+      title: "",
+      description: "",
+      start_datetime: `${selectedDate}T09:00`,
+      end_datetime: `${selectedDate}T10:00`,
+      color: "PURPLE",
+    });
   };
 
   return (
-    <div className="calendar-page">
+    <div className="calendarPage">
+      <header className="calendarHeader">
+        <div>
+          <h1>캘린더</h1>
+          <p>작업과 일정을 한눈에 확인하고 관리하세요.</p>
+        </div>
+
+        <button
+          className="primaryBtn"
+          onClick={() => {
+            setNewEvent({
+              title: "",
+              description: "",
+              start_datetime: `${selectedDate}T09:00`,
+              end_datetime: `${selectedDate}T10:00`,
+              color: "PURPLE",
+            });
+            setOpenModal(true);
+          }}
+        >
+          <Plus size={16} />
+          일정 추가
+        </button>
+      </header>
+
       <CalendarToolbar
-        monthLabel={monthLabel}
-        onPrev={prevMonth}
-        onNext={nextMonth}
+        sprintList={calendarSprints}
+        selectedSprint={selectedSprint}
+        onSprintChange={setSelectedSprint}
+        currentMonth={currentMonth}
+        onPrevMonth={() => moveMonth(-1)}
+        onNextMonth={() => moveMonth(1)}
         onToday={goToday}
       />
 
-      <SprintTimeline sprint={sprint} />
+      <CalendarSprintBanner sprint={sprint} />
 
-      <div className="calendar-layout">
+      <div className="calendarContent">
         <CalendarGrid
           currentMonth={currentMonth}
+          tasks={sprintTasks}
           events={events}
           selectedDate={selectedDate}
           onSelectDate={setSelectedDate}
-          onChangeMonth={setCurrentMonth}
+          onMonthChange={setCurrentMonth}
         />
 
-        <CalendarSidebar
+        <DaySidebar
+          date={selectedDate}
           sprint={sprint}
-          events={events}
-          selectedDate={selectedDate}
+          tasks={todayTasks}
+          events={todayEvents}
         />
       </div>
+
+      {openModal && (
+        <div className="modalOverlay" onClick={() => setOpenModal(false)}>
+          <div className="scheduleModal" onClick={(e) => e.stopPropagation()}>
+            <div className="scheduleModalHeader">
+              <h2>새 일정</h2>
+
+              <button className="closeBtn" onClick={() => setOpenModal(false)}>
+                ✕
+              </button>
+            </div>
+
+            <div className="scheduleModalBody">
+              <div className="field">
+                <label>일정 제목</label>
+
+                <input
+                  placeholder="예) 팀 회의"
+                  value={newEvent.title}
+                  onChange={(e) =>
+                    setNewEvent({
+                      ...newEvent,
+                      title: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="field">
+                <label>설명</label>
+
+                <textarea
+                  rows={3}
+                  placeholder="회의 내용 또는 메모"
+                  value={newEvent.description}
+                  onChange={(e) =>
+                    setNewEvent({
+                      ...newEvent,
+                      description: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="field">
+                <label>시작 일시</label>
+
+                <input
+                  type="datetime-local"
+                  value={newEvent.start_datetime}
+                  onChange={(e) =>
+                    setNewEvent({
+                      ...newEvent,
+                      start_datetime: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="field">
+                <label>종료 일시</label>
+
+                <input
+                  type="datetime-local"
+                  value={newEvent.end_datetime}
+                  onChange={(e) =>
+                    setNewEvent({
+                      ...newEvent,
+                      end_datetime: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="field">
+                <label>색상</label>
+
+                <div className="colorPicker">
+                  {EVENT_COLORS.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      className={`colorCircle ${color.toLowerCase()} ${
+                        newEvent.color === color ? "active" : ""
+                      }`}
+                      onClick={() =>
+                        setNewEvent({
+                          ...newEvent,
+                          color,
+                        })
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="scheduleModalFooter">
+              <button className="cancelBtn" onClick={() => setOpenModal(false)}>
+                취소
+              </button>
+
+              <button className="saveBtn" onClick={createEvent}>
+                생성
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+function formatDate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+
+  return `${y}-${m}-${d}`;
 }
