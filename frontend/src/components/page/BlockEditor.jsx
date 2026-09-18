@@ -1,0 +1,1027 @@
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Plus,
+  MoreHorizontal,
+  ArrowUp,
+  ArrowDown,
+  ChevronRight,
+  ChevronLeft,
+  Type,
+  Trash2,
+  FileText,
+  Heading1,
+  Heading2,
+  CheckSquare,
+  List,
+  ListOrdered,
+  Quote,
+  Minus,
+  Code2,
+  Image as ImageIcon,
+  Table2,
+  Database as DatabaseIcon,
+  ListChecks,
+  CalendarClock,
+  File as FileIcon,
+  X,
+} from "lucide-react";
+
+import DatabaseBlock from "./DatabaseBlock";
+import SimpleTableBlock from "./SimpleTableBlock";
+import { sprintTaskRows } from "../../mock/sprintTasks";
+import { calendarEvents } from "../../mock/calendar";
+
+// blocks.type ENUM(TEXT/H1/H2/TODO/BULLET/NUMBERED/QUOTE/TASK/EVENT/
+// DATABASE/IMAGE/DIVIDER/CODE) 그대로. 노션에는 없는 TASK/EVENT가 있는
+// 이유는 FlowSpace 페이지가 스프린트 태스크·캘린더 이벤트를 직접 가져와
+// 보여줄 수 있게 하기 위해서예요 — 노션이었다면 이 정보는 페이지 밖의
+// 다른 툴에 있었을 거예요.
+//
+// "하위 페이지"는 이 ENUM에 없어서 새 타입을 만들지 않았어요. 목록엔
+// 슬래시/타입변경 메뉴에서 고를 수 있게 CHILD_PAGE라는 항목을 두지만,
+// 이건 메뉴 전용 키일 뿐 실제로 블록에 저장되는 type은 항상 'TEXT'예요
+// (content가 비어있고 pageId만 채워진 TEXT 블록 — TASK/EVENT가
+// task_id/event_id 컬럼을 쓰듯, 실제 DB라면 이 pageId도 새 컬럼보다는
+// content JSON(예: {"pageId": 4})에 넣으면 스키마 변경 없이 끝나요).
+// aliases: 슬래시 메뉴에서 마우스 없이도 타입을 바로 지정할 수 있게, 자주
+// 쓸 법한 영어/한글 키워드를 모아둔 목록이에요. "/h1", "/제목1"처럼 정확히
+// 치고 Enter를 누르면 필터링된 목록 맨 위 항목이 바로 그 타입으로
+// 적용돼요 — 노션·슬랙 등에서 흔한, 마우스 없이 끝까지 쓸 수 있는 방식.
+const BLOCK_TYPES = [
+  { type: "TEXT", label: "텍스트", icon: FileText, desc: "일반 텍스트로 작성", aliases: ["text", "텍스트", "p", "paragraph"] },
+  { type: "H1", label: "제목 1", icon: Heading1, desc: "큰 섹션 제목", aliases: ["h1", "제목1", "heading1", "title1"] },
+  { type: "H2", label: "제목 2", icon: Heading2, desc: "보통 섹션 제목", aliases: ["h2", "제목2", "heading2", "title2"] },
+  { type: "TODO", label: "할 일", icon: CheckSquare, desc: "체크박스가 있는 할 일", aliases: ["todo", "할일", "체크박스", "checkbox", "check"] },
+  { type: "BULLET", label: "글머리 기호", icon: List, desc: "글머리 기호 목록 만들기", aliases: ["bullet", "글머리", "목록", "list", "ul"] },
+  { type: "NUMBERED", label: "번호 매기기", icon: ListOrdered, desc: "번호가 매겨진 목록", aliases: ["numbered", "번호", "순서", "ol", "number"] },
+  { type: "QUOTE", label: "인용", icon: Quote, desc: "인용구 만들기", aliases: ["quote", "인용", "인용구"] },
+  // "표"와 "데이터베이스"는 노션에서도 서로 다른 블록이라 메뉴도 둘로
+  // 나눴어요 — 표는 컬럼 타입도 없는 그냥 텍스트 그리드(SimpleTableBlock),
+  // 데이터베이스는 속성 타입·SELECT 옵션 색·행=페이지까지 있는 쪽
+  // (DatabaseBlock). DDL엔 blocks.type ENUM에 TABLE이 따로 없어서, 실제
+  // 저장되는 block.type은 둘 다 여전히 'DATABASE'예요 — 하위 페이지가
+  // 메뉴 키(CHILD_PAGE)와 저장 타입(TEXT)이 달랐던 것과 같은 방식으로,
+  // 여기 'TABLE'도 메뉴 전용 키고 block.database.kind 필드로만 둘을
+  // 구분해요(스키마 변경 없음).
+  { type: "TABLE", label: "표", icon: Table2, desc: "간단한 텍스트 표 만들기", aliases: ["table", "표"] },
+  { type: "DATABASE", label: "데이터베이스", icon: DatabaseIcon, desc: "속성 타입이 있는 데이터베이스 만들기", aliases: ["database", "db", "데이터베이스"] },
+  { type: "TASK", label: "태스크 연결", icon: ListChecks, desc: "스프린트 태스크를 가져오기", aliases: ["task", "태스크", "할일연결"] },
+  { type: "EVENT", label: "이벤트 연결", icon: CalendarClock, desc: "캘린더 이벤트를 가져오기", aliases: ["event", "이벤트", "캘린더", "calendar"] },
+  { type: "CHILD_PAGE", label: "하위 페이지", icon: FileIcon, desc: "새 하위 페이지 만들기", aliases: ["page", "페이지", "childpage", "하위페이지", "subpage"] },
+  { type: "DIVIDER", label: "구분선", icon: Minus, desc: "시각적으로 섹션 구분", aliases: ["divider", "구분선", "hr", "line"] },
+  { type: "CODE", label: "코드", icon: Code2, desc: "코드 스니펫 작성", aliases: ["code", "코드"] },
+  { type: "IMAGE", label: "이미지", icon: ImageIcon, desc: "이미지 업로드", aliases: ["image", "이미지", "img", "picture"] },
+];
+
+// 라벨에 있는 공백("제목 1")까지 정확히 안 쳐도(/제목1) 매칭되도록 공백을
+// 지우고 비교해요. exact match(1순위) > startsWith(2순위) > includes(3순위)
+// 순으로 점수를 매겨서, "/h1"을 치면 항상 제목 1이 맨 위로 와요.
+function normalizeQuery(s) {
+  return (s || "").toLowerCase().replace(/\s+/g, "");
+}
+
+function filterBlockTypes(options, query) {
+  const q = normalizeQuery(query);
+  if (!q) return options;
+
+  return options
+    .map((item) => {
+      const candidates = [item.label, item.type, ...(item.aliases || [])].map(normalizeQuery);
+      let score = -1;
+      candidates.forEach((c) => {
+        if (c === q) score = Math.max(score, 3);
+        else if (c.startsWith(q)) score = Math.max(score, 2);
+        else if (c.includes(q)) score = Math.max(score, 1);
+      });
+      return { item, score };
+    })
+    .filter((entry) => entry.score >= 0)
+    .sort((a, b) => b.score - a.score)
+    .map((entry) => entry.item);
+}
+
+const MULTILINE_TYPES = ["TEXT", "CODE", "QUOTE"];
+const LIST_TYPES = ["BULLET", "NUMBERED", "TODO"];
+
+const PRIORITY_CLASS = { 높음: "high", 보통: "medium", 낮음: "low" };
+const EVENT_COLOR_CLASS = {
+  RED: "red",
+  ORANGE: "orange",
+  GREEN: "green",
+  BLUE: "blue",
+  PURPLE: "purple",
+};
+
+export default function BlockEditor({
+  blocks: initialBlocks,
+  onChange,
+  pages = [],
+  onCreateChildPage,
+  onRenameRowPage,
+  onDeleteRowPage,
+}) {
+  // pages/{pageId}/blocks API로 교체 예정. onChange가 있으면 상위(페이지 목록
+  // 상태)로 변경 사항을 올려서 다른 화면에서도 최신 블록이 보이게 해요.
+  const [blocks, setBlocksState] = useState(initialBlocks);
+  const [slashMenu, setSlashMenu] = useState(null); // { blockId, query }
+  const [slashIndex, setSlashIndex] = useState(0); // 슬래시 메뉴에서 키보드로 고른 항목
+  const [blockMenu, setBlockMenu] = useState(null); // { blockId, mode: "main" | "convert" }
+  const [focusedBlockId, setFocusedBlockId] = useState(null); // 안내 문구는 커서 있는 블록에만
+
+  const inputRefs = useRef({});
+  const idCounter = useRef(Math.max(0, ...initialBlocks.map((b) => b.id)) + 1);
+
+  // PAGE 블록은 pageId만 들고 있고, 제목·아이콘은 항상 최신 pages 상태에서
+  // 찾아 그려요 — 하위 페이지 제목을 바꿔도 부모 쪽 블록이 따로 갱신될
+  // 필요가 없게.
+  const pagesById = Object.fromEntries(pages.map((p) => [p.id, p]));
+
+  // 하위 페이지를 만들 수 없는 컨텍스트(onCreateChildPage 미전달)에서는
+  // "하위 페이지" 메뉴 항목 자체를 숨겨요.
+  const blockTypeOptions = onCreateChildPage
+    ? BLOCK_TYPES
+    : BLOCK_TYPES.filter((item) => item.type !== "CHILD_PAGE");
+
+  const setBlocks = (updater) => {
+    setBlocksState((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      onChange?.(next);
+      return next;
+    });
+  };
+
+  const nextId = () => idCounter.current++;
+
+  const focusBlock = (id) => {
+    requestAnimationFrame(() => {
+      const el = inputRefs.current[id];
+      if (!el) return;
+      el.focus();
+      if (typeof el.setSelectionRange === "function") {
+        const len = el.value.length;
+        el.setSelectionRange(len, len);
+      }
+    });
+  };
+
+  const updateBlock = (id, patch) => {
+    setBlocks((prev) => prev.map((b) => (b.id === id ? { ...b, ...patch } : b)));
+  };
+
+  const insertBlockAfter = (id, type = "TEXT") => {
+    const newId = nextId();
+
+    setBlocks((prev) => {
+      const index = prev.findIndex((b) => b.id === id);
+      const next = [...prev];
+      next.splice(index + 1, 0, createEmptyBlock(newId, type, onCreateChildPage));
+      return next;
+    });
+
+    focusBlock(newId);
+  };
+
+  const addBlockAtEnd = (type = "TEXT") => {
+    const newId = nextId();
+    setBlocks((prev) => [...prev, createEmptyBlock(newId, type, onCreateChildPage)]);
+    focusBlock(newId);
+  };
+
+  const deleteBlock = (id) => {
+    setBlocks((prev) => {
+      const index = prev.findIndex((b) => b.id === id);
+      if (index === -1 || prev.length === 1) return prev;
+
+      const next = prev.filter((b) => b.id !== id);
+      const target = next[Math.max(0, index - 1)];
+      if (target) focusBlock(target.id);
+
+      return next;
+    });
+    setBlockMenu(null);
+  };
+
+  const moveBlock = (id, direction) => {
+    setBlocks((prev) => {
+      const index = prev.findIndex((b) => b.id === id);
+      const targetIndex = direction === "up" ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+
+      const next = [...prev];
+      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+      return next;
+    });
+    setBlockMenu(null);
+  };
+
+  const convertBlock = (id, type) => {
+    if (type === "CHILD_PAGE") {
+      // 새 하위 페이지를 바로 만들고, 이 블록을 그 페이지로 가는
+      // 링크로 바꿔요. (현재 페이지에는 그대로 머무름 — 슬래시 명령
+      // 중에 갑자기 다른 페이지로 튕기면 어색하니까) 저장되는 type은
+      // 여전히 'TEXT'예요 — pageId가 있으면 렌더링만 링크로 바뀌어요.
+      const newPage = onCreateChildPage?.();
+      if (!newPage) return;
+      updateBlock(id, { type: "TEXT", content: "", pageId: newPage.id });
+      setSlashMenu(null);
+      setBlockMenu(null);
+      return;
+    }
+
+    if (type === "TABLE") {
+      // "표"도 CHILD_PAGE와 같은 패턴이에요 — DDL엔 TABLE이라는 blocks.type이
+      // 없어서, 실제로 저장되는 type은 여전히 'DATABASE'고 database.kind로만
+      // "표"(단순 텍스트 그리드)인지 "데이터베이스"(속성 타입)인지 갈라요.
+      updateBlock(id, { type: "DATABASE", content: "", pageId: null, database: createSimpleTable() });
+      setSlashMenu(null);
+      setBlockMenu(null);
+      return;
+    }
+
+    updateBlock(id, {
+      type,
+      content: "",
+      pageId: null, // 이전에 하위 페이지 링크였을 수도 있으니 항상 초기화
+      ...(type === "TODO" ? { checked: false } : {}),
+      ...(type === "IMAGE" ? { image: null } : {}),
+      ...(type === "DATABASE" ? { database: createDefaultDatabase(onCreateChildPage) } : {}),
+      ...(type === "TASK" ? { task: null } : {}),
+      ...(type === "EVENT" ? { event: null } : {}),
+    });
+    setSlashMenu(null);
+    setBlockMenu(null);
+    focusBlock(id);
+  };
+
+  // 노션처럼 "블록 추가" 버튼을 따로 안 두고, 본문 아래 빈 공간을 클릭하면
+  // 이어서 쓸 수 있는 빈 블록이 생겨요. 마지막 블록이 "아직 아무것도 안
+  // 쓴" 빈 텍스트 블록이면 새로 만들지 않고 그 블록으로 포커스만 이동해요
+  // (빈 블록이 계속 쌓이지 않게). 하위 페이지 링크도 저장상 type이
+  // 'TEXT'에 content가 ""라 겉보기엔 "빈 블록"과 똑같지만, 실제로는 글을
+  // 쓸 수 있는 칸이 아니라 클릭하면 이동하는 링크라서 여기서 focusBlock을
+  // 해봐야 아무 반응이 없었어요 — pageId가 있으면 무조건 새 블록을
+  // 추가하도록 구분해요.
+  const handleEmptyAreaClick = () => {
+    const last = blocks[blocks.length - 1];
+    const isEmptyWritable = last && last.type === "TEXT" && last.content === "" && !last.pageId;
+    if (isEmptyWritable) {
+      focusBlock(last.id);
+      return;
+    }
+    addBlockAtEnd("TEXT");
+  };
+
+  const handleChange = (block, value) => {
+    // 슬래시 메뉴는 빈 블록에 "/"를 처음 칠 때만 열려요(문장 중간의
+    // "/"는 무시). 일단 열린 다음에는 "/h1"처럼 계속 이어 칠 때마다
+    // query가 갱신돼야 필터링/키보드 선택이 되니까, 이미 열려 있는
+        // 동안엔 wasEmpty 조건과 상관없이 계속 추적해요.
+    const wasEmpty = block.content === "";
+    const isSlashActive = slashMenu?.blockId === block.id;
+
+    if (value.startsWith("/") && (wasEmpty || isSlashActive)) {
+      setSlashMenu({ blockId: block.id, query: value.slice(1) });
+      setSlashIndex(0);
+    } else if (isSlashActive) {
+      setSlashMenu(null);
+    }
+
+    updateBlock(block.id, { content: value });
+  };
+
+  const handleKeyDown = (e, block) => {
+    const isSlashOpen = slashMenu?.blockId === block.id;
+
+    // 슬래시 메뉴가 떠 있으면: 위/아래 화살표로 후보를 옮기고, Enter(또는
+    // Tab)로 마우스 없이 바로 그 블록 타입을 적용해요. "/h1", "/제목1"처럼
+    // 정확히 쳤다면 필터링된 목록 맨 위(= 0번)가 바로 그 타입이라 Enter만
+    // 눌러도 곧장 적용돼요.
+    if (isSlashOpen) {
+      const filtered = filterBlockTypes(blockTypeOptions, slashMenu.query);
+
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        if (filtered.length > 0) {
+          e.preventDefault();
+          setSlashIndex((i) => {
+            const delta = e.key === "ArrowDown" ? 1 : -1;
+            return (i + delta + filtered.length) % filtered.length;
+          });
+        }
+        return;
+      }
+
+      if ((e.key === "Enter" || e.key === "Tab") && !e.shiftKey) {
+        if (filtered.length > 0) {
+          e.preventDefault();
+          const chosen = filtered[Math.min(slashIndex, filtered.length - 1)];
+          convertBlock(block.id, chosen.type);
+          return;
+        }
+
+        // 일치하는 블록이 없으면 메뉴만 닫고, Enter는 아래 일반 처리로
+        // 흘려보내요(새 블록을 추가하는 평소 동작).
+        setSlashMenu(null);
+      }
+
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setSlashMenu(null);
+        return;
+      }
+    }
+
+    if (e.key === "Enter" && !e.shiftKey && block.type !== "CODE") {
+      e.preventDefault();
+
+      if (LIST_TYPES.includes(block.type) && block.content.trim() === "") {
+        updateBlock(block.id, { type: "TEXT" });
+        return;
+      }
+
+      const continueType = LIST_TYPES.includes(block.type) ? block.type : "TEXT";
+      insertBlockAfter(block.id, continueType);
+      return;
+    }
+
+    if (e.key === "Backspace" && block.content === "" && blocks.length > 1) {
+      e.preventDefault();
+      deleteBlock(block.id);
+      return;
+    }
+  };
+
+  const handleFocus = (block) => {
+    setFocusedBlockId(block.id);
+  };
+
+  const handleBlur = (block) => {
+    setFocusedBlockId((id) => (id === block.id ? null : id));
+
+    // 슬래시 메뉴 버튼 클릭이 먼저 처리되도록 약간 지연 후 닫는다
+    setTimeout(() => {
+      setSlashMenu((m) => (m?.blockId === block.id ? null : m));
+    }, 150);
+  };
+
+  const handleImageSelect = (block, file) => {
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      updateBlock(block.id, {
+        image: {
+          fileName: file.name,
+          fileSize: formatFileSize(file.size),
+          url: reader.result,
+        },
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const numbers = computeNumbers(blocks);
+
+  return (
+    <div className="block-editor">
+      {blockMenu && (
+        <div className="block-menu-overlay" onClick={() => setBlockMenu(null)} />
+      )}
+
+      {blocks.map((block, index) => (
+        <BlockRow
+          key={block.id}
+          block={block}
+          number={numbers[index]}
+          isFirst={index === 0}
+          isLast={index === blocks.length - 1}
+          isFocused={focusedBlockId === block.id}
+          pageLink={block.pageId ? pagesById[block.pageId] : null}
+          pages={pages}
+          onCreateChildPage={onCreateChildPage}
+          blockTypeOptions={blockTypeOptions}
+          isSlashOpen={slashMenu?.blockId === block.id}
+          slashQuery={slashMenu?.blockId === block.id ? slashMenu.query : ""}
+          slashIndex={slashIndex}
+          onSlashHover={setSlashIndex}
+          isMoreOpen={blockMenu?.blockId === block.id}
+          moreMode={blockMenu?.blockId === block.id ? blockMenu.mode : "main"}
+          onChange={(value) => handleChange(block, value)}
+          onKeyDown={(e) => handleKeyDown(e, block)}
+          onFocus={() => handleFocus(block)}
+          onBlur={() => handleBlur(block)}
+          onToggleCheck={() => updateBlock(block.id, { checked: !block.checked })}
+          onImageSelect={(file) => handleImageSelect(block, file)}
+          onDatabaseChange={(database) => updateBlock(block.id, { database })}
+          onRenameRowPage={onRenameRowPage}
+          onDeleteRowPage={onDeleteRowPage}
+          onTaskChange={(task) => updateBlock(block.id, { task })}
+          onEventChange={(event) => updateBlock(block.id, { event })}
+          onConvert={(type) => convertBlock(block.id, type)}
+          onAddBelow={() => {
+            insertBlockAfter(block.id);
+            setBlockMenu(null);
+          }}
+          onDelete={() => deleteBlock(block.id)}
+          onMoveUp={() => moveBlock(block.id, "up")}
+          onMoveDown={() => moveBlock(block.id, "down")}
+          onToggleMore={() =>
+            setBlockMenu((prev) =>
+              prev?.blockId === block.id ? null : { blockId: block.id, mode: "main" },
+            )
+          }
+          onOpenConvertView={() => setBlockMenu({ blockId: block.id, mode: "convert" })}
+          onOpenMainView={() => setBlockMenu({ blockId: block.id, mode: "main" })}
+          registerRef={(el) => {
+            inputRefs.current[block.id] = el;
+          }}
+        />
+      ))}
+
+      <div
+        className="block-editor__empty-area"
+        onClick={handleEmptyAreaClick}
+        aria-hidden="true"
+      />
+    </div>
+  );
+}
+
+/* ================= BlockRow ================= */
+
+function BlockRow({
+  block,
+  number,
+  isFirst,
+  isLast,
+  isFocused,
+  pageLink,
+  pages,
+  onCreateChildPage,
+  blockTypeOptions,
+  isSlashOpen,
+  slashQuery,
+  slashIndex,
+  onSlashHover,
+  isMoreOpen,
+  moreMode,
+  onChange,
+  onKeyDown,
+  onFocus,
+  onBlur,
+  onToggleCheck,
+  onImageSelect,
+  onDatabaseChange,
+  onRenameRowPage,
+  onDeleteRowPage,
+  onTaskChange,
+  onEventChange,
+  onConvert,
+  onAddBelow,
+  onDelete,
+  onMoveUp,
+  onMoveDown,
+  onToggleMore,
+  onOpenConvertView,
+  onOpenMainView,
+  registerRef,
+}) {
+  const isMultiline = MULTILINE_TYPES.includes(block.type);
+  const checkedClass = block.type === "TODO" && block.checked ? "checked" : "";
+  const isEmbed = block.type === "DATABASE" || block.type === "TASK" || block.type === "EVENT";
+
+  return (
+    <div
+      className={`block-row block-${block.type.toLowerCase()} ${isMoreOpen ? "menu-open" : ""} ${
+        isEmbed ? "block-row--embed" : ""
+      }`}
+    >
+      <div className="block-body">
+        {block.type === "DIVIDER" ? (
+          <hr className="block-divider-line" />
+        ) : block.type === "IMAGE" ? (
+          <BlockImage block={block} onImageSelect={onImageSelect} />
+        ) : block.type === "DATABASE" ? (
+          block.database?.kind === "TABLE" ? (
+            <SimpleTableBlock table={block.database} onChange={onDatabaseChange} />
+          ) : (
+            <DatabaseBlock
+              database={block.database}
+              onChange={onDatabaseChange}
+              pages={pages}
+              onCreateRowPage={onCreateChildPage}
+              onRenameRowPage={onRenameRowPage}
+              onDeleteRowPage={onDeleteRowPage}
+            />
+          )
+        ) : block.type === "TASK" ? (
+          <TaskEmbed task={block.task} onChange={onTaskChange} />
+        ) : block.type === "EVENT" ? (
+          <EventEmbed event={block.event} onChange={onEventChange} />
+        ) : block.pageId ? (
+          <PageLinkBlock page={pageLink} />
+        ) : (
+          <>
+            {block.type === "TODO" && (
+              <input
+                type="checkbox"
+                className="block-checkbox"
+                checked={!!block.checked}
+                onChange={onToggleCheck}
+              />
+            )}
+
+            {block.type === "BULLET" && <span className="block-bullet">•</span>}
+
+            {block.type === "NUMBERED" && <span className="block-number">{number}.</span>}
+
+            {block.type === "QUOTE" && <span className="block-quote-bar" />}
+
+            {isMultiline ? (
+              <AutoTextarea
+                innerRef={registerRef}
+                className={`block-input block-input--${block.type.toLowerCase()} ${checkedClass}`}
+                value={block.content}
+                placeholder={isFocused ? placeholderFor(block.type) : ""}
+                onChange={(e) => onChange(e.target.value)}
+                onKeyDown={onKeyDown}
+                onFocus={onFocus}
+                onBlur={onBlur}
+              />
+            ) : (
+              <input
+                ref={registerRef}
+                type="text"
+                className={`block-input block-input--${block.type.toLowerCase()} ${checkedClass}`}
+                value={block.content}
+                placeholder={isFocused ? placeholderFor(block.type) : ""}
+                onChange={(e) => onChange(e.target.value)}
+                onFocus={onFocus}
+                onKeyDown={onKeyDown}
+                onBlur={onBlur}
+              />
+            )}
+          </>
+        )}
+
+        {isSlashOpen && (
+          <SlashMenu
+            query={slashQuery}
+            options={blockTypeOptions}
+            activeIndex={slashIndex}
+            onHoverIndex={onSlashHover}
+            onSelect={onConvert}
+          />
+        )}
+      </div>
+
+      <div className="block-actions">
+        <button type="button" className="block-more-btn" onClick={onToggleMore} title="블록 옵션">
+          <MoreHorizontal size={15} />
+        </button>
+
+        {isMoreOpen && (
+          <div className="block-menu">
+            {moreMode === "main" ? (
+              <>
+                <button type="button" onClick={onOpenConvertView}>
+                  <Type size={14} />
+                  <span>타입 변경</span>
+                  <ChevronRight size={12} className="block-menu__chevron" />
+                </button>
+
+                <button type="button" onClick={onMoveUp} disabled={isFirst}>
+                  <ArrowUp size={14} />
+                  <span>위로 이동</span>
+                </button>
+
+                <button type="button" onClick={onMoveDown} disabled={isLast}>
+                  <ArrowDown size={14} />
+                  <span>아래로 이동</span>
+                </button>
+
+                <button type="button" onClick={onAddBelow}>
+                  <Plus size={14} />
+                  <span>아래에 블록 추가</span>
+                </button>
+
+                <hr className="block-menu__divider" />
+
+                <button type="button" className="danger" onClick={onDelete}>
+                  <Trash2 size={14} />
+                  <span>삭제</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button type="button" className="block-menu__back" onClick={onOpenMainView}>
+                  <ChevronLeft size={12} />
+                  <span>뒤로</span>
+                </button>
+
+                {blockTypeOptions.map(({ type, label, icon: Icon }) => (
+                  <button key={type} type="button" onClick={() => onConvert(type)}>
+                    <Icon size={14} />
+                    <span>{label}</span>
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ================= TaskEmbed / EventEmbed =================
+   노션에는 없는, FlowSpace만의 블록. 스프린트 태스크·캘린더 이벤트를
+   페이지 안에 그대로 가져와서 보여주고 클릭하면 실제 화면으로 이동해요. */
+
+function TaskEmbed({ task, onChange }) {
+  const navigate = useNavigate();
+
+  if (!task) {
+    return (
+      <div className="embed-picker">
+        <select
+          defaultValue=""
+          onChange={(e) => {
+            const picked = sprintTaskRows.find((t) => t.id === e.target.value);
+            if (!picked) return;
+            onChange({
+              id: picked.id,
+              title: picked.title,
+              assignee: picked.assignee,
+              priority: picked.priority,
+              dueDate: picked.dueDate,
+            });
+          }}
+        >
+          <option value="" disabled>
+            연결할 태스크를 선택하세요
+          </option>
+          {sprintTaskRows.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.id} · {t.title}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  }
+
+  const priorityClass = PRIORITY_CLASS[task.priority] || "medium";
+
+  return (
+    <div className="embed-task-card">
+      <button
+        type="button"
+        className="embed-task-card__link"
+        onClick={() => navigate(`/sprints/1/tasks`)}
+        title="태스크로 이동"
+      >
+        <span className={`embed-priority embed-priority--${priorityClass}`}>{task.priority}</span>
+        <span className="embed-task-card__title">{task.title}</span>
+        <span className="embed-task-card__meta">
+          <span className="embed-task-card__code">{task.id}</span>
+          <span className="embed-task-card__assignee">{task.assignee}</span>
+          {task.dueDate && <span className="embed-task-card__due">~{task.dueDate}</span>}
+        </span>
+      </button>
+
+      <div className="embed-card__actions">
+        <button
+          type="button"
+          className="embed-card__action"
+          onClick={() => onChange(null)}
+          title="연결 해제"
+        >
+          <X size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function EventEmbed({ event, onChange }) {
+  const navigate = useNavigate();
+
+  if (!event) {
+    return (
+      <div className="embed-picker">
+        <select
+          defaultValue=""
+          onChange={(e) => {
+            const picked = calendarEvents.find((ev) => String(ev.event_id) === e.target.value);
+            if (!picked) return;
+            onChange({
+              id: picked.event_id,
+              title: picked.title,
+              start: picked.start_datetime,
+              end: picked.end_datetime,
+              color: picked.color,
+            });
+          }}
+        >
+          <option value="" disabled>
+            연결할 이벤트를 선택하세요
+          </option>
+          {calendarEvents.map((ev) => (
+            <option key={ev.event_id} value={ev.event_id}>
+              {ev.title}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  }
+
+  const colorClass = EVENT_COLOR_CLASS[event.color] || "blue";
+
+  return (
+    <div className={`embed-event-card embed-event-card--${colorClass}`}>
+      <button
+        type="button"
+        className="embed-event-card__link"
+        onClick={() => navigate("/calendar")}
+        title="캘린더로 이동"
+      >
+        <span className="embed-event-card__bar" />
+        <span className="embed-event-card__body">
+          <strong>{event.title}</strong>
+          <span>{formatEventRange(event.start, event.end)}</span>
+        </span>
+      </button>
+
+      <div className="embed-card__actions">
+        <button
+          type="button"
+          className="embed-card__action"
+          onClick={() => onChange(null)}
+          title="연결 해제"
+        >
+          <X size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ================= PageLinkBlock =================
+   하위 페이지도 "블록"으로 문서 흐름 안에 있어야 노션처럼 느껴져서,
+   페이지 맨 아래에 따로 박스를 두는 대신 다른 블록들과 같은 줄 높이의
+   링크 블록으로 넣었어요. 제목·아이콘은 pages 상태에서 바로 읽어오니까
+   하위 페이지 이름을 바꿔도 이 블록이 따로 갱신될 필요가 없어요. */
+
+function PageLinkBlock({ page }) {
+  const navigate = useNavigate();
+
+  if (!page) {
+    return <div className="page-link-block page-link-block--missing">삭제된 페이지예요</div>;
+  }
+
+  return (
+    <button
+      type="button"
+      className="page-link-block"
+      onClick={() => navigate(`/pages/${page.id}`)}
+    >
+      <span className="page-link-block__icon">{page.icon || <FileIcon size={14} />}</span>
+      <span className="page-link-block__title">{page.title || "제목 없음"}</span>
+    </button>
+  );
+}
+
+/* ================= AutoTextarea ================= */
+
+function AutoTextarea({
+  innerRef,
+  className,
+  value,
+  placeholder,
+  onChange,
+  onKeyDown,
+  onFocus,
+  onBlur,
+}) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.style.height = "auto";
+      ref.current.style.height = `${ref.current.scrollHeight}px`;
+    }
+  }, [value]);
+
+  return (
+    <textarea
+      ref={(el) => {
+        ref.current = el;
+        if (innerRef) innerRef(el);
+      }}
+      className={className}
+      value={value}
+      placeholder={placeholder}
+      rows={1}
+      onChange={onChange}
+      onKeyDown={onKeyDown}
+      onFocus={onFocus}
+      onBlur={onBlur}
+    />
+  );
+}
+
+/* ================= BlockImage ================= */
+
+function BlockImage({ block, onImageSelect }) {
+  const fileRef = useRef(null);
+  const image = block.image;
+
+  if (image) {
+    return (
+      <div className="page-image-box">
+        {image.url ? (
+          <img src={image.url} alt={image.fileName} className="block-image-preview" />
+        ) : (
+          <div className="block-image-placeholder">
+            <ImageIcon size={22} />
+          </div>
+        )}
+
+        <div className="block-image-meta">
+          <strong>{image.fileName}</strong>
+          <span>{image.fileSize}</span>
+        </div>
+
+        <button type="button" className="block-image-replace" onClick={() => fileRef.current?.click()}>
+          변경
+        </button>
+
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={(e) => onImageSelect(e.target.files?.[0])}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <button type="button" className="block-image-empty" onClick={() => fileRef.current?.click()}>
+      <ImageIcon size={22} />
+      <span>클릭해서 이미지 업로드</span>
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => onImageSelect(e.target.files?.[0])}
+      />
+    </button>
+  );
+}
+
+/* ================= SlashMenu ================= */
+
+function SlashMenu({ query, options, activeIndex, onHoverIndex, onSelect }) {
+  const filtered = filterBlockTypes(options, query);
+
+  if (filtered.length === 0) {
+    return (
+      <div className="block-slash-menu">
+        <p className="block-slash-empty">일치하는 블록이 없습니다.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="block-slash-menu">
+      {filtered.map(({ type, label, icon: Icon, desc }, index) => (
+        <button
+          key={type}
+          type="button"
+          className={index === activeIndex ? "active" : ""}
+          onMouseEnter={() => onHoverIndex?.(index)}
+          // onMouseDown으로 blur보다 먼저 처리되게 한다
+          onMouseDown={(e) => {
+            e.preventDefault();
+            onSelect(type);
+          }}
+        >
+          <Icon size={16} />
+          <div>
+            <strong>{label}</strong>
+            <span>{desc}</span>
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ================= Util ================= */
+
+function createEmptyBlock(id, type, onCreateRowPage) {
+  if (type === "TODO") return { id, type, content: "", checked: false };
+  if (type === "IMAGE") return { id, type, image: null };
+  if (type === "DATABASE") return { id, type, database: createDefaultDatabase(onCreateRowPage) };
+  if (type === "TABLE") return { id, type: "DATABASE", database: createSimpleTable() };
+  if (type === "TASK") return { id, type, task: null };
+  if (type === "EVENT") return { id, type, event: null };
+  return { id, type, content: "" };
+}
+
+// 데이터베이스는 노션처럼 columns[0]이 항상 TITLE 타입이고, 그 열이 곧
+// "행 = 페이지"의 제목이에요(DatabaseBlock이 TITLE 열의 삭제·타입 변경을
+// 막아요). 노션은 행을 만드는 순간 이미 페이지라서, 여기서도 시드 행을
+// 만들 때 onCreateRowPage로 바로 페이지를 만들어 pageId를 채워요 — "아직
+// 페이지가 없는 행"이라는 상태 자체가 없게.
+function createDefaultDatabase(onCreateRowPage) {
+  const columns = [
+    { id: 1, name: "이름", type: "TITLE" },
+    { id: 2, name: "값", type: "TEXT" },
+  ];
+  const seedPage = onCreateRowPage?.();
+  return {
+    kind: "DATABASE",
+    title: "",
+    columns,
+    rows: [{ id: 1, pageId: seedPage?.id ?? null }],
+    cells: [],
+  };
+}
+
+// "표" — 데이터베이스와 달리 속성 타입이 아예 없는, 그냥 텍스트 칸으로만
+// 이루어진 단순한 그리드예요(노션 기본 Table 블록과 동일한 수준). 제목도
+// 없고, 컬럼도 이름만 있을 뿐 타입 선택이 없어요.
+function createSimpleTable() {
+  const columns = [
+    { id: 1, name: "" },
+    { id: 2, name: "" },
+    { id: 3, name: "" },
+  ];
+  return {
+    kind: "TABLE",
+    columns,
+    rows: [{ id: 1 }, { id: 2 }, { id: 3 }],
+    cells: [],
+  };
+}
+
+function placeholderFor(type) {
+  switch (type) {
+    case "H1":
+      return "제목 1";
+    case "H2":
+      return "제목 2";
+    case "TODO":
+      return "할 일을 입력하세요";
+    case "BULLET":
+    case "NUMBERED":
+      return "목록 항목";
+    case "QUOTE":
+      return "인용구를 입력하세요";
+    case "CODE":
+      return "코드를 입력하세요";
+    default:
+      return "내용을 입력하거나 '/'로 블록 추가...";
+  }
+}
+
+function computeNumbers(blocks) {
+  const numbers = [];
+  let counter = 0;
+
+  blocks.forEach((block) => {
+    if (block.type === "NUMBERED") {
+      counter += 1;
+    } else {
+      counter = 0;
+    }
+    numbers.push(counter);
+  });
+
+  return numbers;
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
+
+function formatEventRange(start, end) {
+  const fmt = (iso) => {
+    if (!iso) return "";
+    const [date, time] = iso.split("T");
+    const [, m, d] = date.split("-");
+    return time ? `${m}.${d} ${time}` : `${m}.${d}`;
+  };
+  const s = fmt(start);
+  const e = fmt(end);
+  return e ? `${s} ~ ${e}` : s;
+}

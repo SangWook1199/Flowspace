@@ -135,6 +135,50 @@
   color: #4e6dff;
   margin-top: 8px;
 }
+.pageNavRow {
+  padding: 0 8px 0 18px;
+  gap: 0;
+}
+.pageNavRow__link {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 17px;
+  text-align: left;
+  font-weight: 500;
+  color: inherit;
+  font-size: inherit;
+}
+.pageNavRow__link span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pageNavRow__delete {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #96a2b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+.pageNavRow:hover .pageNavRow__delete {
+  opacity: 1;
+}
+.pageNavRow__delete:hover {
+  background: #fde8e8;
+  color: #e65353;
+}
 .memberMini {
   margin-top: auto;
   border: 1px solid #e7ebf2;

@@ -5,7 +5,6 @@ import retrospectiveMock from "../mock/retrospectiveDetail";
 
 import RetroSummary from "../components/retrospective/RetroSummary";
 import KanbanSnapshot from "../components/retrospective/KanbanSnapshot";
-import RetroReviewSection from "../components/retrospective/RetroReviewSection";
 import PageBlockSection from "../components/retrospective/PageBlockSection";
 
 import "../styles/retrospective-detail.css";
@@ -65,10 +64,7 @@ export default function RetrospectiveDetailPage() {
       {/* ---------- 완료 시점 칸반 ---------- */}
       <KanbanSnapshot kanban={retrospective.kanban} />
 
-      {/* ---------- Keep / Problem / Try ---------- */}
-      <RetroReviewSection review={retrospective.review} />
-
-      {/* ---------- 페이지 블록 (노션 스타일) ---------- */}
+      {/* ---------- 회고 노트 (Keep/Problem/Try 표 + 노션 스타일 페이지 블록) ---------- */}
       <PageBlockSection blocks={retrospective.blocks} />
     </main>
   );

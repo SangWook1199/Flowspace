@@ -7,7 +7,7 @@ import { sprints } from "../mock/sprints";
 import workspaceMock from "../mock/workspaceMock";
 import FlowSpaceLogo from "../components/common/FlowSpaceLogo";
 
-export default function Sidebar({ navigation, pages, members }) {
+export default function Sidebar({ navigation, pages, members, onCreatePage, onDeletePage }) {
   const Icon = ({ name, ...props }) => {
     const C = Icons[name];
     return <C strokeWidth={1.9} {...props} />;
@@ -54,6 +54,49 @@ export default function Sidebar({ navigation, pages, members }) {
         : pathname.startsWith("/retrospectives")
           ? "회고"
           : "홈";
+
+  /* ---------- Pages ---------- */
+  // 사이드바에는 최상위 페이지만 보여줘요. 하위 페이지는 각 페이지
+  // 안의 "하위 페이지" 목록에서 오가는 구조라, 트리로 펼치는 건 아직 안 함.
+  const topLevelPages = pages.filter((page) => !page.parentPageId);
+  const isPageActive = (page) => pathname === `/pages/${page.id}`;
+
+  const handleCreatePage = () => {
+    const newPage = onCreatePage?.();
+    if (newPage) navigate(`/pages/${newPage.id}`);
+  };
+
+  const handleDeletePage = (e, page) => {
+    e.stopPropagation();
+    const hasChildren = pages.some((p) => p.parentPageId === page.id);
+    const confirmed = window.confirm(
+      hasChildren
+        ? "이 페이지를 삭제하면 하위 페이지도 모두 함께 삭제돼요. 계속할까요?"
+        : "이 페이지를 삭제할까요?",
+    );
+    if (!confirmed) return;
+
+    // 지금 보고 있는 페이지가 삭제 대상이거나 그 하위 페이지라면
+    // (재귀), 사라질 페이지에 그대로 남아있지 않도록 홈으로 보내요.
+    const deletedIds = new Set([page.id]);
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const p of pages) {
+        if (deletedIds.has(p.parentPageId) && !deletedIds.has(p.id)) {
+          deletedIds.add(p.id);
+          grew = true;
+        }
+      }
+    }
+    const activeMatch = pathname.match(/^\/pages\/(\d+)/);
+    const activePageId = activeMatch ? Number(activeMatch[1]) : null;
+
+    onDeletePage?.(page.id);
+    if (activePageId !== null && deletedIds.has(activePageId)) {
+      navigate("/");
+    }
+  };
 
   return (
     <aside className={styles.sidebar}>
@@ -154,14 +197,43 @@ export default function Sidebar({ navigation, pages, members }) {
 
         <p>페이지</p>
 
-        {pages.map((page) => (
-          <button className={styles.navItem} key={page}>
-            <Icon name="FileText" />
-            <span>{page}</span>
-          </button>
+        {topLevelPages.map((page) => (
+          <div
+            className={`${styles.navItem} pageNavRow ${
+              isPageActive(page) ? styles.selected : ""
+            }`}
+            key={page.id}
+          >
+            <button
+              type="button"
+              className="pageNavRow__link"
+              onClick={() => navigate(`/pages/${page.id}`)}
+            >
+              {page.icon ? (
+                <span style={{ fontSize: 16, lineHeight: 1, width: 18, textAlign: "center" }}>
+                  {page.icon}
+                </span>
+              ) : (
+                <Icon name="FileText" />
+              )}
+              <span>{page.title || "제목 없음"}</span>
+            </button>
+
+            <button
+              type="button"
+              className="pageNavRow__delete"
+              onClick={(e) => handleDeletePage(e, page)}
+              title="페이지 삭제"
+            >
+              <Icon name="Trash2" size={14} />
+            </button>
+          </div>
         ))}
 
-        <button className={`${styles.navItem} ${styles.newPage}`}>
+        <button
+          className={`${styles.navItem} ${styles.newPage}`}
+          onClick={handleCreatePage}
+        >
           <Icon name="Plus" />
           <span>새 페이지</span>
         </button>
