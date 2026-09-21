@@ -5,13 +5,28 @@ import retrospectiveMock from "../mock/retrospectiveDetail";
 
 import RetroSummary from "../components/retrospective/RetroSummary";
 import KanbanSnapshot from "../components/retrospective/KanbanSnapshot";
-import PageBlockSection from "../components/retrospective/PageBlockSection";
+// 회고 노트(Keep/Problem/Try 표 + 자유 메모)는 예전엔 회고 전용으로
+// 따로 만든 PageBlockSection을 썼는데, 페이지 상세(PageDetailPage)가
+// 쓰는 것과 거의 같은 블록 에디터를 두 벌 유지하게 돼서 — 특히 둘 다
+// 전역 CSS에 .block-row/.block-menu 같은 같은 이름의 클래스를 따로
+// 정의하다 보니 로드 순서에 따라 서로 스타일을 덮어쓰는 문제가 있었어요.
+// 페이지 기능 쪽 컴포넌트를 그대로 재사용하기로 하면서 PageBlockSection은
+// 더 이상 안 써요.
+import BlockEditor from "../components/page/BlockEditor";
 
 import "../styles/retrospective-detail.css";
+import "../styles/page-detail.css";
 
 export default function RetrospectiveDetailPage() {
-  // Mock → 나중에 API로 교체
-  const [retrospective] = useState(retrospectiveMock);
+  // Mock → 나중에 API로 교체. setRetrospective가 필요해진 이유: 아래
+  // BlockEditor는 PageDetailPage와 똑같이 "제어 컴포넌트"라(blocks를
+  // props로 받고 onChange로 바뀐 배열을 돌려줌) 회고 쪽에서도 그 변경을
+  // 받아 담아둘 곳이 있어야 해요.
+  const [retrospective, setRetrospective] = useState(retrospectiveMock);
+
+  const updateBlocks = (blocks) => {
+    setRetrospective((prev) => ({ ...prev, blocks }));
+  };
 
   /*
   // Spring 연결 시
@@ -64,8 +79,23 @@ export default function RetrospectiveDetailPage() {
       {/* ---------- 완료 시점 칸반 ---------- */}
       <KanbanSnapshot kanban={retrospective.kanban} />
 
-      {/* ---------- 회고 노트 (Keep/Problem/Try 표 + 노션 스타일 페이지 블록) ---------- */}
-      <PageBlockSection blocks={retrospective.blocks} />
+      {/* ---------- 회고 노트 (Keep/Problem/Try 표 + 노션 스타일 페이지 블록) ----------
+          BlockEditor는 원래 하위 페이지 링크 기능도 있는데(pages/
+          onCreateChildPage/onRenameRowPage/onDeleteRowPage), 회고엔 그런
+          하위 페이지 개념이 없어서 그 props는 안 넘겨요 — BlockEditor가
+          그 경우엔 "하위 페이지" 메뉴 항목 자체를 알아서 숨겨줘요. */}
+      <section className="page-block-section">
+        <div className="retro-section__header">
+          <h2>회고 노트</h2>
+          <p>
+            Keep · Problem · Try 표와 자유롭게 쓰는 메모를 하나의 페이지로
+            관리해요. "/"로 블록 종류를 바꾸고, 블록 오른쪽의 "⋯"에서
+            이동·삭제할 수 있어요.
+          </p>
+        </div>
+
+        <BlockEditor blocks={retrospective.blocks} onChange={updateBlocks} />
+      </section>
     </main>
   );
 }

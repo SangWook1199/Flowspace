@@ -10,6 +10,23 @@
      가까워 보여요. */
   gap: 7px;
   margin: 0 0 26px 10px;
+  /* 사이드바에서 onClick을 주면 이 태그가 div 대신 button이 돼요(로고를
+     누르면 홈으로 이동). button 기본 스타일(테두리·배경·패딩·폰트)을
+     지우고 div였을 때와 똑같이 보이게 리셋한 다음, 누를 수 있다는 걸
+     알 수 있게 살짝만 hover 표시를 줘요. onClick이 없어 여전히 div로
+     그려질 때는 아래 규칙들이 그냥 안 먹으니 상관없어요. */
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: opacity 0.12s ease;
+}
+
+.flowspace-brand:hover {
+  opacity: 0.85;
 }
 
 .flowspace-brand__icon {

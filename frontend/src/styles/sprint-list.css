@@ -1,5 +1,17 @@
 .sprintListPage {
+  /* .main이 flex(column) 컨테이너라, margin:0 auto(좌우 auto 마진)를 쓰면
+     기본 stretch 동작이 무시되고 대신 내용물 크기에 맞춰 줄어드는
+     shrink-to-fit 폭으로 계산돼요. 그래서 width:100%가 없으면 max-width를
+     아무리 늘려도(1400→1800) 실제로는 한 번도 안 걸리고 계속 콘텐츠
+     자체 폭(그리드가 필요로 하는 폭)에서 멈춰 있었어요.
+     width:100%로 일단 .main 폭까지 꽉 채우고, max-width로 그 위쪽
+     상한선만 잡아서 아주 넓은 화면에서만 가운데로 모이게 해요.
+     칸반은 컬럼 개수에 맞춰 자연스럽게 늘어나는 구조라 그대로 둬요. */
+  width: 100%;
+  max-width: 1800px;
+  margin: 0 auto;
   padding: 26px 30px 40px;
+  box-sizing: border-box;
 }
 .sprintListHeading {
   display: flex;

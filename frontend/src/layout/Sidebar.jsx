@@ -6,6 +6,7 @@ import styles from "../styles/classes.js";
 import { sprints } from "../mock/sprints";
 import workspaceMock from "../mock/workspaceMock";
 import FlowSpaceLogo from "../components/common/FlowSpaceLogo";
+import WorkspaceSwitcher from "./WorkspaceSwitcher";
 
 export default function Sidebar({ navigation, pages, members, onCreatePage, onDeletePage }) {
   const Icon = ({ name, ...props }) => {
@@ -18,7 +19,6 @@ export default function Sidebar({ navigation, pages, members, onCreatePage, onDe
 
   /* ---------- Workspace ---------- */
 
-  const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState(
     workspaceMock.currentWorkspaceId,
   );
@@ -29,7 +29,6 @@ export default function Sidebar({ navigation, pages, members, onCreatePage, onDe
 
   const changeWorkspace = (id) => {
     setCurrentWorkspaceId(id);
-    setWorkspaceOpen(false);
 
     // TODO : Spring API
     // workspaceApi.changeWorkspace(id);
@@ -45,15 +44,22 @@ export default function Sidebar({ navigation, pages, members, onCreatePage, onDe
     if (label === "회고") navigate("/retrospectives");
   };
 
-  const activeLabel = pathname.startsWith("/sprints")
-    ? "스프린트"
-    : pathname.startsWith("/kanban")
-      ? "칸반"
-      : pathname.startsWith("/calendar")
-        ? "캘린더"
-        : pathname.startsWith("/retrospectives")
-          ? "회고"
-          : "홈";
+  // "/"일 때만 홈을 active로 잡아요. 원래는 마지막 조건이 무조건 "홈"이라
+  // /pages/:pageId처럼 위 네 경로 중 어디에도 안 걸리는 페이지 상세
+  // 화면에서도 홈이 같이 active가 됐었어요(페이지는 아래 "페이지" 목록의
+  // isPageActive가 따로 표시하니까, 이땐 nav 쪽엔 아무것도 선택 안 돼야
+  // 맞아요).
+  const activeLabel = pathname === "/"
+    ? "홈"
+    : pathname.startsWith("/sprints")
+      ? "스프린트"
+      : pathname.startsWith("/kanban")
+        ? "칸반"
+        : pathname.startsWith("/calendar")
+          ? "캘린더"
+          : pathname.startsWith("/retrospectives")
+            ? "회고"
+            : null;
 
   /* ---------- Pages ---------- */
   // 사이드바에는 최상위 페이지만 보여줘요. 하위 페이지는 각 페이지
@@ -102,76 +108,15 @@ export default function Sidebar({ navigation, pages, members, onCreatePage, onDe
     <aside className={styles.sidebar}>
       {/* ---------- Logo ---------- */}
 
-      <FlowSpaceLogo />
+      <FlowSpaceLogo onClick={() => navigate("/")} />
 
       {/* ---------- Workspace Switcher ---------- */}
 
-      <div className="workspaceSwitcher">
-        <button
-          className={styles.workspace}
-          onClick={() => setWorkspaceOpen(!workspaceOpen)}
-        >
-          <span
-            className={styles.workspaceIcon}
-            style={{
-              background: currentWorkspace.color,
-              color: "#fff", // 추가
-            }}
-          >
-            {currentWorkspace.initials}
-          </span>
-          <span>
-            <b>{currentWorkspace.name}</b>
-            <small>워크스페이스</small>
-          </span>
-
-          <Icon
-            name="ChevronDown"
-            size={18}
-            className={workspaceOpen ? "rotate" : ""}
-          />
-        </button>
-
-        {workspaceOpen && (
-          <div className="workspaceDropdown">
-            <p>내 워크스페이스</p>
-
-            {workspaceMock.workspaces.map((workspace) => (
-              <button
-                key={workspace.id}
-                className="workspaceItem"
-                onClick={() => changeWorkspace(workspace.id)}
-              >
-                <span
-                  className="workspaceAvatar"
-                  style={{ background: workspace.color }}
-                >
-                  {workspace.initials}
-                </span>
-
-                <span className="workspaceName">{workspace.name}</span>
-
-                {workspace.id === currentWorkspaceId && (
-                  <Icon name="Check" size={16} className="workspaceCheck" />
-                )}
-              </button>
-            ))}
-
-            <div className="workspaceDivider" />
-
-            <button
-              className="workspaceCreate"
-              onClick={() => {
-                setWorkspaceOpen(false);
-                navigate("/workspace/create");
-              }}
-            >
-              <Icon name="PlusCircle" size={18} />
-              <span>새 워크스페이스 만들기</span>
-            </button>
-          </div>
-        )}
-      </div>
+      <WorkspaceSwitcher
+        currentWorkspace={currentWorkspace}
+        workspaces={workspaceMock.workspaces}
+        onChange={changeWorkspace}
+      />
 
       {/* ---------- Navigation ---------- */}
 

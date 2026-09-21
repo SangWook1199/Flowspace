@@ -3,9 +3,15 @@
 ========================================================= */
 
 .content {
+  /* 다른 페이지들과 같은 이유로 width:100%를 같이 줘요(.main이
+     flex-column이라 margin:0 auto만으로는 max-width가 안 걸려요). */
+  width: 100%;
+  max-width: 1800px;
+  margin: 0 auto;
   padding: 28px 32px;
   background: #f7f9fc;
   min-height: 100%;
+  box-sizing: border-box;
 }
 
 /* ================= Welcome ================= */
