@@ -142,18 +142,31 @@
   background: #fde8e8;
   color: #e65353;
 }
-.memberMini {
+.workspaceSettingsBtn {
+  /* 온라인 팀원 위젯이 있던 자리(margin-top:auto로 사이드바 맨 아래에
+     붙음). 워크스페이스 설정으로 들어가는 진입점이라 nav 버튼과
+     비슷한 톤으로, 다만 구분되게 테두리를 둘렀어요. */
   margin-top: auto;
+  width: 100%;
+  height: 53px;
   border: 1px solid #e7ebf2;
   border-radius: 11px;
-  padding: 16px;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 17px;
+  padding: 0 18px;
+  text-align: left;
+  font-weight: 500;
+  color: #2a3951;
 }
-.memberMini small {
-  display: block;
-  color: #708098;
-  font-size: 12px;
+.workspaceSettingsBtn:hover {
+  background: #f8fafc;
 }
-.memberMini em,
+.workspaceSettingsBtn svg {
+  color: #2a3951;
+}
+.headerMembers em,
 .onlineDot,
 .offlineDot {
   display: inline-block;
@@ -162,10 +175,6 @@
   background: #3fc487;
   border-radius: 50%;
   margin-right: 5px;
-}
-.memberMini > div {
-  display: flex;
-  margin-top: 15px;
 }
 .avatar {
   height: 39px;
@@ -178,23 +187,59 @@
   background: #e0e7ff;
   border: 2px solid #fff;
 }
-.memberMini .avatar {
+.headerMembers .avatar {
   margin-left: -5px;
 }
-.memberMini .avatar:first-child {
+.headerMembers .avatar:first-child {
   margin-left: 0;
 }
-.mint {
+/* 헤더로 옮긴 온라인 팀원 — 검색창과 벨/프로필 사이에 비던 여백을
+   채워요. 세로로 쌓던 사이드바 버전과 달리 가로 한 줄로 배치해요. */
+.headerMembers {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.headerMembers small {
+  display: flex;
+  align-items: center;
+  color: #708098;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.headerMembers > div {
+  display: flex;
+}
+/* 아바타 배경색은 이제 유저마다 값을 직접 넣는 게 아니라
+   utils/avatarColor.js의 getAvatarTone(userId)가 고정 팔레트(6가지)
+   중 하나를 user_id로 결정론적으로 골라줘요 — DB(users 테이블)엔
+   색 컬럼이 없고, mock 데이터에서 손으로 넣던 tone 값들이 CSS에
+   실제로 없는 이름(예: "green")이라 조용히 기본색으로 빠지는 문제가
+   있었어요. .purple/.gray처럼 이름만 있던 규칙은 이 전역 CSS 안에서
+   다른 곳과 겹칠 수 있어서 .avatar와 묶은 선택자로 범위를 좁혔어요. */
+.avatar.blue {
+  background: #e0e7ff;
+  color: #385ceb;
+}
+.avatar.green {
   background: #d9f5e9;
   color: #118365;
 }
-.purple {
+.avatar.purple {
   background: #eee4fb;
   color: #7c4ec4;
 }
-.gray {
+.avatar.gray {
   background: #e9edf3;
   color: #60708a;
+}
+.avatar.orange {
+  background: #ffe8d2;
+  color: #c1630b;
+}
+.avatar.pink {
+  background: #fbe3f0;
+  color: #c1408a;
 }
 .main {
   margin-left: 278px;
@@ -214,27 +259,21 @@
   padding: 0 30px;
 }
 .search {
-  height: 44px;
   width: 430px;
-  border: 1px solid #e4eaf2;
+  height: 44px;
+  border: 1px solid #e6ebf4;
   border-radius: 10px;
+  background: #f8f9fc;
   display: flex;
   align-items: center;
-  padding: 0 14px;
-  gap: 14px;
-  color: #7b879a;
+  gap: 10px;
+  padding: 0 16px;
+  color: #96a2b8;
+  font-size: 14px;
 }
 .search svg {
-  color: #4e607a;
-}
-.search kbd {
-  margin-left: auto;
-  border: 0;
-  border-radius: 5px;
-  background: #f2f4f8;
-  color: #647087;
-  padding: 5px 7px;
-  font-size: 11px;
+  color: #96a2b8;
+  flex-shrink: 0;
 }
 .headerRight,
 .profile {
@@ -261,16 +300,9 @@
   gap: 10px;
   font-size: 14px;
 }
-.profile > span {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: linear-gradient(145deg, #d5d1c7, #2c3d50);
-  color: white;
-  display: grid;
-  place-items: center;
-  border: 3px solid #eef1f6;
-}
+/* 프로필 원은 예전엔 회색-남색 그라데이션을 고정으로 박아뒀는데,
+   이제 온라인 팀원 아바타랑 똑같이 .avatar + getAvatarTone() 색을
+   그대로 써서 헤더 안 아바타들끼리 톤이 통일되게 했어요. */
 /* =====================================================
    Workspace Dropdown
 ===================================================== */

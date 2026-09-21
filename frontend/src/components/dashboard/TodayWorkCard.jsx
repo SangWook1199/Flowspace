@@ -1,5 +1,6 @@
 import { MoreVertical } from "lucide-react";
 import styles from "../../styles/classes";
+import { getAvatarTone } from "../../utils/avatarColor";
 
 export default function TodayWorkCard({ tasks }) {
   return (
@@ -60,8 +61,8 @@ export default function TodayWorkCard({ tasks }) {
                 <div className={styles.assigneeGroup}>
                   {task.assignees.map((user) => (
                     <span
-                      key={user.initial}
-                      className={`${styles.assignee} ${styles[user.tone]}`}
+                      key={user.id}
+                      className={`${styles.assignee} ${styles[getAvatarTone(user.id)]}`}
                     >
                       {user.initial}
                     </span>

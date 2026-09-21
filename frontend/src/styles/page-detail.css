@@ -1836,7 +1836,9 @@
 }
 
 /* PERSON 셀 — members 목록을 그대로 선택지로 써요. 아바타 원 색은
-   mock/dashboard.js의 members[].tone(파랑/초록/보라/회색)과 맞췄어요. */
+   member.tone처럼 값을 직접 저장하지 않고, utils/avatarColor.js의
+   getAvatarTone(member.id)가 6가지 팔레트 중 하나를 결정론적으로
+   골라줘요. */
 
 .db-person-chips {
   display: flex;

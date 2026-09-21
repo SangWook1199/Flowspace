@@ -8,7 +8,7 @@ import workspaceMock from "../mock/workspaceMock";
 import FlowSpaceLogo from "../components/common/FlowSpaceLogo";
 import WorkspaceSwitcher from "./WorkspaceSwitcher";
 
-export default function Sidebar({ navigation, pages, members, onCreatePage, onDeletePage }) {
+export default function Sidebar({ navigation, pages, onCreatePage, onDeletePage, onOpenSettings }) {
   const Icon = ({ name, ...props }) => {
     const C = Icons[name];
     return <C strokeWidth={1.9} {...props} />;
@@ -216,24 +216,23 @@ export default function Sidebar({ navigation, pages, members, onCreatePage, onDe
         </div>
       </div>
 
-      {/* ---------- Online Members ---------- */}
+      {/* ---------- Workspace Settings ---------- */}
+      {/* 온라인 팀원 위젯이 있던 자리예요 — 헤더로 옮기고 대신 워크스페이스
+          단위 설정으로 들어가는 진입점을 둬요. 처음엔 별도 페이지로
+          만들었는데, 노션처럼 지금 보던 화면 위에 뜨는 모달이 더
+          자연스럽다고 하셔서 라우트 이동 대신 모달을 열게 바꿨어요
+          (열림 상태는 MainLayout이 들고 있어요). 지금은 화면 껍데기만
+          있고, 실제 설정 항목은 API 연결 때 채워요. 위쪽 WorkspaceSwitcher
+          (워크스페이스 전환)와는 역할이 달라요. */}
 
-      <div className={styles.memberMini}>
-        <small>
-          <em /> 온라인 팀원 2 / 4
-        </small>
-
-        <div>
-          {members.map((member) => (
-            <span
-              key={member.name}
-              className={`${styles.avatar} ${styles[member.tone]}`}
-            >
-              {member.initial}
-            </span>
-          ))}
-        </div>
-      </div>
+      <button
+        type="button"
+        className={styles.workspaceSettingsBtn}
+        onClick={onOpenSettings}
+      >
+        <Icon name="Settings" />
+        <span>워크스페이스 설정</span>
+      </button>
     </aside>
   );
 }

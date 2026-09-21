@@ -1,5 +1,6 @@
 import { ArrowRight } from "lucide-react";
 import styles from "../../styles/classes";
+import { getAvatarTone } from "../../utils/avatarColor";
 
 export default function ActivityCard({ activities }) {
   return (
@@ -16,7 +17,7 @@ export default function ActivityCard({ activities }) {
       <div className={styles.activityList}>
         {activities.map((item) => (
           <div key={item.id} className={styles.activityItem}>
-            <div className={`${styles.avatar} ${styles[item.color]}`}>
+            <div className={`${styles.avatar} ${styles[getAvatarTone(item.userId)]}`}>
               {item.initial}
             </div>
 

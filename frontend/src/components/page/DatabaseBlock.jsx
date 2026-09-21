@@ -28,6 +28,7 @@ import {
 import ColumnResizeHandle from "./ColumnResizeHandle";
 import PopoverPortal from "./PopoverPortal";
 import { members } from "../../mock/dashboard";
+import { getAvatarTone } from "../../utils/avatarColor";
 
 // 컬럼에 width가 없으면(예전 목데이터, 새로 만든 컬럼) 쓰는 기본값이에요.
 // block_database_columns DDL엔 너비 컬럼이 없지만, pageId·kind처럼 이것도
@@ -1349,7 +1350,9 @@ function StatusCell({ value, options, onChoose }) {
 /* ================= PersonCell =================
    담당자 지정 — 이 앱엔 아직 실제 "팀원" API/목데이터가 대시보드의
    members뿐이라, 옵션을 직접 관리하지 않고 그 목록을 그대로 선택지로
-   써요. 값은 이름 배열(여러 명 지정 가능)이에요. */
+   써요. 값은 이름 배열(여러 명 지정 가능)이에요. 아바타 색은 member.tone
+   같은 값을 직접 두지 않고 getAvatarTone(member.id)로 계산해요(id가
+   없는 경우, 즉 목록에 없는 이름이면 중립색인 gray로 빠져요). */
 
 function PersonCell({ values, onToggle }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -1369,7 +1372,7 @@ function PersonCell({ values, onToggle }) {
               const member = members.find((m) => m.name === name);
               return (
                 <span key={name} className="db-person-chip">
-                  <span className={`db-avatar db-avatar--${member?.tone || "gray"}`}>
+                  <span className={`db-avatar db-avatar--${getAvatarTone(member?.id)}`}>
                     {member?.initial || name.slice(0, 1)}
                   </span>
                   <span>{name}</span>
@@ -1396,7 +1399,7 @@ function PersonCell({ values, onToggle }) {
                     onClick={() => onToggle(m.name)}
                   >
                     <span className="db-person-chip">
-                      <span className={`db-avatar db-avatar--${m.tone}`}>{m.initial}</span>
+                      <span className={`db-avatar db-avatar--${getAvatarTone(m.id)}`}>{m.initial}</span>
                       <span>{m.name}</span>
                     </span>
                     {checked && <Check size={13} className="db-select-cell-popover__check" />}

@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import styles from "../styles/classes.js";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
+import WorkspaceSettingsModal from "./WorkspaceSettingsModal";
 import { Outlet } from "react-router-dom";
 import { members, navigation } from "../mock/dashboard";
 import { pages as pagesMock } from "../mock/pages";
@@ -69,6 +70,10 @@ export default function MainLayout() {
   // Outlet context로 내려줍니다.
   const [pages, setPages] = useState(pagesMock);
 
+  // 워크스페이스 설정 모달 열림 상태. Sidebar(여는 버튼)와 모달 자체가
+  // 서로 형제 관계라 여기(공통 부모)에서 들고 내려줘요.
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
   // id를 pages state에서 Math.max로 매번 계산하면, 아주 짧은 시간에
   // 페이지 생성이 두 번 겹칠 때(더블클릭 등) 리렌더 전에 같은 id가
   // 나올 수 있어요. ref 카운터는 호출 즉시 동기적으로 증가하니까
@@ -115,14 +120,17 @@ export default function MainLayout() {
       <Sidebar
         navigation={navigation}
         pages={pages}
-        members={members}
         onCreatePage={createPage}
         onDeletePage={deletePage}
+        onOpenSettings={() => setSettingsOpen(true)}
       />
       <main className={styles.main}>
-        <Header />
+        <Header members={members} />
         <Outlet context={{ pages, setPages, createPage, deletePage, renamePage }} />
       </main>
+      {settingsOpen && (
+        <WorkspaceSettingsModal onClose={() => setSettingsOpen(false)} />
+      )}
     </>
   );
 }

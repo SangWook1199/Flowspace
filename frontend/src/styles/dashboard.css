@@ -585,6 +585,16 @@
   color: #475569;
 }
 
+.assignee.orange {
+  background: #ffe8d2;
+  color: #c1630b;
+}
+
+.assignee.pink {
+  background: #fce7f3;
+  color: #be185d;
+}
+
 /* ===== More ===== */
 
 .moreIcon {

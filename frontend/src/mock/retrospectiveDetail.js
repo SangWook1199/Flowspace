@@ -5,11 +5,13 @@ const retrospectiveDetail = {
   startDate: "2026.08.18",
   endDate: "2026.08.31",
 
+  // 아바타 색은 id를 utils/avatarColor.js의 getAvatarTone()에 넘겨서
+  // 계산해요(더 이상 tone을 직접 넣지 않아요).
   participants: [
-    { id: 1, name: "상욱", initial: "상", tone: "blue" },
-    { id: 2, name: "서연", initial: "서", tone: "purple" },
-    { id: 3, name: "민수", initial: "민", tone: "green" },
-    { id: 4, name: "지연", initial: "지", tone: "orange" },
+    { id: 1, name: "상욱", initial: "상" },
+    { id: 2, name: "서연", initial: "서" },
+    { id: 3, name: "민수", initial: "민" },
+    { id: 4, name: "지연", initial: "지" },
   ],
 
   summary: {

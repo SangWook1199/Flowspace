@@ -1,6 +1,7 @@
 import * as Icons from "lucide-react";
 import { members } from "../../mock/dashboard";
 import styles from "../../styles/classes";
+import { getAvatarTone } from "../../utils/avatarColor";
 
 export default function MetricCard({ item }) {
   const Icon = Icons[item.icon];
@@ -25,8 +26,8 @@ export default function MetricCard({ item }) {
             .filter((m) => m.online)
             .map((m) => (
               <div
-                key={m.name}
-                className={`${styles.avatar} ${styles[m.tone]}`}
+                key={m.id}
+                className={`${styles.avatar} ${styles[getAvatarTone(m.id)]}`}
               >
                 {m.initial}
               </div>

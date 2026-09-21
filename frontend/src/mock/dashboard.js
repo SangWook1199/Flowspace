@@ -8,11 +8,14 @@ export const navigation = [
 
 export const pages = ["API 명세", "디자인 시스템", "QA 체크리스트"];
 
+// id는 users 테이블의 user_id예요. 아바타 배경색은 더 이상 여기서
+// 직접 넣지 않고, 렌더링하는 쪽에서 utils/avatarColor.js의
+// getAvatarTone(id)로 계산해요(자세한 이유는 그 파일 주석 참고).
 export const members = [
-  { name: "상욱", initial: "상", tone: "blue", online: true },
-  { name: "민수", initial: "민", tone: "green", online: true },
-  { name: "서연", initial: "서", tone: "purple", online: true },
-  { name: "지민", initial: "지", tone: "gray", online: true },
+  { id: 1, name: "상욱", initial: "상", online: true },
+  { id: 2, name: "민수", initial: "민", online: true },
+  { id: 3, name: "서연", initial: "서", online: true },
+  { id: 4, name: "지민", initial: "지", online: true },
 ];
 
 export const sprint = {
@@ -74,7 +77,7 @@ export const todayTasks = [
     status: "progress",
     statusName: "진행 중",
     statusColor: "#2563EB",
-    assignees: [{ initial: "상", tone: "blue" }],
+    assignees: [{ id: 1, initial: "상" }],
     time: "09:00 - 10:30",
     done: false,
   },
@@ -86,7 +89,7 @@ export const todayTasks = [
     status: "todo",
     statusName: "해야 할 일",
     statusColor: "#64748B",
-    assignees: [{ initial: "민", tone: "blue" }],
+    assignees: [{ id: 2, initial: "민" }],
     time: "11:00 - 12:30",
     done: false,
   },
@@ -98,7 +101,7 @@ export const todayTasks = [
     status: "progress",
     statusName: "진행 중",
     statusColor: "#2563EB",
-    assignees: [{ initial: "서", tone: "blue" }],
+    assignees: [{ id: 3, initial: "서" }],
     time: "14:00 - 16:00",
     done: false,
   },
@@ -111,8 +114,8 @@ export const todayTasks = [
     statusName: "해야 할 일",
     statusColor: "#64748B",
     assignees: [
-      { initial: "상", tone: "blue" },
-      { initial: "민", tone: "green" },
+      { id: 1, initial: "상" },
+      { id: 2, initial: "민" },
     ],
     time: "16:00 - 17:00",
     done: false,
@@ -126,8 +129,8 @@ export const todayTasks = [
     statusName: "해야 할 일",
     statusColor: "#64748B",
     assignees: [
-      { initial: "상", tone: "blue" },
-      { initial: "민", tone: "green" },
+      { id: 1, initial: "상" },
+      { id: 2, initial: "민" },
     ],
     time: "17:30 - 18:30",
     done: false,
@@ -140,7 +143,7 @@ export const todayTasks = [
     status: "done",
     statusName: "완료",
     statusColor: "#16A34A",
-    assignees: [{ initial: "서", tone: "blue" }],
+    assignees: [{ id: 3, initial: "서" }],
     time: "19:00 - 19:30",
     done: true,
   },
@@ -173,53 +176,56 @@ export const todaySchedule = [
   },
 ];
 
+// activities[].id는 활동(activity) 자체의 PK고, userId가 이 활동을 한
+// 유저의 user_id예요(members[]의 id와 같은 사람 기준). 아바타 색은
+// color를 따로 안 넣고 getAvatarTone(userId)로 계산해요.
 export const activities = [
   {
     id: 1,
+    userId: 1,
     initial: "상",
-    color: "blue",
     text: "상욱님이 JWT 문서를 수정했습니다.",
     time: "5분 전",
   },
   {
     id: 2,
+    userId: 2,
     initial: "민",
-    color: "green",
     text: "민수님이 Sprint 2를 생성했습니다.",
     time: "28분 전",
   },
   {
     id: 3,
+    userId: 3,
     initial: "서",
-    color: "purple",
     text: "서연님이 댓글을 남겼습니다.",
     time: "1시간 전",
   },
   {
     id: 4,
+    userId: 4,
     initial: "지",
-    color: "gray",
     text: "지민님이 파일을 업로드했습니다.",
     time: "2시간 전",
   },
   {
     id: 5,
+    userId: 1,
     initial: "상",
-    color: "blue",
     text: "상욱님이 새로운 댓글을 남겼습니다.",
     time: "3시간 전",
   },
   {
     id: 6,
+    userId: 2,
     initial: "민",
-    color: "green",
     text: "민수님이 칸반 카드를 이동했습니다.",
     time: "4시간 전",
   },
   {
     id: 7,
+    userId: 3,
     initial: "서",
-    color: "purple",
     text: "서연님이 회고를 작성했습니다.",
     time: "5시간 전",
   },
