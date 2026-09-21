@@ -25,6 +25,44 @@ function collectWithDescendants(pages, rootId) {
   return ids;
 }
 
+// 데이터베이스는 "행 = 페이지"라서, 어떤 페이지가 지워지면 그 페이지를
+// 가리키던 다른 페이지의 데이터베이스 행도 같이 없어져야 해요. 행 자체의
+// 휴지통 버튼으로 지울 때는 DatabaseBlock의 deleteRow가 페이지→행을
+// 같이 지우지만, 페이지 상세 화면 자체의 "삭제" 버튼으로 지울 땐
+// deletePage만 호출돼서 이 정리가 빠져 있었어요 — 그러면 그 행이
+// "삭제된 페이지"로 계속 남아 있었죠(TitleCell이 우아하게 처리는 하지만,
+// 고아 행이에요). deletePage가 지운 page id들을 받아서, 모든 페이지의
+// DATABASE 블록을 훑어 그 페이지를 가리키던 행(과 그 행의 셀)을 같이
+// 걷어내요.
+function pruneRowsForDeletedPages(pages, deletedIds) {
+  return pages.map((page) => {
+    if (!page.blocks?.length) return page;
+
+    let changed = false;
+    const blocks = page.blocks.map((block) => {
+      if (block.type !== "DATABASE" || block.database?.kind !== "DATABASE") return block;
+
+      const db = block.database;
+      const removedRowIds = new Set(
+        db.rows.filter((r) => r.pageId && deletedIds.has(r.pageId)).map((r) => r.id),
+      );
+      if (removedRowIds.size === 0) return block;
+
+      changed = true;
+      return {
+        ...block,
+        database: {
+          ...db,
+          rows: db.rows.filter((r) => !removedRowIds.has(r.id)),
+          cells: db.cells.filter((c) => !removedRowIds.has(c.rowId)),
+        },
+      };
+    });
+
+    return changed ? { ...page, blocks } : page;
+  });
+}
+
 export default function MainLayout() {
   // pages/{pageId} API로 교체 예정. 세션 동안 사이드바 · 페이지 상세 ·
   // 하위 페이지 목록이 같은 상태를 보도록 여기서 끌어올려 관리하고
@@ -59,7 +97,8 @@ export default function MainLayout() {
   const deletePage = (pageId) => {
     setPages((prev) => {
       const idsToDelete = collectWithDescendants(prev, pageId);
-      return prev.filter((p) => !idsToDelete.has(p.id));
+      const remaining = prev.filter((p) => !idsToDelete.has(p.id));
+      return pruneRowsForDeletedPages(remaining, idsToDelete);
     });
   };
 

@@ -11,50 +11,13 @@
   flex-direction: column;
   z-index: 2;
 }
-.logo {
-  font-size: 22px;
-  letter-spacing: -0.8px;
-  margin: 0 0 26px 10px;
-  line-height: 34px;
-}
-.sidebarLogoMark {
-  position: absolute;
-  top: 25px;
-  left: 27px;
-  width: 31px;
-  height: 31px;
-  border-radius: 9px;
-  background: linear-gradient(135deg, #5372ff, #7756e8);
-  box-shadow: 0 5px 12px #7990e044;
-}
-.logoMark span,
-.logoMark i,
-.logoMark b {
-  position: absolute;
-  display: block;
-  background: #fff;
-  border-radius: 3px;
-}
-.logoMark span {
-  width: 11px;
-  height: 17px;
-  left: 6px;
-  top: 7px;
-  opacity: 0.96;
-}
-.logoMark i {
-  width: 11px;
-  height: 12px;
-  right: 5px;
-  top: 9px;
-  opacity: 0.72;
-}
-.logoMark b {
-  width: 7px;
-  height: 8px;
-  left: 12px;
-  top: 12px;
-}
+/* 예전엔 여기서 .logo/.logoMark를 CSS로 직접 그렸는데(사이드바
+   브랜드 아이콘용), FlowSpaceLogo 컴포넌트가 이제 실제 아이콘
+   에셋(flowspace-icon.png)을 쓰도록 바뀌면서 이 규칙들은 더 이상
+   안 쓰여요. 특히 .logo는 common.css에도 같은 이름의 규칙이 따로
+   있었는데(font-size:0), 이 파일이 나중에 로드되면서 서로 덮어써
+   글자가 보였다 안 보였다 하는 원인이었어요 — 지금은 common.css의
+   .flowspace-brand__name 하나로 정리했어요. */
 .workspace {
   width: 100%;
   height: 76px;

@@ -37,6 +37,10 @@ public class BlockDatabaseColumn {
     @Builder.Default
     private Integer position = 0;
 
+    @Column(name = "width")
+    @Builder.Default
+    private Integer width = 200;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -48,5 +52,9 @@ public class BlockDatabaseColumn {
 
     public void updatePosition(Integer position) {
         this.position = position;
+    }
+
+    public void updateWidth(Integer width) {
+        this.width = width;
     }
 }

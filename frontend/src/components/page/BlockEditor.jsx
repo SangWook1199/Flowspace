@@ -941,9 +941,17 @@ function createEmptyBlock(id, type, onCreateRowPage) {
 // 만들 때 onCreateRowPage로 바로 페이지를 만들어 pageId를 채워요 — "아직
 // 페이지가 없는 행"이라는 상태 자체가 없게.
 function createDefaultDatabase(onCreateRowPage) {
+  // 기본 속성을 노션처럼 이름(제목) · 생성 일시 · 사람 3개로 시작해요 —
+  // 열 이름은 COLUMN_TYPES의 해당 유형 이름과 그대로 맞춰서(예:
+  // CREATED_TIME → "생성 일시") "값"/"새 열" 같은 임시 이름이 남지
+  // 않게 해요. 행은 1개만 시드로 만들어요 — "행 = 페이지"라서 행을
+  // 늘리면 그만큼 숨은 하위 페이지가 같이 생기는데, /데이터베이스를
+  // 칠 때마다 페이지가 여러 개 만들어지는 건 원치 않는다고 하셔서
+  // 딱 1개(=페이지 1개)만 만들어요.
   const columns = [
     { id: 1, name: "이름", type: "TITLE" },
-    { id: 2, name: "값", type: "TEXT" },
+    { id: 2, name: "생성 일시", type: "CREATED_TIME" },
+    { id: 3, name: "사람", type: "PERSON" },
   ];
   const seedPage = onCreateRowPage?.();
   return {

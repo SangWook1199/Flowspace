@@ -1,5 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AlignLeft,
@@ -15,6 +14,7 @@ import {
   Link,
   ListChecks,
   Mail,
+  MoreHorizontal,
   Phone,
   Plus,
   Search,
@@ -26,13 +26,14 @@ import {
 } from "lucide-react";
 
 import ColumnResizeHandle from "./ColumnResizeHandle";
+import PopoverPortal from "./PopoverPortal";
 import { members } from "../../mock/dashboard";
 
 // 컬럼에 width가 없으면(예전 목데이터, 새로 만든 컬럼) 쓰는 기본값이에요.
 // block_database_columns DDL엔 너비 컬럼이 없지만, pageId·kind처럼 이것도
 // content JSON 쪽 column 객체에 그냥 필드 하나(width) 얹는 거라 스키마
-// 변경이 필요 없어요.
-const DEFAULT_COLUMN_WIDTH = 200;
+// 변경이 필요 없어요. 기존 200px의 3/4로 줄였어요.
+const DEFAULT_COLUMN_WIDTH = 150;
 
 // block_database_columns.type ENUM — 노션 속성 22종 중, 기존 데이터(멤버·
 // 페이지 등)만으로 바로 동작하는 7종(다중 선택/상태/사람/URL/이메일/전화번호/
@@ -121,49 +122,8 @@ function presetOptionsFor(columnName) {
   return preset ? preset.options.map((o) => ({ ...o })) : [];
 }
 
-/* ================= PopoverPortal =================
-   .db-block-wrap은 표 카드의 둥근 모서리를 보여주려고 overflow:hidden이
-   걸려 있고, .db-table-scroll도 컬럼이 많을 때 가로 스크롤을 위해
-   overflow-x:auto가 걸려 있어요(브라우저는 이럴 때 overflow-y도 자동으로
-   auto 취급해요). 팝오버가 그 안에서 아래로 넘치면 이 두 겹의 overflow에
-   그대로 잘려버려서 — 특히 열을 막 추가해 표가 아직 짧을 때 — "행 추가"
-   버튼과 겹쳐 보이는 문제가 있었어요(실측 확인함: repro에서 wrap 바닥
-   183px에 팝오버 329px까지 내용이 그대로 잘려나감). 그래서 팝오버는
-   document.body로 포털링해서 position:fixed로 트리거 버튼 바로 아래에
-   독립적으로 그리고, 스크롤·리사이즈가 생기면 위치를 다시 계산해요. */
-
-function PopoverPortal({ anchorEl, onClose, children }) {
-  const [pos, setPos] = useState(null);
-
-  useLayoutEffect(() => {
-    if (!anchorEl) return;
-    const update = () => {
-      const rect = anchorEl.getBoundingClientRect();
-      setPos({ top: rect.bottom + 6, left: rect.left });
-    };
-    update();
-    // capture:true라야 .db-table-scroll처럼 안쪽에서 일어나는 스크롤도
-    // window까지 올라오면서 잡혀서 위치를 다시 계산해요.
-    window.addEventListener("scroll", update, true);
-    window.addEventListener("resize", update);
-    return () => {
-      window.removeEventListener("scroll", update, true);
-      window.removeEventListener("resize", update);
-    };
-  }, [anchorEl]);
-
-  if (!anchorEl || !pos) return null;
-
-  return createPortal(
-    <>
-      <div className="db-popover-overlay" onClick={onClose} />
-      <div className="db-popover-portal" style={{ position: "fixed", top: pos.top, left: pos.left }}>
-        {children}
-      </div>
-    </>,
-    document.body,
-  );
-}
+// PopoverPortal은 ./PopoverPortal.jsx로 뽑아냈어요 — SimpleTableBlock의
+// 행 메뉴(⋯)도 똑같은 overflow 문제를 겪어서 두 컴포넌트가 같이 써요.
 
 export default function DatabaseBlock({
   database,
@@ -187,6 +147,17 @@ export default function DatabaseBlock({
   const [newOptionDraft, setNewOptionDraft] = useState("");
   const [typeMenuFor, setTypeMenuFor] = useState(null); // columnId — 속성 유형 선택 팝오버
   const [typeMenuAnchor, setTypeMenuAnchor] = useState(null); // 속성 유형 팝오버를 띄울 기준 버튼(DOM)
+  // 행 왼쪽의 "⋯" — 블록 에디터의 block-actions/block-menu와 같은 자리예요.
+  // 지금은 "삭제"만 있지만, 나중에 "위로 이동"/"아래로 이동" 같은 재정렬
+  // 메뉴를 추가하기 쉽게 block-menu와 같은 구조(버튼 목록 + danger 삭제)로
+  // 만들어뒀어요.
+  const [rowMenuFor, setRowMenuFor] = useState(null); // rowId
+  const [rowMenuAnchor, setRowMenuAnchor] = useState(null);
+  // 열 헤더의 "⋯" — 예전엔 옵션 관리(⚙)·삭제(🗑) 버튼이 따로 있었는데,
+  // 행과 똑같이 하나의 더보기 메뉴로 합쳤어요. "옵션 관리"를 고르면 이
+  // 메뉴는 닫고 기존 옵션 관리 팝오버(optionsMenuFor)를 그대로 열어요.
+  const [colMenuFor, setColMenuFor] = useState(null); // columnId
+  const [colMenuAnchor, setColMenuAnchor] = useState(null);
 
   // 노션 데이터베이스처럼, 행 하나하나가 곧 "페이지"예요 — 행을 만드는
   // 순간 이미 페이지라서(addRow 참고) "아직 페이지가 없는 행"이라는
@@ -328,9 +299,14 @@ export default function DatabaseBlock({
 
   const addColumn = () => {
     const id = nextColumnId.current++;
+    // "새 열" 같은 임시 이름 대신, 처음부터 속성 유형(기본값 텍스트)과
+    // 같은 이름으로 만들어요 — 바로 다음에 열리는 유형 팝오버에서 다른
+    // 유형을 고르면 retypeColumn이 이 이름을 그 유형 이름으로 다시
+    // 맞춰줘요.
+    const defaultLabel = COLUMN_TYPES.find((t) => t.type === "TEXT")?.label ?? "텍스트";
     onChange({
       ...database,
-      columns: [...columns, { id, name: "새 열", type: "TEXT" }],
+      columns: [...columns, { id, name: defaultLabel, type: "TEXT" }],
     });
     // 새 열을 만들자마자 노션처럼 바로 유형을 고를 수 있게 팝오버를 열어줘요.
     setTypeMenuFor(id);
@@ -369,19 +345,29 @@ export default function DatabaseBlock({
     // 바꾸는 것도 막아요 — 데이터베이스마다 TITLE은 정확히 하나예요.
     if (target?.type === "TITLE" || type === "TITLE") return;
 
+    // 열 이름이 아직 이전 유형 이름 그대로거나 비어 있으면(= 사용자가
+    // 직접 고쳐 부르지 않았으면) 새로 고른 유형 이름으로 같이 맞춰줘요.
+    // 사용자가 이미 "담당자"처럼 직접 이름을 지었다면 그 이름은 건드리지
+    // 않아요.
+    const currentLabel = COLUMN_TYPES.find((t) => t.type === target?.type)?.label;
+    const newLabel = COLUMN_TYPES.find((t) => t.type === type)?.label;
+    const shouldRenameToLabel =
+      newLabel && (!target?.name?.trim() || target.name === currentLabel);
+
     onChange({
       ...database,
       columns: columns.map((c) => {
         if (c.id !== columnId) return c;
+        const base = shouldRenameToLabel ? { ...c, name: newLabel } : c;
         if ((type === "SELECT" || type === "MULTI_SELECT") && !(c.options && c.options.length)) {
           const seeded = presetOptionsFor(c.name).map((o) => ({ ...o, id: nextOptionId.current++ }));
-          return { ...c, type, options: seeded };
+          return { ...base, type, options: seeded };
         }
         if (type === "STATUS" && !(c.options && c.options.length)) {
           const seeded = STATUS_DEFAULT_OPTIONS.map((o) => ({ ...o, id: nextOptionId.current++ }));
-          return { ...c, type, options: seeded };
+          return { ...base, type, options: seeded };
         }
-        return { ...c, type };
+        return { ...base, type };
       }),
     });
   };
@@ -568,35 +554,73 @@ export default function DatabaseBlock({
                       </div>
                     )}
 
-                    {(col.type === "SELECT" || col.type === "STATUS" || col.type === "MULTI_SELECT") && (
-                      <button
-                        type="button"
-                        className="db-table__head-options"
-                        onClick={(e) => {
-                          if (optionsMenuFor === col.id) {
-                            setOptionsMenuFor(null);
-                            setNewOptionDraft("");
-                            setOptionsMenuAnchor(null);
-                          } else {
-                            setOptionsMenuFor(col.id);
-                            setOptionsMenuAnchor(e.currentTarget);
-                          }
-                        }}
-                        title="옵션 관리"
-                      >
-                        <Settings2 size={12} />
-                      </button>
-                    )}
-
                     {col.type !== "TITLE" && (
-                      <button
-                        type="button"
-                        className="db-table__head-delete"
-                        onClick={() => deleteColumn(col.id)}
-                        title="열 삭제"
-                      >
-                        <Trash2 size={12} />
-                      </button>
+                      <div className="db-table__head-more-wrap">
+                        <button
+                          type="button"
+                          className={`db-table__head-more${colMenuFor === col.id ? " is-open" : ""}`}
+                          onClick={(e) => {
+                            if (colMenuFor === col.id) {
+                              setColMenuFor(null);
+                              setColMenuAnchor(null);
+                            } else {
+                              setColMenuFor(col.id);
+                              setColMenuAnchor(e.currentTarget);
+                            }
+                          }}
+                          title="열 옵션"
+                        >
+                          <MoreHorizontal size={14} />
+                        </button>
+
+                        {colMenuFor === col.id && (
+                          <PopoverPortal
+                            anchorEl={colMenuAnchor}
+                            onClose={() => {
+                              setColMenuFor(null);
+                              setColMenuAnchor(null);
+                            }}
+                          >
+                            <div className="block-menu db-row-menu">
+                              {(col.type === "SELECT" || col.type === "STATUS" || col.type === "MULTI_SELECT") && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    // "..." 트리거 버튼(colMenuAnchor)은 이 메뉴를 닫아도
+                                    // DOM에 그대로 남아 있어서, 옵션 관리 팝오버의 anchor로
+                                    // 그대로 재사용할 수 있어요.
+                                    const anchor = colMenuAnchor;
+                                    setColMenuFor(null);
+                                    setColMenuAnchor(null);
+                                    setOptionsMenuFor(col.id);
+                                    setOptionsMenuAnchor(anchor);
+                                  }}
+                                >
+                                  <Settings2 size={14} />
+                                  <span>옵션 관리</span>
+                                </button>
+                              )}
+
+                              {(col.type === "SELECT" || col.type === "STATUS" || col.type === "MULTI_SELECT") && (
+                                <hr className="block-menu__divider" />
+                              )}
+
+                              <button
+                                type="button"
+                                className="danger"
+                                onClick={() => {
+                                  deleteColumn(col.id);
+                                  setColMenuFor(null);
+                                  setColMenuAnchor(null);
+                                }}
+                              >
+                                <Trash2 size={14} />
+                                <span>삭제</span>
+                              </button>
+                            </div>
+                          </PopoverPortal>
+                        )}
+                      </div>
                     )}
                   </div>
 
@@ -684,12 +708,6 @@ export default function DatabaseBlock({
                   />
                 </th>
               ))}
-
-              <th className="db-table__add-col">
-                <button type="button" onClick={addColumn} title="열 추가">
-                  <Plus size={14} />
-                </button>
-              </th>
             </tr>
           </thead>
 
@@ -699,8 +717,66 @@ export default function DatabaseBlock({
 
               return (
               <tr key={row.id} className="db-row">
-                {columns.map((col) => (
-                  <td key={col.id}>
+                {columns.map((col, colIndex) => (
+                  <td key={col.id} className={colIndex === 0 ? "db-cell--first" : undefined}>
+                    {/* 행 왼쪽 ⋯ — 예전엔 전용 칸(db-row-handle-cell)을 하나
+                        더 뒀는데, 그러면 호버 안 해도 그 칸만큼 빈 여백이
+                        항상 남아서 "칸이 보인다"는 문제가 그대로였어요.
+                        그래서 별도 칸 없이, 첫 번째 컬럼 칸 위에 살짝
+                        겹쳐서(position:absolute) 뜨게 했어요 — 평소엔
+                        opacity:0라 완전히 안 보이고, 그 행에 마우스를
+                        올렸을 때만 나타나요. */}
+                    {colIndex === 0 && (
+                      <div className="db-row-handle">
+                        <button
+                          type="button"
+                          ref={(el) => {
+                            if (el && rowMenuFor === row.id && !rowMenuAnchor) {
+                              setRowMenuAnchor(el);
+                            }
+                          }}
+                          className={`db-row-handle-btn${rowMenuFor === row.id ? " is-open" : ""}`}
+                          onClick={(e) => {
+                            if (rowMenuFor === row.id) {
+                              setRowMenuFor(null);
+                              setRowMenuAnchor(null);
+                            } else {
+                              setRowMenuFor(row.id);
+                              setRowMenuAnchor(e.currentTarget);
+                            }
+                          }}
+                          title="행 옵션"
+                        >
+                          <MoreHorizontal size={14} />
+                        </button>
+
+                        {rowMenuFor === row.id && (
+                          <PopoverPortal
+                            anchorEl={rowMenuAnchor}
+                            onClose={() => {
+                              setRowMenuFor(null);
+                              setRowMenuAnchor(null);
+                            }}
+                          >
+                            <div className="block-menu db-row-menu">
+                              <button
+                                type="button"
+                                className="danger"
+                                onClick={() => {
+                                  deleteRow(row.id);
+                                  setRowMenuFor(null);
+                                  setRowMenuAnchor(null);
+                                }}
+                              >
+                                <Trash2 size={14} />
+                                <span>삭제</span>
+                              </button>
+                            </div>
+                          </PopoverPortal>
+                        )}
+                      </div>
+                    )}
+
                     {col.type === "TITLE" ? (
                       <TitleCell
                         page={linkedPage}
@@ -731,29 +807,36 @@ export default function DatabaseBlock({
                     />
                   </td>
                 ))}
-
-                <td className="db-table__row-delete-cell">
-                  <button
-                    type="button"
-                    className="db-table__row-delete"
-                    onClick={() => deleteRow(row.id)}
-                    title="행 삭제"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </td>
               </tr>
               );
             })}
           </tbody>
         </table>
-        </div>
 
-        <button type="button" className="db-add-row" onClick={addRow}>
-          <Plus size={14} />
-          <span>행 추가</span>
-        </button>
+        {/* 예전엔 헤더에만 있는 34px짜리 칸이라 위쪽에만 작은 탭처럼 튀어나와
+            보였어요. 노션처럼 표 오른쪽 바깥 여백 전체(헤더~마지막 행 높이)를
+            하나의 호버 영역으로 만들어서, 평소엔 완전히 숨어 있다가 그 영역에
+            마우스를 올렸을 때만 표 전체 높이만큼 길게 하이라이트되며 가운데에
+            +가 뜨게 했어요. */}
+        <div className="db-add-col-zone">
+          <button type="button" className="db-add-col-trigger" onClick={addColumn} title="열 추가">
+            <Plus size={14} />
+          </button>
+        </div>
+        </div>
       </div>
+
+      {/* db-block-wrap(카드) 안에 있으면 카드의 border/overflow가 이
+          버튼까지 감싸서, 호버 전에도 카드 테두리가 "행 추가를 위한
+          칸이 있다"는 흔적으로 남았어요(요청: 표 마지막 행 밑 경계선은
+          카드 테두리로 그대로 보이되, 행 추가 부분엔 좌우/아래쪽 테두리가
+          전혀 없어야 함). 그래서 카드 바깥으로 뺐어요 — 이제 카드는
+          표에서 정확히 끝나고, 이 버튼은 페이지의 빈 여백 위에 떠 있는
+          거라 자기 테두리도, 감싸는 카드 테두리도 없어요. */}
+      <button type="button" className="db-add-row" onClick={addRow}>
+        <Plus size={10} />
+        <span>행 추가</span>
+      </button>
     </div>
   );
 }
@@ -841,11 +924,26 @@ function DatabaseCell({
     return <CreatedTimeCell iso={linkedPage?.createdAt} />;
   }
 
+  // 기본(TEXT) 셀 — <input>은 한 줄이라 열 너비를 넘는 글자는 줄바꿈 없이
+  // 옆으로 계속 늘어나기만 했어요(요청: 열 너비를 넘어가면 자동으로
+  // 줄바꿈). <textarea>로 바꾸고, ref/onInput에서 매번 height를 auto로
+  // 리셋한 뒤 scrollHeight로 다시 맞춰서 줄바꿈된 만큼 셀이 세로로
+  // 자동으로 늘어나요.
   return (
-    <input
+    <textarea
       className="db-cell-input"
+      rows={1}
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      ref={(el) => {
+        if (!el) return;
+        el.style.height = "auto";
+        el.style.height = `${el.scrollHeight}px`;
+      }}
+      onInput={(e) => {
+        e.target.style.height = "auto";
+        e.target.style.height = `${e.target.scrollHeight}px`;
+      }}
     />
   );
 }
