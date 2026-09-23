@@ -230,11 +230,59 @@
   flex-direction: column;
   gap: 12px;
   transition: 0.2s;
+  cursor: grab;
+}
+
+.kanbanCard:active {
+  cursor: grabbing;
 }
 
 .kanbanCard:hover {
   border-color: #c7d2fe;
   box-shadow: 0 8px 18px rgba(79, 70, 229, 0.08);
+}
+
+/* 드래그 중인 카드 — 컬럼 드래그와 같은 방식으로 반투명 처리 */
+.kanbanCard.dragging {
+  opacity: 0.45;
+}
+
+/* 카드를 놓을 위치를 보여주는 줄(지라 스타일 drop indicator) */
+.dropIndicator {
+  height: 3px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+/* 컬럼(status)을 놓을 위치를 보여주는 세로줄 — 카드용과 같은 색이에요.
+   kanbanBoard가 가로 flex라, align-self: stretch로 그 줄의 제일 큰
+   컬럼 높이만큼 늘어나요. */
+.dropIndicatorVertical {
+  width: 3px;
+  align-self: stretch;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+/* 마지막 컬럼 오른쪽의 "여기 놓으면 맨 끝으로" 전용 드롭 영역. 눈에는
+   안 보이지만(배경 없음) flex: 1로 남는 공간을 다 차지해서, 컬럼 사이
+   좁은 gap과 달리 확실하게 손에 잡히는 크기의 드롭 타겟이 돼요. */
+.boardEndZone {
+  flex: 1;
+  min-width: 60px;
+  align-self: stretch;
+}
+
+/* 컬럼 안, 마지막 카드 아래의 "여기 놓으면 이 컬럼 맨 끝으로" 전용
+   드롭 영역 — boardEndZone과 같은 역할이에요. flex: 1이라 카드가
+   없을 땐(빈 컬럼) 컬럼 전체를 채워요. */
+.columnEndZone {
+  flex: 1;
+  min-height: 24px;
 }
 
 .cardTop {

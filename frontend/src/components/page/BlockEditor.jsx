@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Plus,
-  MoreHorizontal,
   ArrowUp,
   ArrowDown,
   ChevronRight,
@@ -24,13 +23,15 @@ import {
   ListChecks,
   CalendarClock,
   File as FileIcon,
-  X,
+  GripVertical,
+  Flag,
 } from "lucide-react";
 
 import DatabaseBlock from "./DatabaseBlock";
 import SimpleTableBlock from "./SimpleTableBlock";
 import { sprintTaskRows } from "../../mock/sprintTasks";
 import { calendarEvents } from "../../mock/calendar";
+import { sprints } from "../../mock/sprints";
 
 // blocks.type ENUM(TEXT/H1/H2/TODO/BULLET/NUMBERED/QUOTE/TASK/EVENT/
 // DATABASE/IMAGE/DIVIDER/CODE) 그대로. 노션에는 없는 TASK/EVENT가 있는
@@ -68,6 +69,11 @@ const BLOCK_TYPES = [
   { type: "DATABASE", label: "데이터베이스", icon: DatabaseIcon, desc: "속성 타입이 있는 데이터베이스 만들기", aliases: ["database", "db", "데이터베이스"] },
   { type: "TASK", label: "태스크 연결", icon: ListChecks, desc: "스프린트 태스크를 가져오기", aliases: ["task", "태스크", "할일연결"] },
   { type: "EVENT", label: "이벤트 연결", icon: CalendarClock, desc: "캘린더 이벤트를 가져오기", aliases: ["event", "이벤트", "캘린더", "calendar"] },
+  // TASK/EVENT와 같은 맥락의, FlowSpace만의 블록이에요. 스프린트 하나를
+  // 통째로 연결해서 진행률·기간·상태를 페이지 안에서 실시간으로 보여줘요
+  // (노션엔 "스프린트"라는 개념 자체가 없어서 이런 블록도 없어요). 클릭하면
+  // 그 스프린트 상세 화면(/sprints/:id)으로 이동해요.
+  { type: "SPRINT", label: "스프린트 연결", icon: Flag, desc: "스프린트 진행 현황을 가져오기", aliases: ["sprint", "스프린트", "진행률"] },
   { type: "CHILD_PAGE", label: "하위 페이지", icon: FileIcon, desc: "새 하위 페이지 만들기", aliases: ["page", "페이지", "childpage", "하위페이지", "subpage"] },
   { type: "DIVIDER", label: "구분선", icon: Minus, desc: "시각적으로 섹션 구분", aliases: ["divider", "구분선", "hr", "line"] },
   { type: "CODE", label: "코드", icon: Code2, desc: "코드 스니펫 작성", aliases: ["code", "코드"] },
@@ -101,6 +107,23 @@ function filterBlockTypes(options, query) {
     .map((entry) => entry.item);
 }
 
+// 드래그 핸들 평상시 아이콘 — 노션은 점 6개(⋮⋮)로 고정이지만, 여기서는
+// 그 블록의 타입 아이콘을 보여줘요. 문서를 훑을 때 왼쪽 여백만 봐도
+// "제목 / 할 일 / 태스크 연결 / 표..." 같은 구조가 한눈에 들어오는
+// FlowSpace만의 차별점이에요(아이콘은 호버하면 익숙한 그립 점으로
+// 바뀌어서 "드래그할 수 있다"는 신호는 그대로 남겨둬요 — BlockRow의
+// .block-drag-handle 참고). TABLE/CHILD_PAGE처럼 메뉴 전용 키라
+// BLOCK_TYPES에 없는 실제 저장 타입(DATABASE/TEXT+pageId)은 따로
+// 갈라줘야 해요.
+function getBlockTypeIcon(block) {
+  if (block.type === "TEXT" && block.pageId) return FileIcon;
+  if (block.type === "DATABASE") {
+    return block.database?.kind === "TABLE" ? Table2 : DatabaseIcon;
+  }
+  const found = BLOCK_TYPES.find((item) => item.type === block.type);
+  return found ? found.icon : FileText;
+}
+
 const MULTILINE_TYPES = ["TEXT", "CODE", "QUOTE"];
 const LIST_TYPES = ["BULLET", "NUMBERED", "TODO"];
 
@@ -128,6 +151,16 @@ export default function BlockEditor({
   const [slashIndex, setSlashIndex] = useState(0); // 슬래시 메뉴에서 키보드로 고른 항목
   const [blockMenu, setBlockMenu] = useState(null); // { blockId, mode: "main" | "convert" }
   const [focusedBlockId, setFocusedBlockId] = useState(null); // 안내 문구는 커서 있는 블록에만
+
+  // 블록 순서를 마우스로 드래그해서 바꾸는 기능 — 칸반 보드의 카드/컬럼
+  // 드래그와 완전히 같은 방식이에요(왼쪽에 드래그 핸들이 있고, 호버 중인
+  // 블록의 2/3 지점을 넘었는지에 따라 그 블록 앞/뒤로 놓일 위치가
+  // 정해지고, 파란 줄(.block-drop-indicator)로 보여줘요). 드래그 중엔
+  // 배열을 안 건드리고 목표 위치(blockDropTarget)만 들고 있다가, 드롭할
+  // 때 한 번만 실제로 순서를 바꿔요(commitBlockDrop) — 칸반과 달리 여기는
+  // 컬럼 구분 없이 blocks 배열 하나뿐이라 statusId 같은 건 필요 없어요.
+  const [dragBlockId, setDragBlockId] = useState(null);
+  const [blockDropTarget, setBlockDropTarget] = useState(null); // { beforeBlockId }
 
   const inputRefs = useRef({});
   const idCounter = useRef(Math.max(0, ...initialBlocks.map((b) => b.id)) + 1);
@@ -215,6 +248,91 @@ export default function BlockEditor({
     setBlockMenu(null);
   };
 
+  // 호버 중인 블록(hoveredBlockId) 위에서 커서가 그 블록 높이의 2/3
+  // 지점을 넘었는지(isAfter)에 따라 "이 블록 앞"/"이 블록 뒤"를
+  // 계산해요. 드래그 중인 블록 바로 앞 블록을 2/3 지점 넘어서 호버하면
+  // "다음 블록"이 드래그 중인 블록 자기 자신이 되는 경우(=자기 자신
+  // 앞에 넣기, 의미 없는 목표)가 있는데 — 칸반 카드 드래그에서 겪었던
+  // 것과 같은 버그라, 아래 인덱스 비교보다 먼저 걸러요.
+  const handleBlockDragOver = (hoveredBlockId, isAfter) => {
+    if (dragBlockId === null || dragBlockId === hoveredBlockId) return;
+
+    const hoveredIndex = blocks.findIndex((b) => b.id === hoveredBlockId);
+    const nextBlock = isAfter ? blocks[hoveredIndex + 1] : null;
+    const beforeBlockId = isAfter ? (nextBlock ? nextBlock.id : null) : hoveredBlockId;
+
+    if (beforeBlockId === dragBlockId) {
+      setBlockDropTarget((prev) => (prev === null ? prev : null));
+      return;
+    }
+
+    // 실제로 순서가 안 바뀌는 자리(지금 있는 자리 그대로)면 줄을 숨겨요.
+    const fromIndex = blocks.findIndex((b) => b.id === dragBlockId);
+    if (beforeBlockId === null) {
+      if (fromIndex === blocks.length - 1) {
+        setBlockDropTarget((prev) => (prev === null ? prev : null));
+        return;
+      }
+    } else {
+      const targetIndex = blocks.findIndex((b) => b.id === beforeBlockId);
+      if (targetIndex === fromIndex + 1) {
+        setBlockDropTarget((prev) => (prev === null ? prev : null));
+        return;
+      }
+    }
+
+    setBlockDropTarget((prev) =>
+      prev && prev.beforeBlockId === beforeBlockId ? prev : { beforeBlockId },
+    );
+  };
+
+  // 맨 마지막 블록 아래의 빈 공간(block-editor__empty-area, 원래도 있던
+  // "클릭하면 이어 쓰기" 영역)에 들어오면 "맨 끝으로" 처리해요. 블록
+  // 사이에는 칸반과 달리 gap이 없어서(.block-editor에 gap 없음) 별도의
+  // 전용 end-zone을 새로 만들 필요 없이 이 기존 빈 영역을 그대로 써요.
+  const handleEditorEndDragEnter = () => {
+    if (dragBlockId === null) return;
+
+    const fromIndex = blocks.findIndex((b) => b.id === dragBlockId);
+    if (fromIndex === blocks.length - 1) {
+      setBlockDropTarget((prev) => (prev === null ? prev : null));
+      return;
+    }
+
+    setBlockDropTarget((prev) =>
+      prev && prev.beforeBlockId === null ? prev : { beforeBlockId: null },
+    );
+  };
+
+  // 실제 배열 반영은 여기서 딱 한 번(드롭할 때).
+  const commitBlockDrop = () => {
+    if (dragBlockId !== null && blockDropTarget) {
+      setBlocks((prev) => {
+        const next = [...prev];
+        const fromIndex = next.findIndex((b) => b.id === dragBlockId);
+        if (fromIndex === -1) return prev;
+
+        const [moved] = next.splice(fromIndex, 1);
+
+        if (blockDropTarget.beforeBlockId === null) {
+          next.push(moved);
+        } else {
+          const toIndex = next.findIndex((b) => b.id === blockDropTarget.beforeBlockId);
+          if (toIndex === -1) {
+            next.push(moved);
+          } else {
+            next.splice(toIndex, 0, moved);
+          }
+        }
+
+        return next;
+      });
+    }
+
+    setDragBlockId(null);
+    setBlockDropTarget(null);
+  };
+
   const convertBlock = (id, type) => {
     if (type === "CHILD_PAGE") {
       // 새 하위 페이지를 바로 만들고, 이 블록을 그 페이지로 가는
@@ -248,6 +366,7 @@ export default function BlockEditor({
       ...(type === "DATABASE" ? { database: createDefaultDatabase(onCreateChildPage) } : {}),
       ...(type === "TASK" ? { task: null } : {}),
       ...(type === "EVENT" ? { event: null } : {}),
+      ...(type === "SPRINT" ? { sprint: null } : {}),
     });
     setSlashMenu(null);
     setBlockMenu(null);
@@ -383,64 +502,94 @@ export default function BlockEditor({
   const numbers = computeNumbers(blocks);
 
   return (
-    <div className="block-editor">
+    <div
+      className="block-editor"
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => {
+        // dragend가 어떤 이유로든 블록까지 안 오는 극단적인 경우를
+        // 대비한 보험(칸반 보드 레벨의 onDrop과 같은 패턴) — 이미
+        // 커밋됐으면 commitBlockDrop 안에서 조용히 무시돼요.
+        e.preventDefault();
+        commitBlockDrop();
+      }}
+    >
       {blockMenu && (
         <div className="block-menu-overlay" onClick={() => setBlockMenu(null)} />
       )}
 
       {blocks.map((block, index) => (
-        <BlockRow
-          key={block.id}
-          block={block}
-          number={numbers[index]}
-          isFirst={index === 0}
-          isLast={index === blocks.length - 1}
-          isFocused={focusedBlockId === block.id}
-          pageLink={block.pageId ? pagesById[block.pageId] : null}
-          pages={pages}
-          onCreateChildPage={onCreateChildPage}
-          blockTypeOptions={blockTypeOptions}
-          isSlashOpen={slashMenu?.blockId === block.id}
-          slashQuery={slashMenu?.blockId === block.id ? slashMenu.query : ""}
-          slashIndex={slashIndex}
-          onSlashHover={setSlashIndex}
-          isMoreOpen={blockMenu?.blockId === block.id}
-          moreMode={blockMenu?.blockId === block.id ? blockMenu.mode : "main"}
-          onChange={(value) => handleChange(block, value)}
-          onKeyDown={(e) => handleKeyDown(e, block)}
-          onFocus={() => handleFocus(block)}
-          onBlur={() => handleBlur(block)}
-          onToggleCheck={() => updateBlock(block.id, { checked: !block.checked })}
-          onImageSelect={(file) => handleImageSelect(block, file)}
-          onDatabaseChange={(database) => updateBlock(block.id, { database })}
-          onRenameRowPage={onRenameRowPage}
-          onDeleteRowPage={onDeleteRowPage}
-          onTaskChange={(task) => updateBlock(block.id, { task })}
-          onEventChange={(event) => updateBlock(block.id, { event })}
-          onConvert={(type) => convertBlock(block.id, type)}
-          onAddBelow={() => {
-            insertBlockAfter(block.id);
-            setBlockMenu(null);
-          }}
-          onDelete={() => deleteBlock(block.id)}
-          onMoveUp={() => moveBlock(block.id, "up")}
-          onMoveDown={() => moveBlock(block.id, "down")}
-          onToggleMore={() =>
-            setBlockMenu((prev) =>
-              prev?.blockId === block.id ? null : { blockId: block.id, mode: "main" },
-            )
-          }
-          onOpenConvertView={() => setBlockMenu({ blockId: block.id, mode: "convert" })}
-          onOpenMainView={() => setBlockMenu({ blockId: block.id, mode: "main" })}
-          registerRef={(el) => {
-            inputRefs.current[block.id] = el;
-          }}
-        />
+        <Fragment key={block.id}>
+          {blockDropTarget?.beforeBlockId === block.id && (
+            <div className="block-drop-indicator" />
+          )}
+
+          <BlockRow
+            block={block}
+            number={numbers[index]}
+            isFirst={index === 0}
+            isLast={index === blocks.length - 1}
+            isFocused={focusedBlockId === block.id}
+            isDragging={dragBlockId === block.id}
+            pageLink={block.pageId ? pagesById[block.pageId] : null}
+            pages={pages}
+            onCreateChildPage={onCreateChildPage}
+            blockTypeOptions={blockTypeOptions}
+            isSlashOpen={slashMenu?.blockId === block.id}
+            slashQuery={slashMenu?.blockId === block.id ? slashMenu.query : ""}
+            slashIndex={slashIndex}
+            onSlashHover={setSlashIndex}
+            isMoreOpen={blockMenu?.blockId === block.id}
+            moreMode={blockMenu?.blockId === block.id ? blockMenu.mode : "main"}
+            onChange={(value) => handleChange(block, value)}
+            onKeyDown={(e) => handleKeyDown(e, block)}
+            onFocus={() => handleFocus(block)}
+            onBlur={() => handleBlur(block)}
+            onToggleCheck={() => updateBlock(block.id, { checked: !block.checked })}
+            onImageSelect={(file) => handleImageSelect(block, file)}
+            onDatabaseChange={(database) => updateBlock(block.id, { database })}
+            onRenameRowPage={onRenameRowPage}
+            onDeleteRowPage={onDeleteRowPage}
+            onTaskChange={(task) => updateBlock(block.id, { task })}
+            onEventChange={(event) => updateBlock(block.id, { event })}
+            onSprintChange={(sprint) => updateBlock(block.id, { sprint })}
+            onConvert={(type) => convertBlock(block.id, type)}
+            onAddBelow={() => {
+              insertBlockAfter(block.id);
+              setBlockMenu(null);
+            }}
+            onDelete={() => deleteBlock(block.id)}
+            onMoveUp={() => moveBlock(block.id, "up")}
+            onMoveDown={() => moveBlock(block.id, "down")}
+            onToggleMore={() =>
+              setBlockMenu((prev) =>
+                prev?.blockId === block.id ? null : { blockId: block.id, mode: "main" },
+              )
+            }
+            onOpenConvertView={() => setBlockMenu({ blockId: block.id, mode: "convert" })}
+            onOpenMainView={() => setBlockMenu({ blockId: block.id, mode: "main" })}
+            onDragHandleStart={() => setDragBlockId(block.id)}
+            onRowDragOver={(isAfter) => handleBlockDragOver(block.id, isAfter)}
+            onDragHandleEnd={commitBlockDrop}
+            registerRef={(el) => {
+              inputRefs.current[block.id] = el;
+            }}
+          />
+        </Fragment>
       ))}
+
+      {blockDropTarget?.beforeBlockId === null && (
+        <div className="block-drop-indicator" />
+      )}
 
       <div
         className="block-editor__empty-area"
         onClick={handleEmptyAreaClick}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => e.preventDefault()}
+        onDragEnter={(e) => {
+          e.preventDefault();
+          handleEditorEndDragEnter();
+        }}
         aria-hidden="true"
       />
     </div>
@@ -455,6 +604,7 @@ function BlockRow({
   isFirst,
   isLast,
   isFocused,
+  isDragging = false,
   pageLink,
   pages,
   onCreateChildPage,
@@ -476,6 +626,7 @@ function BlockRow({
   onDeleteRowPage,
   onTaskChange,
   onEventChange,
+  onSprintChange,
   onConvert,
   onAddBelow,
   onDelete,
@@ -484,18 +635,126 @@ function BlockRow({
   onToggleMore,
   onOpenConvertView,
   onOpenMainView,
+  onDragHandleStart,
+  onRowDragOver,
+  onDragHandleEnd,
   registerRef,
 }) {
   const isMultiline = MULTILINE_TYPES.includes(block.type);
   const checkedClass = block.type === "TODO" && block.checked ? "checked" : "";
-  const isEmbed = block.type === "DATABASE" || block.type === "TASK" || block.type === "EVENT";
+  const isEmbed =
+    block.type === "DATABASE" || block.type === "TASK" || block.type === "EVENT" || block.type === "SPRINT";
+  const rowRef = useRef(null);
+  const BlockTypeIcon = getBlockTypeIcon(block);
 
   return (
     <div
+      ref={rowRef}
       className={`block-row block-${block.type.toLowerCase()} ${isMoreOpen ? "menu-open" : ""} ${
         isEmbed ? "block-row--embed" : ""
-      }`}
+      } ${isDragging ? "dragging" : ""}`}
+      onDragEnter={(e) => e.preventDefault()}
+      onDragOver={(e) => {
+        e.preventDefault();
+        const rect = e.currentTarget.getBoundingClientRect();
+        const ratio = (e.clientY - rect.top) / rect.height;
+        onRowDragOver?.(ratio >= 2 / 3);
+      }}
+      onDrop={(e) => e.preventDefault()}
     >
+      {/* 노션처럼 "+"와 드래그 핸들을 왼쪽에 나란히 둬요(호버할 때만
+          보임). "+"는 바로 아래에 빈 블록을 추가하고, 핸들은 두 가지
+          역할을 함께 해요 — 잡고 끌면 순서를 바꾸고(다른 블록 위로
+          올라갈 때마다 그 블록의 2/3 지점을 기준으로 앞/뒤 위치가
+          정해짐 — 위 onDragOver, 실제 배열 반영은 드롭할 때 한 번만.
+          칸반 카드/컬럼 드래그와 같은 방식), 그냥 클릭하면(드래그 없이)
+          지금까지 오른쪽에 있던 "⋯" 메뉴가 그대로 열려요 — 노션의 그립
+          버튼과 동일한 이중 동작이에요. */}
+      <div className="block-left-actions">
+        <button
+          type="button"
+          className="block-add-btn"
+          onClick={onAddBelow}
+          title="아래에 블록 추가"
+        >
+          <Plus size={14} />
+        </button>
+
+        <button
+          type="button"
+          className="block-drag-handle"
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.effectAllowed = "move";
+            if (rowRef.current) {
+              const rect = rowRef.current.getBoundingClientRect();
+              e.dataTransfer.setDragImage(
+                rowRef.current,
+                e.clientX - rect.left,
+                e.clientY - rect.top,
+              );
+            }
+            onDragHandleStart?.();
+          }}
+          onDragEnd={() => onDragHandleEnd?.()}
+          onClick={onToggleMore}
+          title="클릭: 블록 옵션 · 드래그: 순서 변경"
+        >
+          <BlockTypeIcon size={14} className="block-drag-handle__type-icon" />
+          <GripVertical size={14} className="block-drag-handle__grip-icon" />
+        </button>
+
+        {isMoreOpen && (
+          <div className="block-menu">
+            {moreMode === "main" ? (
+              <>
+                <button type="button" onClick={onOpenConvertView}>
+                  <Type size={14} />
+                  <span>타입 변경</span>
+                  <ChevronRight size={12} className="block-menu__chevron" />
+                </button>
+
+                <button type="button" onClick={onMoveUp} disabled={isFirst}>
+                  <ArrowUp size={14} />
+                  <span>위로 이동</span>
+                </button>
+
+                <button type="button" onClick={onMoveDown} disabled={isLast}>
+                  <ArrowDown size={14} />
+                  <span>아래로 이동</span>
+                </button>
+
+                <button type="button" onClick={onAddBelow}>
+                  <Plus size={14} />
+                  <span>아래에 블록 추가</span>
+                </button>
+
+                <hr className="block-menu__divider" />
+
+                <button type="button" className="danger" onClick={onDelete}>
+                  <Trash2 size={14} />
+                  <span>삭제</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button type="button" className="block-menu__back" onClick={onOpenMainView}>
+                  <ChevronLeft size={12} />
+                  <span>뒤로</span>
+                </button>
+
+                {blockTypeOptions.map(({ type, label, icon: Icon }) => (
+                  <button key={type} type="button" onClick={() => onConvert(type)}>
+                    <Icon size={14} />
+                    <span>{label}</span>
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
       <div className="block-body">
         {block.type === "DIVIDER" ? (
           <hr className="block-divider-line" />
@@ -518,6 +777,8 @@ function BlockRow({
           <TaskEmbed task={block.task} onChange={onTaskChange} />
         ) : block.type === "EVENT" ? (
           <EventEmbed event={block.event} onChange={onEventChange} />
+        ) : block.type === "SPRINT" ? (
+          <SprintEmbed sprint={block.sprint} onChange={onSprintChange} />
         ) : block.pageId ? (
           <PageLinkBlock page={pageLink} />
         ) : (
@@ -572,62 +833,6 @@ function BlockRow({
             onHoverIndex={onSlashHover}
             onSelect={onConvert}
           />
-        )}
-      </div>
-
-      <div className="block-actions">
-        <button type="button" className="block-more-btn" onClick={onToggleMore} title="블록 옵션">
-          <MoreHorizontal size={15} />
-        </button>
-
-        {isMoreOpen && (
-          <div className="block-menu">
-            {moreMode === "main" ? (
-              <>
-                <button type="button" onClick={onOpenConvertView}>
-                  <Type size={14} />
-                  <span>타입 변경</span>
-                  <ChevronRight size={12} className="block-menu__chevron" />
-                </button>
-
-                <button type="button" onClick={onMoveUp} disabled={isFirst}>
-                  <ArrowUp size={14} />
-                  <span>위로 이동</span>
-                </button>
-
-                <button type="button" onClick={onMoveDown} disabled={isLast}>
-                  <ArrowDown size={14} />
-                  <span>아래로 이동</span>
-                </button>
-
-                <button type="button" onClick={onAddBelow}>
-                  <Plus size={14} />
-                  <span>아래에 블록 추가</span>
-                </button>
-
-                <hr className="block-menu__divider" />
-
-                <button type="button" className="danger" onClick={onDelete}>
-                  <Trash2 size={14} />
-                  <span>삭제</span>
-                </button>
-              </>
-            ) : (
-              <>
-                <button type="button" className="block-menu__back" onClick={onOpenMainView}>
-                  <ChevronLeft size={12} />
-                  <span>뒤로</span>
-                </button>
-
-                {blockTypeOptions.map(({ type, label, icon: Icon }) => (
-                  <button key={type} type="button" onClick={() => onConvert(type)}>
-                    <Icon size={14} />
-                    <span>{label}</span>
-                  </button>
-                ))}
-              </>
-            )}
-          </div>
         )}
       </div>
     </div>
@@ -689,17 +894,6 @@ function TaskEmbed({ task, onChange }) {
           {task.dueDate && <span className="embed-task-card__due">~{task.dueDate}</span>}
         </span>
       </button>
-
-      <div className="embed-card__actions">
-        <button
-          type="button"
-          className="embed-card__action"
-          onClick={() => onChange(null)}
-          title="연결 해제"
-        >
-          <X size={14} />
-        </button>
-      </div>
     </div>
   );
 }
@@ -753,17 +947,91 @@ function EventEmbed({ event, onChange }) {
           <span>{formatEventRange(event.start, event.end)}</span>
         </span>
       </button>
+    </div>
+  );
+}
 
-      <div className="embed-card__actions">
-        <button
-          type="button"
-          className="embed-card__action"
-          onClick={() => onChange(null)}
-          title="연결 해제"
+/* ================= SprintEmbed =================
+   TASK/EVENT와 마찬가지로 노션에는 없는, FlowSpace만의 블록이에요.
+   개별 태스크나 이벤트 하나가 아니라 스프린트 자체를 연결해서, 그
+   스프린트의 진행률·목표·기간을 페이지 안에서 실시간으로 보여줘요 —
+   sprints 목(mock)의 progress/completed/total이 바뀌면 이 블록도 새로
+   불러올 때마다 그대로 반영돼요(진짜 API가 붙으면 자동으로 최신
+   상태가 돼요). 클릭하면 스프린트 상세 화면으로 이동해요. */
+
+const SPRINT_STATUS_LABEL = {
+  ACTIVE: "진행 중",
+  PLANNING: "계획됨",
+  COMPLETED: "완료",
+};
+
+function SprintEmbed({ sprint, onChange }) {
+  const navigate = useNavigate();
+
+  if (!sprint) {
+    return (
+      <div className="embed-picker">
+        <select
+          defaultValue=""
+          onChange={(e) => {
+            const picked = sprints.find((s) => String(s.id) === e.target.value);
+            if (!picked) return;
+            onChange({
+              id: picked.id,
+              name: picked.name,
+              goal: picked.goal,
+              status: picked.status,
+              remaining: picked.remaining,
+              progress: picked.progress,
+              completed: picked.completed,
+              total: picked.total,
+              color: picked.color,
+            });
+          }}
         >
-          <X size={14} />
-        </button>
+          <option value="" disabled>
+            연결할 스프린트를 선택하세요
+          </option>
+          {sprints.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name} · {s.goal}
+            </option>
+          ))}
+        </select>
       </div>
+    );
+  }
+
+  return (
+    <div className={`embed-sprint-card embed-sprint-card--${sprint.color || "indigo"}`}>
+      <button
+        type="button"
+        className="embed-sprint-card__link"
+        onClick={() => navigate(`/sprints/${sprint.id}`)}
+        title="스프린트로 이동"
+      >
+        <span className="embed-sprint-card__bar" />
+
+        <span className="embed-sprint-card__body">
+          <span className="embed-sprint-card__top">
+            <strong>{sprint.name}</strong>
+            <span className="embed-sprint-card__status">
+              {SPRINT_STATUS_LABEL[sprint.status] || sprint.status}
+            </span>
+          </span>
+
+          <span className="embed-sprint-card__goal">{sprint.goal}</span>
+
+          <span className="embed-sprint-card__progress">
+            <span className="embed-sprint-card__progress-track">
+              <span style={{ width: `${sprint.progress}%` }} />
+            </span>
+            <span className="embed-sprint-card__progress-label">
+              {sprint.completed}/{sprint.total} · {sprint.progress}%
+            </span>
+          </span>
+        </span>
+      </button>
     </div>
   );
 }
@@ -932,6 +1200,7 @@ function createEmptyBlock(id, type, onCreateRowPage) {
   if (type === "TABLE") return { id, type: "DATABASE", database: createSimpleTable() };
   if (type === "TASK") return { id, type, task: null };
   if (type === "EVENT") return { id, type, event: null };
+  if (type === "SPRINT") return { id, type, sprint: null };
   return { id, type, content: "" };
 }
 

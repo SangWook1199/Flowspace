@@ -296,6 +296,108 @@
   max-width: 100%;
 }
 
+/* 노션처럼 "+"(블록 추가)와 드래그 핸들을 왼쪽에 나란히 둬요 — 평소엔
+   숨어있다가 그 줄에 마우스를 올렸을 때만 보여요. .block-row가
+   align-items: flex-start라서 margin-top으로 위치를 맞추면 한 줄짜리
+   텍스트 블록에는 맞아도, 태스크/이벤트 카드처럼 키가 큰 임베드
+   블록에서는 버튼들이 카드 위쪽에 붕 떠 보였어요. align-self: center로
+   이 묶음 전체를 그 줄의 세로 중앙에 오도록 했어요 — 블록 종류와
+   상관없이 항상 카드/줄 높이 한가운데에 위치해요. position: relative는
+   아래 .block-menu(⋯ 메뉴)가 이 묶음 기준으로 뜨게 하기 위해서예요. */
+.block-left-actions {
+  position: relative;
+  flex-shrink: 0;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+}
+
+.block-row:hover .block-left-actions,
+.block-row.menu-open .block-left-actions {
+  opacity: 1;
+}
+
+.block-add-btn {
+  width: 22px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #a1abbd;
+  display: grid;
+  place-items: center;
+}
+
+.block-add-btn:hover {
+  background: #eef1f5;
+  color: #4f5cf6;
+}
+
+/* 드래그 핸들은 두 가지를 겸해요 — 잡고 끌면 순서를 바꾸고, 그냥
+   클릭하면(드래그 없이) 블록 옵션 메뉴가 열려요(노션의 그립 버튼과
+   같은 이중 동작). 평소엔 점 6개(⋮⋮) 대신 그 블록의 타입 아이콘을
+   보여줘서, 문서를 훑을 때 왼쪽 여백만 봐도 어떤 블록들인지 한눈에
+   들어와요(노션에는 없는 FlowSpace만의 차별점) — 두 아이콘을 겹쳐두고
+   호버 시에만 그립 점 아이콘으로 바뀌어서 "드래그할 수 있다"는 익숙한
+   신호도 그대로 남겨둬요. */
+.block-drag-handle {
+  position: relative;
+  flex-shrink: 0;
+  width: 20px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #a1abbd;
+  cursor: grab;
+}
+
+.block-drag-handle:hover {
+  background: #eef1f5;
+  color: #4f5cf6;
+}
+
+.block-drag-handle:active {
+  cursor: grabbing;
+}
+
+.block-drag-handle__type-icon,
+.block-drag-handle__grip-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.1s ease;
+}
+
+.block-drag-handle__grip-icon {
+  opacity: 0;
+}
+
+.block-drag-handle:hover .block-drag-handle__type-icon {
+  opacity: 0;
+}
+
+.block-drag-handle:hover .block-drag-handle__grip-icon {
+  opacity: 1;
+}
+
+.block-row.dragging {
+  opacity: 0.45;
+}
+
+/* 블록을 놓을 위치를 보여주는 줄 — 칸반 보드의 .dropIndicator와 같은
+   색·두께로 통일했어요. */
+.block-drop-indicator {
+  height: 3px;
+  margin: 2px 0;
+  border-radius: 999px;
+  background: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
 .block-body {
   position: relative;
   flex: 1;
@@ -397,40 +499,13 @@
   margin: 12px 0;
 }
 
-/* 블록 오른쪽 액션(⋯) */
-
-.block-actions {
-  position: relative;
-  flex-shrink: 0;
-  padding-top: 6px;
-  opacity: 0;
-}
-
-.block-row:hover .block-actions,
-.block-row.menu-open .block-actions {
-  opacity: 1;
-}
-
-.block-more-btn {
-  width: 26px;
-  height: 26px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: #8a97ab;
-  display: grid;
-  place-items: center;
-}
-
-.block-more-btn:hover {
-  background: #eef1f5;
-  color: #4f5cf6;
-}
+/* ⋯ 메뉴 — 이제 왼쪽 드래그 핸들을 클릭하면 뜨니까(.block-left-actions
+   기준으로 위치), 오른쪽엔 따로 트리거 버튼이 없어요. */
 
 .block-menu {
   position: absolute;
   top: 30px;
-  right: 0;
+  left: 0;
   z-index: 16;
   width: 210px;
   padding: 6px;
@@ -832,30 +907,9 @@
   flex-shrink: 0;
 }
 
-/* TASK/EVENT 카드 공통 — 연결 해제 버튼 */
-
-.embed-card__actions {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  padding-right: 8px;
-}
-
-.embed-card__action {
-  width: 26px;
-  height: 26px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: #c3cad8;
-  display: grid;
-  place-items: center;
-}
-
-.embed-card__action:hover {
-  background: #feeaea;
-  color: #e65353;
-}
+/* TASK/EVENT/SPRINT 카드의 연결 해제 버튼(X)은 없앴어요 — 같은 동작을
+   드래그 핸들을 클릭하면 열리는 블록 메뉴(타입 변경/삭제)로 이미 할 수
+   있어서, 카드마다 중복으로 둘 필요가 없었어요. */
 
 .embed-event-card--red .embed-event-card__bar {
   background: #e65353;
@@ -899,6 +953,144 @@
 .embed-event-card__body span {
   font-size: 11.5px;
   color: #8a97ab;
+}
+
+/* 스프린트 연결 카드(SPRINT 블록) — TASK/EVENT 카드와 같은 톤이되,
+   진행률 바가 있어서 세로 공간을 조금 더 써요. */
+
+.embed-sprint-card {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  width: 100%;
+  min-width: 320px;
+  min-height: 48px;
+  border: 1px solid #e3e8f0;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.embed-sprint-card:hover {
+  box-shadow: 0 4px 14px rgba(17, 26, 47, 0.1);
+}
+
+.embed-sprint-card__link {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+}
+
+.embed-sprint-card__bar {
+  width: 5px;
+  flex-shrink: 0;
+}
+
+.embed-sprint-card--indigo .embed-sprint-card__bar {
+  background: #4f5cf6;
+}
+
+.embed-sprint-card--sky .embed-sprint-card__bar {
+  background: #38bdf8;
+}
+
+.embed-sprint-card--green .embed-sprint-card__bar {
+  background: #24b974;
+}
+
+.embed-sprint-card--amber .embed-sprint-card__bar {
+  background: #f5a524;
+}
+
+.embed-sprint-card--gray .embed-sprint-card__bar {
+  background: #a1abbd;
+}
+
+/* 세로로 3줄(이름/목표/진행률) 쌓던 걸 가로 한 줄로 바꿨어요 — 이름+상태는
+   줄어들지 않게 고정폭, 목표는 남는 공간을 가져가되 넘치면 말줄임표,
+   진행률은 오른쪽에 고정폭으로 붙어요. TASK/EVENT 카드처럼 한 줄짜리
+   임베드로 통일된 느낌을 줘요. */
+.embed-sprint-card__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 14px 0 0;
+}
+
+.embed-sprint-card__top {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.embed-sprint-card__top strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111a2f;
+  white-space: nowrap;
+}
+
+.embed-sprint-card__status {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #f0efff;
+  color: #4f5cf6;
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* 카드 폭이 늘어나거나 줄어들어도 목표 텍스트 칸의 길이는 항상
+   일정하도록 flex:1(남는 공간 다 차지) 대신 고정폭을 줬어요 — 그 폭보다
+   내용이 길면 말줄임표(...)로 잘려요. */
+.embed-sprint-card__goal {
+  flex-shrink: 0;
+  width: 260px;
+  font-size: 11.5px;
+  color: #8a97ab;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.embed-sprint-card__progress {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 210px;
+}
+
+.embed-sprint-card__progress-track {
+  flex: 1;
+  height: 5px;
+  border-radius: 999px;
+  background: #eef1f5;
+  overflow: hidden;
+}
+
+.embed-sprint-card__progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #4f5cf6;
+}
+
+.embed-sprint-card__progress-label {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #62728b;
+  white-space: nowrap;
 }
 
 /* =====================================================
