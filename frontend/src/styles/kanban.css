@@ -72,6 +72,13 @@
   display: flex;
   flex-direction: column;
   max-height: calc(100vh - 190px);
+  transition: opacity 0.15s;
+}
+
+/* 드래그 중인 컬럼 — 원래 자리에 반투명하게 남겨서 어떤 걸 옮기는 중인지
+   보이게 해요. */
+.kanbanColumn.dragging {
+  opacity: 0.45;
 }
 
 .columnHeader {
@@ -80,12 +87,22 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  cursor: grab;
+}
+
+.columnHeader:active {
+  cursor: grabbing;
 }
 
 .columnTitle {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.columnGrip {
+  color: #c3cad8;
+  flex-shrink: 0;
 }
 
 .columnTitle h3 {
