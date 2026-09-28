@@ -23,7 +23,7 @@ import {
   ListChecks,
   CalendarClock,
   File as FileIcon,
-  GripVertical,
+  Pause,
   Flag,
 } from "lucide-react";
 
@@ -105,23 +105,6 @@ function filterBlockTypes(options, query) {
     .filter((entry) => entry.score >= 0)
     .sort((a, b) => b.score - a.score)
     .map((entry) => entry.item);
-}
-
-// 드래그 핸들 평상시 아이콘 — 노션은 점 6개(⋮⋮)로 고정이지만, 여기서는
-// 그 블록의 타입 아이콘을 보여줘요. 문서를 훑을 때 왼쪽 여백만 봐도
-// "제목 / 할 일 / 태스크 연결 / 표..." 같은 구조가 한눈에 들어오는
-// FlowSpace만의 차별점이에요(아이콘은 호버하면 익숙한 그립 점으로
-// 바뀌어서 "드래그할 수 있다"는 신호는 그대로 남겨둬요 — BlockRow의
-// .block-drag-handle 참고). TABLE/CHILD_PAGE처럼 메뉴 전용 키라
-// BLOCK_TYPES에 없는 실제 저장 타입(DATABASE/TEXT+pageId)은 따로
-// 갈라줘야 해요.
-function getBlockTypeIcon(block) {
-  if (block.type === "TEXT" && block.pageId) return FileIcon;
-  if (block.type === "DATABASE") {
-    return block.database?.kind === "TABLE" ? Table2 : DatabaseIcon;
-  }
-  const found = BLOCK_TYPES.find((item) => item.type === block.type);
-  return found ? found.icon : FileText;
 }
 
 const MULTILINE_TYPES = ["TEXT", "CODE", "QUOTE"];
@@ -221,14 +204,36 @@ export default function BlockEditor({
     focusBlock(newId);
   };
 
+  // 블록이 소유한 하위 페이지가 있으면(getOwnedPageIds) 확인을 받고
+  // DatabaseBlock.deleteRow와 같은 방식으로 onDeleteRowPage(=
+  // MainLayout의 deletePage, 하위 페이지까지 재귀적으로 같이 지움)를
+  // 호출해요. 소유한 페이지가 없으면 그냥 true(진행해도 됨). 사용자가
+  // 확인 창에서 취소하면 false를 돌려줘서, 호출한 쪽(deleteBlock/
+  // convertBlock)이 나머지 작업을 멈추게 해요.
+  const deleteOwnedPages = (block, confirmMessage) => {
+    const ownedPageIds = getOwnedPageIds(block);
+    if (ownedPageIds.length === 0) return true;
+
+    const confirmed = window.confirm(confirmMessage);
+    if (!confirmed) return false;
+
+    ownedPageIds.forEach((pageId) => onDeleteRowPage?.(pageId));
+    return true;
+  };
+
   const deleteBlock = (id) => {
+    const target = blocks.find((b) => b.id === id);
+    if (!deleteOwnedPages(target, "이 블록을 지우면 연결된 하위 페이지도 함께 삭제돼요. 계속할까요?")) {
+      return;
+    }
+
     setBlocks((prev) => {
       const index = prev.findIndex((b) => b.id === id);
       if (index === -1 || prev.length === 1) return prev;
 
       const next = prev.filter((b) => b.id !== id);
-      const target = next[Math.max(0, index - 1)];
-      if (target) focusBlock(target.id);
+      const nextFocus = next[Math.max(0, index - 1)];
+      if (nextFocus) focusBlock(nextFocus.id);
 
       return next;
     });
@@ -334,13 +339,23 @@ export default function BlockEditor({
   };
 
   const convertBlock = (id, type) => {
+    // 타입을 바꾸면 이 블록이 지금 갖고 있던 pageId/database.rows의
+    // 페이지 연결은 항상 버려져요(아래 각 분기가 pageId: null이나
+    // 새 database로 덮어씀) — 그대로 두면 deleteBlock과 똑같이 고아
+    // 페이지가 생겨서, 같은 확인+cascade delete를 여기서도 해요.
+    const current = blocks.find((b) => b.id === id);
+    const confirmMessage = "타입을 바꾸면 이 블록에 연결된 하위 페이지도 함께 삭제돼요. 계속할까요?";
+
     if (type === "CHILD_PAGE") {
       // 새 하위 페이지를 바로 만들고, 이 블록을 그 페이지로 가는
       // 링크로 바꿔요. (현재 페이지에는 그대로 머무름 — 슬래시 명령
       // 중에 갑자기 다른 페이지로 튕기면 어색하니까) 저장되는 type은
       // 여전히 'TEXT'예요 — pageId가 있으면 렌더링만 링크로 바뀌어요.
+      // newPage부터 만들어서 실패(onCreateChildPage 미전달 등) 시엔
+      // 기존 페이지를 지우기 전에 그냥 빠져나가게 해요.
       const newPage = onCreateChildPage?.();
       if (!newPage) return;
+      if (!deleteOwnedPages(current, confirmMessage)) return;
       updateBlock(id, { type: "TEXT", content: "", pageId: newPage.id });
       setSlashMenu(null);
       setBlockMenu(null);
@@ -351,12 +366,14 @@ export default function BlockEditor({
       // "표"도 CHILD_PAGE와 같은 패턴이에요 — DDL엔 TABLE이라는 blocks.type이
       // 없어서, 실제로 저장되는 type은 여전히 'DATABASE'고 database.kind로만
       // "표"(단순 텍스트 그리드)인지 "데이터베이스"(속성 타입)인지 갈라요.
+      if (!deleteOwnedPages(current, confirmMessage)) return;
       updateBlock(id, { type: "DATABASE", content: "", pageId: null, database: createSimpleTable() });
       setSlashMenu(null);
       setBlockMenu(null);
       return;
     }
 
+    if (!deleteOwnedPages(current, confirmMessage)) return;
     updateBlock(id, {
       type,
       content: "",
@@ -645,7 +662,18 @@ function BlockRow({
   const isEmbed =
     block.type === "DATABASE" || block.type === "TASK" || block.type === "EVENT" || block.type === "SPRINT";
   const rowRef = useRef(null);
-  const BlockTypeIcon = getBlockTypeIcon(block);
+  // TASK/EVENT/SPRINT 블록이 실제 데이터에 연결돼 있으면(아직 선택 전인
+  // 빈 피커 상태가 아니면) 핸들에 작은 초록 점을 같이 보여줘요 — "살아있는
+  // 블록"이라는 FlowSpace만의 개념을 핸들 자리에서부터 드러내는 신호예요.
+  const isLive =
+    (block.type === "TASK" && !!block.task) ||
+    (block.type === "EVENT" && !!block.event) ||
+    (block.type === "SPRINT" && !!block.sprint);
+  // 핸들을 클릭해서 메뉴로 수정 중이거나(isMoreOpen), 잡고 끌어서
+  // 위치를 옮기는 중이면(isDragging) 핸들 색을 꽉 채워서 "지금 이
+  // 핸들이 뭔가를 하고 있다"는 게 호버 여부와 상관없이 계속 보이게
+  // 해요.
+  const isHandleActive = isMoreOpen || isDragging;
 
   return (
     <div
@@ -668,8 +696,16 @@ function BlockRow({
           올라갈 때마다 그 블록의 2/3 지점을 기준으로 앞/뒤 위치가
           정해짐 — 위 onDragOver, 실제 배열 반영은 드롭할 때 한 번만.
           칸반 카드/컬럼 드래그와 같은 방식), 그냥 클릭하면(드래그 없이)
-          지금까지 오른쪽에 있던 "⋯" 메뉴가 그대로 열려요 — 노션의 그립
-          버튼과 동일한 이중 동작이에요. */}
+          블록 옵션 메뉴가 열려요. 노션은 점 6개(⋮⋮) 아이콘을 쓰는데,
+          저희는 그 대신 두 개의 세로 막대(Pause 모양) 아이콘을 써서
+          모양만으로도 노션과 다르게 보이게 했어요 — 폭이 늘었다 줄었다
+          하는 모션은 옆 블록을 밀어내는 문제가 있어서 빼고, 크기는
+          처음부터 고정했고(노션 정도 크기로) 태스크/이벤트/스프린트처럼
+          실제 데이터에 연결된 블록은 핸들 위에 초록 점도 같이 떠서
+          (isLive), 이 자리가 단순 이동 버튼이 아니라 "연결 상태를
+          보여주는 자리"라는 의미를 더해요. 메뉴가 열려있거나(isMoreOpen)
+          드래그 중이면(isDragging) 핸들이 "active" 클래스를 받아서 호버
+          여부와 상관없이 색이 꽉 채워진 상태로 유지돼요. */}
       <div className="block-left-actions">
         <button
           type="button"
@@ -677,12 +713,12 @@ function BlockRow({
           onClick={onAddBelow}
           title="아래에 블록 추가"
         >
-          <Plus size={14} />
+          <Plus size={16} />
         </button>
 
         <button
           type="button"
-          className="block-drag-handle"
+          className={`block-drag-handle ${isHandleActive ? "active" : ""}`}
           draggable
           onDragStart={(e) => {
             e.dataTransfer.effectAllowed = "move";
@@ -700,8 +736,14 @@ function BlockRow({
           onClick={onToggleMore}
           title="클릭: 블록 옵션 · 드래그: 순서 변경"
         >
-          <BlockTypeIcon size={14} className="block-drag-handle__type-icon" />
-          <GripVertical size={14} className="block-drag-handle__grip-icon" />
+          {/* lucide 아이콘은 기본이 선(stroke)만 그리는 아웃라인이라, 이대로
+              두면 "두 세로 막대"가 속이 빈 테두리로만 보여요. fill을
+              currentColor로 주고 stroke는 꺼서 막대 안쪽까지 색이 꽉 찬
+              모양(요청하신 Dual Bars 레퍼런스)으로 보이게 했어요 — 이
+              색은 핸들의 CSS color를 그대로 따라가서, 평소엔 회색, 호버·
+              active일 땐 보라색으로 자동으로 같이 바뀌어요. */}
+          <Pause size={16} fill="currentColor" stroke="none" />
+          {isLive && <span className="block-drag-handle__dot" aria-hidden="true" />}
         </button>
 
         {isMoreOpen && (
@@ -889,7 +931,12 @@ function TaskEmbed({ task, onChange }) {
         <span className={`embed-priority embed-priority--${priorityClass}`}>{task.priority}</span>
         <span className="embed-task-card__title">{task.title}</span>
         <span className="embed-task-card__meta">
-          <span className="embed-task-card__code">{task.id}</span>
+          {/* 새로 피커로 연결한 태스크는 id 자체가 "SP1-1" 같은 코드
+              문자열이라 그대로 쓰면 되는데, pages.js에 미리 심어둔 옛
+              시드 데이터는 id(숫자)랑 code("SP1-08")가 따로 있어서
+              task.id만 보여주면 그냥 "8"처럼 숫자만 떴어요. code가
+              있으면 그걸 우선 써요. */}
+          <span className="embed-task-card__code">{task.code ?? task.id}</span>
           <span className="embed-task-card__assignee">{task.assignee}</span>
           {task.dueDate && <span className="embed-task-card__due">~{task.dueDate}</span>}
         </span>
@@ -1192,6 +1239,23 @@ function SlashMenu({ query, options, activeIndex, onHoverIndex, onSelect }) {
 }
 
 /* ================= Util ================= */
+
+// "/하위 페이지"나 "/데이터베이스"를 고르는 순간 실제 페이지가 만들어져서
+// (CHILD_PAGE는 block.pageId, DATABASE는 그 안의 각 row.pageId) 이
+// 블록이 "소유한" 페이지가 돼요. 이 블록을 지우거나 다른 타입으로
+// 바꿀 때 그 페이지들을 안 같이 지우면, 어디서도 갈 수 없는 고아
+// 페이지로 pages 배열에 계속 남아요 — deleteBlock/convertBlock에서
+// 이 함수로 지울 대상을 모아서, DatabaseBlock의 deleteRow가 쓰는
+// 것과 같은 cascade delete(onDeleteRowPage = MainLayout의 deletePage,
+// 하위 페이지까지 재귀적으로 같이 지워줌)를 그대로 호출해요.
+function getOwnedPageIds(block) {
+  if (!block) return [];
+  if (block.type === "TEXT" && block.pageId) return [block.pageId];
+  if (block.type === "DATABASE" && block.database?.rows?.length) {
+    return block.database.rows.filter((r) => r.pageId).map((r) => r.pageId);
+  }
+  return [];
+}
 
 function createEmptyBlock(id, type, onCreateRowPage) {
   if (type === "TODO") return { id, type, content: "", checked: false };

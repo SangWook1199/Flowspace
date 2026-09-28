@@ -268,13 +268,20 @@
   z-index: 15;
 }
 
+/* margin-left(음수)와 padding-left를 똑같은 값으로 맞춰서, 줄의 실제
+   호버 판정 영역(hit-box)만 왼쪽 여백 쪽으로 52px 넓혀요 — 보이는
+   내용(.block-body)의 위치는 음수 마진만큼 다시 오른쪽으로 밀려서
+   똑같아요(제목과 계속 같은 줄에 맞음). 이렇게 해야 마우스를 본문에서
+   핸들 쪽으로 옮길 때 .block-row:hover가 안 끊겨요 — 핸들이 줄
+   바깥(마진 영역)에 떠 있어도, 그 자리가 이제 이 줄의 hit-box 안이라
+   "여기서 벗어났다"고 판정되지 않아요. */
 .block-row {
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 6px;
   border-radius: 8px;
-  padding: 3px 4px;
+  margin-left: -52px;
+  padding: 1px 4px 1px 52px;
 }
 
 .block-row:hover,
@@ -291,37 +298,48 @@
    페이지 밖으로 삐져나가지 않게 막아주고, 그 안의 .db-table-scroll의
    overflow-x:auto가 가로 스크롤을 대신 처리해요. */
 .block-row--embed {
-  margin: 6px 0;
+  /* margin: 6px 0 처럼 축약형을 쓰면 margin-left까지 0으로 덮어써서
+     위 .block-row의 margin-left: -52px(호버 hit-box 확장용)가
+     깨져요 — top/bottom만 따로 써서 그 값은 안 건드려요. */
+  margin-top: 6px;
+  margin-bottom: 6px;
   width: fit-content;
   max-width: 100%;
 }
 
 /* 노션처럼 "+"(블록 추가)와 드래그 핸들을 왼쪽에 나란히 둬요 — 평소엔
-   숨어있다가 그 줄에 마우스를 올렸을 때만 보여요. .block-row가
-   align-items: flex-start라서 margin-top으로 위치를 맞추면 한 줄짜리
-   텍스트 블록에는 맞아도, 태스크/이벤트 카드처럼 키가 큰 임베드
-   블록에서는 버튼들이 카드 위쪽에 붕 떠 보였어요. align-self: center로
-   이 묶음 전체를 그 줄의 세로 중앙에 오도록 했어요 — 블록 종류와
-   상관없이 항상 카드/줄 높이 한가운데에 위치해요. position: relative는
-   아래 .block-menu(⋯ 메뉴)가 이 묶음 기준으로 뜨게 하기 위해서예요. */
+   숨어있다가 그 줄에 마우스를 올렸을 때만 보여요. 본문 텍스트를 밀지
+   않으려고 position: absolute로 뺐는데, 처음엔 right: 100%로
+   .block-row 바깥(hit-box 밖)에 얹었더니 본문에서 핸들 쪽으로 마우스를
+   옮기는 순간 .block-row:hover가 풀려서 핸들이 사라지는 문제가
+   있었어요(요청: 마우스를 핸들 쪽으로 옮기면 없어짐). 그래서 이제
+   .block-row 자체를 왼쪽으로 52px 넓혀두고(margin-left: -52px +
+   padding-left: 52px, 위 참고) 이 핸들 묶음은 그 넓어진 자리 안쪽
+   (left: 0)에 둬요 — 넓어진 부분도 여전히 .block-row의 hit-box라서,
+   본문이든 핸들이든 그 사이 여백이든 마우스가 어디 있어도 hover가 안
+   끊겨요. top:50%+translateY(-50%)는 태스크/이벤트 카드처럼 키가 큰
+   블록에서도 항상 그 줄/카드의 세로 중앙에 오게 해요. */
 .block-left-actions {
-  position: relative;
-  flex-shrink: 0;
-  align-self: center;
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 0px;
   opacity: 0;
+  pointer-events: none;
 }
 
 .block-row:hover .block-left-actions,
 .block-row.menu-open .block-left-actions {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .block-add-btn {
-  width: 22px;
-  height: 26px;
+  width: 24px;
+  height: 30px;
   border: none;
   border-radius: 6px;
   background: transparent;
@@ -331,31 +349,39 @@
 }
 
 .block-add-btn:hover {
-  background: #eef1f5;
   color: #4f5cf6;
 }
 
 /* 드래그 핸들은 두 가지를 겸해요 — 잡고 끌면 순서를 바꾸고, 그냥
-   클릭하면(드래그 없이) 블록 옵션 메뉴가 열려요(노션의 그립 버튼과
-   같은 이중 동작). 평소엔 점 6개(⋮⋮) 대신 그 블록의 타입 아이콘을
-   보여줘서, 문서를 훑을 때 왼쪽 여백만 봐도 어떤 블록들인지 한눈에
-   들어와요(노션에는 없는 FlowSpace만의 차별점) — 두 아이콘을 겹쳐두고
-   호버 시에만 그립 점 아이콘으로 바뀌어서 "드래그할 수 있다"는 익숙한
-   신호도 그대로 남겨둬요. */
+   클릭하면(드래그 없이) 블록 옵션 메뉴가 열려요. 폭을 늘렸다 줄이는
+   탭 모션은 옆의 블록 내용을 밀어내는 문제가 있어서 뺐어요 — 대신
+   크기는 처음부터 고정해두고(노션 정도 크기), 점 6개(⋮⋮) 대신 두
+   개의 세로 막대(Pause 모양) 아이콘을 바로 보여주는 것만으로 노션과
+   다른 모양을 내요. */
 .block-drag-handle {
   position: relative;
   flex-shrink: 0;
-  width: 20px;
-  height: 26px;
+  width: 24px;
+  height: 30px;
   border: none;
   border-radius: 6px;
   background: transparent;
   color: #a1abbd;
   cursor: grab;
+  display: grid;
+  place-items: center;
 }
 
-.block-drag-handle:hover {
-  background: #eef1f5;
+.block-drag-handle:hover,
+.block-drag-handle:focus-visible {
+  color: #4f5cf6;
+}
+
+/* 클릭해서 블록 메뉴가 열려있거나(isMoreOpen) 드래그로 위치를 옮기는
+   중이면(isDragging) 호버 여부와 상관없이 아이콘(두 세로 막대) 자체가
+   보라색으로 채워져요 — 배경 박스를 채우는 게 아니라 dual bar 모양만
+   색이 들어가서 "지금 이 핸들이 뭔가를 하고 있다"는 걸 계속 보여줘요. */
+.block-drag-handle.active {
   color: #4f5cf6;
 }
 
@@ -363,28 +389,28 @@
   cursor: grabbing;
 }
 
-.block-drag-handle__type-icon,
-.block-drag-handle__grip-icon {
+/* 태스크/이벤트/스프린트 블록이 실제 데이터에 연결돼 있을 때만
+   핸들 위에 같이 뜨는 점이에요 — "이 블록은 살아있다"는 걸 드래그
+   핸들 자리에서부터 알려주는, 노션에는 없는 FlowSpace만의 상태
+   표시예요. */
+.block-drag-handle__dot {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  transition: opacity 0.1s ease;
+  top: 3px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 2px #fff;
 }
 
-.block-drag-handle__grip-icon {
-  opacity: 0;
-}
-
-.block-drag-handle:hover .block-drag-handle__type-icon {
-  opacity: 0;
-}
-
-.block-drag-handle:hover .block-drag-handle__grip-icon {
-  opacity: 1;
-}
-
-.block-row.dragging {
+/* 드래그 중엔 원래 자리에 남은 카드를 옅게(유령처럼) 보여주는데,
+   .block-row 전체에 opacity를 주면 핸들도 같이 흐려져서 방금 보라색으로
+   채운 dual bar까지 흐릿하게 죽어 보였어요(요청: 안 채워진 것처럼
+   보임). 본문(.block-body)만 흐리게 하고 핸들은 그대로 선명하게
+   남겨서, 드래그 중이라는 신호가 핸들 색으로 계속 또렷하게 보이게
+   했어요. */
+.block-row.dragging .block-body {
   opacity: 0.45;
 }
 
@@ -418,7 +444,7 @@
   overflow: hidden;
   color: #111a2f;
   font-family: inherit;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.6;
   padding: 3px 0;
 }
@@ -586,7 +612,7 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  height: 38px;
+  height: 32px;
   padding: 0 8px;
   border: none;
   border-radius: 7px;
@@ -620,7 +646,7 @@
 .page-link-block--missing {
   display: flex;
   align-items: center;
-  height: 38px;
+  height: 32px;
   padding: 0 8px;
   color: #c3cad8;
   font-size: 13px;
