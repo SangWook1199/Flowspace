@@ -14,13 +14,43 @@ const priorityLabel = {
   LOW: "낮음",
 };
 
-export default function TaskCard({ task }) {
+export default function TaskCard({
+  task,
+  isDragging = false,
+  onDragStart,
+  onDragOverCard,
+  onDragEnd,
+}) {
   const [open, setOpen] = useState(false);
 
   const percent = (task.complete / task.total) * 100;
 
   return (
-    <article className="kanbanCard">
+    <article
+      className={`kanbanCard ${isDragging ? "dragging" : ""}`}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = "move";
+        onDragStart?.();
+      }}
+      onDragEnter={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // 카드 경계를 완전히 넘어야만 반응하는 게 아니라, 카드 높이의
+        // 2/3 지점을 기준으로 "이 카드 앞"/"이 카드 뒤"를 판단해요 —
+        // 커서가 카드 안에서 움직이는 동안 계속 다시 계산돼요.
+        const rect = e.currentTarget.getBoundingClientRect();
+        const ratio = (e.clientY - rect.top) / rect.height;
+        onDragOverCard?.(ratio >= 2 / 3);
+      }}
+      onDrop={(e) => e.preventDefault()}
+      onDragEnd={() => onDragEnd?.()}
+    >
       <div className="cardTop">
         <small className="cardKey">{task.code}</small>
 

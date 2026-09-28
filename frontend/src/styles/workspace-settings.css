@@ -1,0 +1,67 @@
+/* ===========================
+   Workspace Settings (Modal, Shell)
+=========================== */
+
+.workspaceSettingsBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.workspaceSettingsModal {
+  position: relative;
+  width: 480px;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 28px 60px rgba(15, 23, 42, 0.22);
+  padding: 48px 36px 40px;
+  box-sizing: border-box;
+}
+
+.workspaceSettingsClose {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.workspaceSettingsClose:hover {
+  background: #f1f5f9;
+}
+
+.workspaceSettingsEmpty {
+  text-align: center;
+  color: #56667f;
+}
+
+.workspaceSettingsEmpty svg {
+  color: #4f5cf6;
+  margin-bottom: 16px;
+}
+
+.workspaceSettingsEmpty h1 {
+  margin: 0 0 10px;
+  font-size: 20px;
+  color: #16192b;
+}
+
+.workspaceSettingsEmpty p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+}

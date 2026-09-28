@@ -3,10 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { User, Mail, Lock, Eye, EyeOff, X } from "lucide-react";
 
 import SocialLogin from "./SocialLogin";
+import { useAuth } from "../../context/useAuth";
+import * as authApi from "../../api/auth";
 
 export default function SignupForm() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
+  const { signup, setUser } = useAuth();
 
   const [step, setStep] = useState(1);
 
@@ -42,9 +45,52 @@ export default function SignupForm() {
     }
   };
 
-  const handleSignup = () => {
-    // TODO : Spring Signup API
-    console.log(form);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSignup = async () => {
+    if (!signupValid || submitting) return;
+
+    setSubmitting(true);
+    setError("");
+
+    try {
+      await signup({
+        email: form.email,
+        password: form.password,
+        nickname: form.nickname,
+      });
+
+      // 프로필 사진은 가입 요청(email/password/nickname)에는 안 들어가요
+      // — 가입이 끝난 뒤 발급된 토큰으로 PATCH /auth/me/profile을 따로
+      // 호출해서 붙여줘요. 여기서 실패해도 가입 자체는 이미 성공한
+      // 상태라 화면 이동은 그대로 진행해요(사진은 나중에 다시 올리면 됨).
+      if (form.profile) {
+        try {
+          const profileData = new FormData();
+          profileData.append(
+            "data",
+            new Blob([JSON.stringify({ nickname: form.nickname })], {
+              type: "application/json",
+            }),
+          );
+          profileData.append("image", form.profile);
+
+          const { data: updated } = await authApi.updateProfile(profileData);
+          setUser(updated);
+        } catch {
+          // 프로필 사진 업로드만 실패 — 조용히 넘어가요.
+        }
+      }
+
+      navigate("/");
+    } catch (err) {
+      setError(
+        err.response?.data?.message ?? "회원가입에 실패했어요. 다시 시도해주세요.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const step1Valid =
@@ -229,6 +275,8 @@ export default function SignupForm() {
             </label>
           </div>
 
+          {error && <p className="login-error">{error}</p>}
+
           <div className="signup-actions">
             <button
               type="button"
@@ -240,10 +288,10 @@ export default function SignupForm() {
 
             <button
               className="login-button"
-              disabled={!signupValid}
+              disabled={!signupValid || submitting}
               onClick={handleSignup}
             >
-              가입하기
+              {submitting ? "가입 중..." : "가입하기"}
             </button>
           </div>
         </>

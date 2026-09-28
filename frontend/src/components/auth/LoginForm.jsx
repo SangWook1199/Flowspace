@@ -3,9 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 
 import SocialLogin from "./SocialLogin";
+import { useAuth } from "../../context/useAuth";
 
 export default function LoginForm() {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -13,9 +15,27 @@ export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const isValid = email.trim() !== "" && password.trim() !== "";
 
-  const handleLogin = () => {
-    // TODO : Spring Login API
-    console.log({ email, password, remember });
+  // "로그인 상태 유지" 체크박스는 아직 백엔드에 별도 옵션이 없어서(항상
+  // accessToken/refreshToken을 localStorage에 저장) UI상으로만 존재해요.
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleLogin = async () => {
+    if (!isValid || submitting) return;
+
+    setSubmitting(true);
+    setError("");
+
+    try {
+      await login(email, password);
+      navigate("/");
+    } catch (err) {
+      setError(
+        err.response?.data?.message ?? "로그인에 실패했어요. 다시 시도해주세요.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -50,6 +70,7 @@ export default function LoginForm() {
             placeholder="비밀번호를 입력하세요"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleLogin()}
           />
 
           <button type="button" onClick={() => setShowPassword(!showPassword)}>
@@ -73,12 +94,14 @@ export default function LoginForm() {
         </button>
       </div>
 
+      {error && <p className="login-error">{error}</p>}
+
       <button
         className="login-button"
         onClick={handleLogin}
-        disabled={!isValid}
+        disabled={!isValid || submitting}
       >
-        로그인
+        {submitting ? "로그인 중..." : "로그인"}
       </button>
 
       <SocialLogin />

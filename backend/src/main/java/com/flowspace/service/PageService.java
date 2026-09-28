@@ -20,6 +20,7 @@ import com.flowspace.entity.enums.ActivityTargetType;
 import com.flowspace.entity.enums.ActivityType;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
+import com.flowspace.repository.BlockDatabaseRowRepository;
 import com.flowspace.repository.BlockRepository;
 import com.flowspace.repository.CommentRepository;
 import com.flowspace.repository.PageRepository;
@@ -41,6 +42,7 @@ public class PageService {
     private final UserRepository userRepository;
     private final FileService fileService;
     private final CommentRepository commentRepository;
+    private final BlockDatabaseRowRepository blockDatabaseRowRepository;
 
     private final ActivityService activityService;
 
@@ -150,6 +152,12 @@ public class PageService {
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
         page.delete();
+
+        // 데이터베이스 행 = 페이지라서, 다른 페이지의 데이터베이스 블록에
+        // 이 페이지를 가리키는 행이 있으면 같이 지워줘요 — 안 그러면 삭제된
+        // 페이지를 계속 가리키는 고아 행이 남아요(셀은 FK ON DELETE CASCADE로
+        // 같이 정리돼요).
+        blockDatabaseRowRepository.deleteAll(blockDatabaseRowRepository.findByPage(page));
     }
 
     // 순환 참조 검증

@@ -8,19 +8,28 @@ import Kanban from "./pages/Kanban";
 import Calendar from "./pages/Calendar";
 import RetrospectiveList from "./pages/RetrospectiveList";
 import RetrospectiveDetailPage from "./pages/RetrospectiveDetailPage";
+import PageDetailPage from "./pages/PageDetailPage";
 import WorkspaceCreatePage from "./pages/WorkspaceCreatePage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 
 import MainLayout from "./layout/MainLayout";
 import { AuthProvider } from "./context/AuthProvider";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
+import GuestRoute from "./components/auth/GuestRoute";
 
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route element={<MainLayout />}>
+          <Route
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
             <Route index element={<Dashboard />} />
             <Route path="sprints" element={<SprintList />} />
             <Route path="sprints/:sprintId" element={<SprintDetail />} />
@@ -33,10 +42,32 @@ function App() {
               path="/retrospectives/:sprintId"
               element={<RetrospectiveDetailPage />}
             />
+            <Route path="pages/:pageId" element={<PageDetailPage />} />
           </Route>
-          <Route path="/workspace/create" element={<WorkspaceCreatePage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
+          <Route
+            path="/workspace/create"
+            element={
+              <ProtectedRoute>
+                <WorkspaceCreatePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/login"
+            element={
+              <GuestRoute>
+                <LoginPage />
+              </GuestRoute>
+            }
+          />
+          <Route
+            path="/signup"
+            element={
+              <GuestRoute>
+                <SignupPage />
+              </GuestRoute>
+            }
+          />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

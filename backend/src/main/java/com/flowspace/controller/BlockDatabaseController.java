@@ -7,9 +7,14 @@ import org.springframework.web.bind.annotation.*;
 import com.flowspace.dto.database.BlockDatabaseCellResponse;
 import com.flowspace.dto.database.BlockDatabaseCellUpdateRequest;
 import com.flowspace.dto.database.BlockDatabaseColumnCreateRequest;
+import com.flowspace.dto.database.BlockDatabaseColumnOptionCreateRequest;
+import com.flowspace.dto.database.BlockDatabaseColumnOptionReorderRequest;
+import com.flowspace.dto.database.BlockDatabaseColumnOptionResponse;
+import com.flowspace.dto.database.BlockDatabaseColumnOptionUpdateRequest;
 import com.flowspace.dto.database.BlockDatabaseColumnReorderRequest;
 import com.flowspace.dto.database.BlockDatabaseColumnResponse;
 import com.flowspace.dto.database.BlockDatabaseColumnUpdateRequest;
+import com.flowspace.dto.database.BlockDatabaseColumnWidthUpdateRequest;
 import com.flowspace.dto.database.BlockDatabaseRowReorderRequest;
 import com.flowspace.dto.database.BlockDatabaseRowResponse;
 import com.flowspace.dto.database.DatabaseCreateRequest;
@@ -75,6 +80,14 @@ public class BlockDatabaseController {
         return blockDatabaseService.updateColumn(columnId, request, userDetails.getUsername());
     }
 
+    @Operation(summary = "데이터베이스 컬럼 너비 변경")
+    @PatchMapping("/databases/{databaseId}/columns/{columnId}/width")
+    public BlockDatabaseColumnResponse updateColumnWidth(@PathVariable Long databaseId, @PathVariable Long columnId,
+        @Valid @RequestBody BlockDatabaseColumnWidthUpdateRequest request,
+        @AuthenticationPrincipal UserDetails userDetails) {
+        return blockDatabaseService.updateColumnWidth(columnId, request, userDetails.getUsername());
+    }
+
     @Operation(summary = "데이터베이스 컬럼 순서 변경")
     @PatchMapping("/databases/{databaseId}/columns/reorder")
     public void reorderColumns(@PathVariable Long databaseId,
@@ -88,6 +101,37 @@ public class BlockDatabaseController {
     public void deleteColumn(@PathVariable Long databaseId, @PathVariable Long columnId,
         @AuthenticationPrincipal UserDetails userDetails) {
         blockDatabaseService.deleteColumn(columnId, userDetails.getUsername());
+    }
+
+    @Operation(summary = "데이터베이스 컬럼 옵션 생성")
+    @PostMapping("/databases/{databaseId}/columns/{columnId}/options")
+    public BlockDatabaseColumnOptionResponse createOption(@PathVariable Long databaseId, @PathVariable Long columnId,
+        @Valid @RequestBody BlockDatabaseColumnOptionCreateRequest request,
+        @AuthenticationPrincipal UserDetails userDetails) {
+        return blockDatabaseService.createOption(columnId, request, userDetails.getUsername());
+    }
+
+    @Operation(summary = "데이터베이스 컬럼 옵션 수정")
+    @PatchMapping("/databases/{databaseId}/columns/{columnId}/options/{optionId}")
+    public BlockDatabaseColumnOptionResponse updateOption(@PathVariable Long databaseId, @PathVariable Long columnId,
+        @PathVariable Long optionId, @Valid @RequestBody BlockDatabaseColumnOptionUpdateRequest request,
+        @AuthenticationPrincipal UserDetails userDetails) {
+        return blockDatabaseService.updateOption(optionId, request, userDetails.getUsername());
+    }
+
+    @Operation(summary = "데이터베이스 컬럼 옵션 순서 변경")
+    @PatchMapping("/databases/{databaseId}/columns/{columnId}/options/reorder")
+    public void reorderOptions(@PathVariable Long databaseId, @PathVariable Long columnId,
+        @Valid @RequestBody BlockDatabaseColumnOptionReorderRequest request,
+        @AuthenticationPrincipal UserDetails userDetails) {
+        blockDatabaseService.reorderOptions(columnId, request, userDetails.getUsername());
+    }
+
+    @Operation(summary = "데이터베이스 컬럼 옵션 삭제")
+    @DeleteMapping("/databases/{databaseId}/columns/{columnId}/options/{optionId}")
+    public void deleteOption(@PathVariable Long databaseId, @PathVariable Long columnId, @PathVariable Long optionId,
+        @AuthenticationPrincipal UserDetails userDetails) {
+        blockDatabaseService.deleteOption(optionId, userDetails.getUsername());
     }
 
     @Operation(summary = "데이터베이스 행 생성")

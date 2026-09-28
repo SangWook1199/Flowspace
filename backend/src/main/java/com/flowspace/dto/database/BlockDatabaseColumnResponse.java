@@ -1,5 +1,7 @@
 package com.flowspace.dto.database;
 
+import java.util.List;
+
 import com.flowspace.entity.BlockDatabaseColumn;
 import com.flowspace.entity.enums.DatabaseColumnType;
 
@@ -12,17 +14,24 @@ public record BlockDatabaseColumnResponse(
     Long databaseId,
     String name,
     DatabaseColumnType type,
-    Integer position
+    Integer position,
+    Integer width,
+    List<BlockDatabaseColumnOptionResponse> options
 
 ) {
 
-    public static BlockDatabaseColumnResponse from(BlockDatabaseColumn column) {
+    // SELECT/MULTI_SELECT/STATUS가 아닌 컬럼은 옵션이 없어서, 매번 options를
+    // 조회해서 넘겨주는 쪽(BlockDatabaseService)에서 빈 리스트를 넘겨요.
+    public static BlockDatabaseColumnResponse from(BlockDatabaseColumn column,
+        List<BlockDatabaseColumnOptionResponse> options) {
         return new BlockDatabaseColumnResponse(
             column.getColumnId(),
             column.getDatabase().getDatabaseId(),
             column.getName(),
             column.getType(),
-            column.getPosition()
+            column.getPosition(),
+            column.getWidth(),
+            options
         );
     }
 

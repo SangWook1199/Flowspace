@@ -1,0 +1,2145 @@
+/* 페이지(노션형) 상세 화면 스타일.
+   색/여백/카드 톤은 회고 CSS가 아니라 스프린트 상세(sprint-detail.css) 등
+   앱 전역에서 이미 쓰는 값들을 그대로 따릅니다.
+   accent #4f5cf6 · border #e3e8f0/#dfe6ef · card radius 11~12px ·
+   우선순위 높음=red/보통=orange/낮음=green */
+
+.page-detail-page {
+  /* 요청: 뷰포트가 좁아지거나 넓어져도 절대 줄어들거나 늘어나지 않게
+     고정. max-width만 쓰면 화면이 이 값보다 좁을 때 같이 줄어드니까,
+     width·min-width·max-width를 전부 같은 값(1200px)으로 못박았어요.
+     .main이 overflow-x:hidden이라 화면이 1200px보다 좁으면 카드 일부가
+     가려질 수 있는데, 그것도 "줄어들지 않는다"는 요청에 포함되는
+     트레이드오프예요. */
+  width: 1200px;
+  min-width: 1200px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 30px 90px;
+}
+
+.page-detail__missing {
+  color: #62728b;
+  font-size: 14px;
+  padding: 40px 0;
+  text-align: center;
+}
+
+/* ---------- 상단 바: 상위 페이지 이동 + 삭제 ---------- */
+
+.page-detail__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 32px;
+  margin-bottom: 14px;
+}
+
+.page-detail__breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  min-width: 0;
+}
+
+.page-detail__breadcrumb-seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: #a1abbd;
+}
+
+.page-detail__breadcrumb-seg button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #62728b;
+  font-size: 12px;
+  font-weight: 600;
+  max-width: 220px;
+}
+
+.page-detail__breadcrumb-seg button span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.page-detail__breadcrumb-seg button:hover {
+  background: #f0efff;
+  color: #4f5cf6;
+}
+
+.page-detail__delete-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid #e3e8f0;
+  border-radius: 8px;
+  background: #fff;
+  color: #8a97ab;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.page-detail__delete-btn:hover {
+  border-color: #f6c9c9;
+  background: #feeaea;
+  color: #e65353;
+}
+
+/* ---------- 커버 ---------- */
+
+.page-detail__cover {
+  position: relative;
+  height: 200px;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: -28px;
+  border: 1px solid #e3e8f0;
+}
+
+.page-detail__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.page-detail__cover-actions {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.page-detail__cover:hover .page-detail__cover-actions {
+  opacity: 1;
+}
+
+.page-detail__cover-actions button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 7px;
+  background: rgba(17, 26, 47, 0.65);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.page-detail__cover-actions button:hover {
+  background: rgba(17, 26, 47, 0.8);
+}
+
+.page-detail__add-cover {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  margin-bottom: 6px;
+  border: 1px dashed #dfe6ef;
+  border-radius: 8px;
+  background: #fff;
+  color: #8a97ab;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.page-detail__add-cover:hover {
+  color: #4f5cf6;
+  border-color: #c9cffb;
+  background: #f7f8ff;
+}
+
+/* ---------- 아이콘 + 제목 ---------- */
+
+.page-detail__head {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 22px 0 10px;
+}
+
+.page-detail__icon-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.page-detail__icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  background: #f0efff;
+  color: #4f5cf6;
+  border: 1px solid #e3e8f0;
+  display: grid;
+  place-items: center;
+  font-size: 34px;
+  line-height: 1;
+}
+
+.page-detail__icon:hover {
+  border-color: #c9cffb;
+}
+
+.page-detail__icon-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+}
+
+.page-detail__icon-picker {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 21;
+  width: 240px;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid #e3e8f0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(17, 26, 47, 0.14);
+}
+
+.page-detail__icon-picker button {
+  height: 34px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  font-size: 18px;
+  display: grid;
+  place-items: center;
+}
+
+.page-detail__icon-picker button:hover {
+  background: #f0efff;
+}
+
+.page-detail__title {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.8px;
+  color: #111a2f;
+  padding: 4px 0;
+}
+
+.page-detail__title::placeholder {
+  color: #c3cad8;
+}
+
+/* =====================================================
+   블록 에디터
+   ===================================================== */
+
+.block-editor {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+}
+
+.block-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+}
+
+/* margin-left(음수)와 padding-left를 똑같은 값으로 맞춰서, 줄의 실제
+   호버 판정 영역(hit-box)만 왼쪽 여백 쪽으로 52px 넓혀요 — 보이는
+   내용(.block-body)의 위치는 음수 마진만큼 다시 오른쪽으로 밀려서
+   똑같아요(제목과 계속 같은 줄에 맞음). 이렇게 해야 마우스를 본문에서
+   핸들 쪽으로 옮길 때 .block-row:hover가 안 끊겨요 — 핸들이 줄
+   바깥(마진 영역)에 떠 있어도, 그 자리가 이제 이 줄의 hit-box 안이라
+   "여기서 벗어났다"고 판정되지 않아요. */
+.block-row {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  border-radius: 8px;
+  margin-left: -52px;
+  padding: 1px 4px 1px 52px;
+}
+
+.block-row:hover,
+.block-row.menu-open {
+  background: #f8f9fc;
+}
+
+/* DATABASE(표/데이터베이스)·TASK·EVENT처럼 자기 폭을 스스로 정하는
+   임베드 블록은, .block-row 자체도 그 폭만큼만 차지하게 했어요 —
+   그래야 :hover 하이라이트 배경도, 오른쪽의 블록 "⋯" 메뉴도 표/카드
+   바로 옆에 붙지, 페이지 끝까지 늘어난 빈 공간까지 하이라이트되지
+   않아요(요청: 호버 시 뜨는 블록 강조가 열들의 폭만큼만 있어야 함).
+   max-width:100%는 표가 아주 넓어져서 페이지보다 커질 때 이 줄 자체가
+   페이지 밖으로 삐져나가지 않게 막아주고, 그 안의 .db-table-scroll의
+   overflow-x:auto가 가로 스크롤을 대신 처리해요. */
+.block-row--embed {
+  /* margin: 6px 0 처럼 축약형을 쓰면 margin-left까지 0으로 덮어써서
+     위 .block-row의 margin-left: -52px(호버 hit-box 확장용)가
+     깨져요 — top/bottom만 따로 써서 그 값은 안 건드려요. */
+  margin-top: 6px;
+  margin-bottom: 6px;
+  width: fit-content;
+  max-width: 100%;
+}
+
+/* 노션처럼 "+"(블록 추가)와 드래그 핸들을 왼쪽에 나란히 둬요 — 평소엔
+   숨어있다가 그 줄에 마우스를 올렸을 때만 보여요. 본문 텍스트를 밀지
+   않으려고 position: absolute로 뺐는데, 처음엔 right: 100%로
+   .block-row 바깥(hit-box 밖)에 얹었더니 본문에서 핸들 쪽으로 마우스를
+   옮기는 순간 .block-row:hover가 풀려서 핸들이 사라지는 문제가
+   있었어요(요청: 마우스를 핸들 쪽으로 옮기면 없어짐). 그래서 이제
+   .block-row 자체를 왼쪽으로 52px 넓혀두고(margin-left: -52px +
+   padding-left: 52px, 위 참고) 이 핸들 묶음은 그 넓어진 자리 안쪽
+   (left: 0)에 둬요 — 넓어진 부분도 여전히 .block-row의 hit-box라서,
+   본문이든 핸들이든 그 사이 여백이든 마우스가 어디 있어도 hover가 안
+   끊겨요. top:50%+translateY(-50%)는 태스크/이벤트 카드처럼 키가 큰
+   블록에서도 항상 그 줄/카드의 세로 중앙에 오게 해요. */
+.block-left-actions {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.block-row:hover .block-left-actions,
+.block-row.menu-open .block-left-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.block-add-btn {
+  width: 24px;
+  height: 30px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #a1abbd;
+  display: grid;
+  place-items: center;
+}
+
+.block-add-btn:hover {
+  color: #4f5cf6;
+}
+
+/* 드래그 핸들은 두 가지를 겸해요 — 잡고 끌면 순서를 바꾸고, 그냥
+   클릭하면(드래그 없이) 블록 옵션 메뉴가 열려요. 폭을 늘렸다 줄이는
+   탭 모션은 옆의 블록 내용을 밀어내는 문제가 있어서 뺐어요 — 대신
+   크기는 처음부터 고정해두고(노션 정도 크기), 점 6개(⋮⋮) 대신 두
+   개의 세로 막대(Pause 모양) 아이콘을 바로 보여주는 것만으로 노션과
+   다른 모양을 내요. */
+.block-drag-handle {
+  position: relative;
+  flex-shrink: 0;
+  width: 24px;
+  height: 30px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #a1abbd;
+  cursor: grab;
+  display: grid;
+  place-items: center;
+}
+
+.block-drag-handle:hover,
+.block-drag-handle:focus-visible {
+  color: #4f5cf6;
+}
+
+/* 클릭해서 블록 메뉴가 열려있거나(isMoreOpen) 드래그로 위치를 옮기는
+   중이면(isDragging) 호버 여부와 상관없이 아이콘(두 세로 막대) 자체가
+   보라색으로 채워져요 — 배경 박스를 채우는 게 아니라 dual bar 모양만
+   색이 들어가서 "지금 이 핸들이 뭔가를 하고 있다"는 걸 계속 보여줘요. */
+.block-drag-handle.active {
+  color: #4f5cf6;
+}
+
+.block-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* 태스크/이벤트/스프린트 블록이 실제 데이터에 연결돼 있을 때만
+   핸들 위에 같이 뜨는 점이에요 — "이 블록은 살아있다"는 걸 드래그
+   핸들 자리에서부터 알려주는, 노션에는 없는 FlowSpace만의 상태
+   표시예요. */
+.block-drag-handle__dot {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+/* 드래그 중엔 원래 자리에 남은 카드를 옅게(유령처럼) 보여주는데,
+   .block-row 전체에 opacity를 주면 핸들도 같이 흐려져서 방금 보라색으로
+   채운 dual bar까지 흐릿하게 죽어 보였어요(요청: 안 채워진 것처럼
+   보임). 본문(.block-body)만 흐리게 하고 핸들은 그대로 선명하게
+   남겨서, 드래그 중이라는 신호가 핸들 색으로 계속 또렷하게 보이게
+   했어요. */
+.block-row.dragging .block-body {
+  opacity: 0.45;
+}
+
+/* 블록을 놓을 위치를 보여주는 줄 — 칸반 보드의 .dropIndicator와 같은
+   색·두께로 통일했어요. */
+.block-drop-indicator {
+  height: 3px;
+  margin: 2px 0;
+  border-radius: 999px;
+  background: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+.block-body {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 2px;
+}
+
+.block-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  resize: none;
+  overflow: hidden;
+  color: #111a2f;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.6;
+  padding: 3px 0;
+}
+
+.block-input::placeholder {
+  color: #c3cad8;
+}
+
+.block-input--h1 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  padding: 6px 0 4px;
+}
+
+.block-input--h2 {
+  font-size: 17px;
+  font-weight: 700;
+  padding: 4px 0;
+}
+
+.block-input--quote {
+  font-style: italic;
+  color: #4a5468;
+}
+
+.block-input--code {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 13px;
+  background: #f6f7fb;
+  border: 1px solid #eef1f5;
+  border-radius: 7px;
+  padding: 10px 12px;
+}
+
+.block-input--todo.checked {
+  color: #a1abbd;
+  text-decoration: line-through;
+}
+
+.block-checkbox {
+  margin-top: 9px;
+  width: 16px;
+  height: 16px;
+  accent-color: #4f5cf6;
+  flex-shrink: 0;
+}
+
+.block-bullet {
+  margin-top: 6px;
+  color: #4f5cf6;
+  font-size: 18px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.block-number {
+  margin-top: 7px;
+  min-width: 18px;
+  color: #4f5cf6;
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.block-quote-bar {
+  align-self: stretch;
+  width: 3px;
+  border-radius: 2px;
+  background: #c9cffb;
+  flex-shrink: 0;
+}
+
+.block-divider-line {
+  flex: 1;
+  border: none;
+  border-top: 1px solid #e3e8f0;
+  margin: 12px 0;
+}
+
+/* ⋯ 메뉴 — 이제 왼쪽 드래그 핸들을 클릭하면 뜨니까(.block-left-actions
+   기준으로 위치), 오른쪽엔 따로 트리거 버튼이 없어요. */
+
+.block-menu {
+  position: absolute;
+  top: 30px;
+  left: 0;
+  z-index: 16;
+  width: 210px;
+  padding: 6px;
+  border: 1px solid #e3e8f0;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(17, 26, 47, 0.14);
+  display: flex;
+  flex-direction: column;
+}
+
+.block-menu button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 34px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #2b3548;
+  text-align: left;
+}
+
+.block-menu button span {
+  flex: 1;
+}
+
+.block-menu button:hover {
+  background: #f0efff;
+  color: #4f5cf6;
+}
+
+.block-menu button:disabled {
+  color: #c3cad8;
+  background: transparent;
+}
+
+.block-menu__chevron {
+  flex: 0 !important;
+  color: #a1abbd;
+}
+
+.block-menu__divider {
+  margin: 4px 2px;
+  border: none;
+  border-top: 1px solid #eef1f5;
+}
+
+.block-menu button.danger {
+  color: #e65353;
+}
+
+.block-menu button.danger:hover {
+  background: #feeaea;
+}
+
+.block-menu__back {
+  color: #8a97ab !important;
+  margin-bottom: 2px;
+}
+
+/* 본문 아래 빈 공간 — 버튼 없이, 노션처럼 클릭하면 이어 쓸 빈 블록이
+   생겨요(마지막 줄이 이미 빈 블록이면 그냥 거기로 포커스만 이동). */
+
+.block-editor__empty-area {
+  min-height: 140px;
+  cursor: text;
+}
+
+/* 하위 페이지 링크 블록 — 다른 블록과 같은 줄 높이로, 페이지 맨 아래에
+   따로 박스를 두지 않고 문서 흐름 중 어디든 끼워 넣을 수 있게 했어요. */
+
+.page-link-block {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #2b3548;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.page-link-block:hover {
+  background: #f0efff;
+  color: #4f5cf6;
+}
+
+.page-link-block__icon {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  font-size: 15px;
+  color: #4f5cf6;
+  flex-shrink: 0;
+}
+
+.page-link-block__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.page-link-block--missing {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 8px;
+  color: #c3cad8;
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* 슬래시 메뉴 */
+
+.block-slash-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 16;
+  width: 260px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid #e3e8f0;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(17, 26, 47, 0.14);
+  display: flex;
+  flex-direction: column;
+}
+
+.block-slash-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #8a97ab;
+  text-align: left;
+}
+
+.block-slash-menu button strong {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #2b3548;
+}
+
+.block-slash-menu button span {
+  display: block;
+  font-size: 11px;
+  color: #8a97ab;
+}
+
+.block-slash-menu button:hover,
+.block-slash-menu button.active {
+  background: #f0efff;
+  color: #4f5cf6;
+}
+
+.block-slash-menu button.active strong {
+  color: #4f5cf6;
+}
+
+.block-slash-empty {
+  margin: 0;
+  padding: 10px 8px;
+  font-size: 12px;
+  color: #a1abbd;
+}
+
+/* 이미지 블록 */
+
+.block-image-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 96px;
+  border: 1px dashed #dfe6ef;
+  border-radius: 10px;
+  background: #fbfcfe;
+  color: #a1abbd;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.block-image-empty:hover {
+  border-color: #c9cffb;
+  color: #4f5cf6;
+  background: #f7f8ff;
+}
+
+.page-image-box {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid #e3e8f0;
+  border-radius: 10px;
+  padding: 10px;
+  background: #fff;
+}
+
+.block-image-preview {
+  width: 100%;
+  max-height: 360px;
+  object-fit: cover;
+  border-radius: 7px;
+  display: block;
+}
+
+.block-image-placeholder {
+  height: 120px;
+  border-radius: 7px;
+  background: #f6f7fb;
+  color: #c3cad8;
+  display: grid;
+  place-items: center;
+}
+
+.block-image-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.block-image-meta strong {
+  color: #2b3548;
+  font-weight: 700;
+}
+
+.block-image-meta span {
+  color: #a1abbd;
+}
+
+.block-image-replace {
+  align-self: flex-start;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid #dfe6ef;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #4f5cf6;
+}
+
+.block-image-replace:hover {
+  border-color: #4f5cf6;
+  background: #f7f8ff;
+}
+
+/* =====================================================
+   TASK / EVENT 임베드 블록 — FlowSpace 전용 차별화 요소
+   ===================================================== */
+
+.embed-picker {
+  flex: 1;
+}
+
+.embed-picker select {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px dashed #dfe6ef;
+  border-radius: 9px;
+  background: #fbfcfe;
+  color: #62728b;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.embed-picker select:hover {
+  border-color: #c9cffb;
+  color: #4f5cf6;
+}
+
+.embed-task-card {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid #e3e8f0;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.embed-task-card:hover {
+  border-color: #4f5cf6;
+  box-shadow: 0 4px 14px rgba(79, 92, 246, 0.12);
+}
+
+.embed-task-card__link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  text-align: left;
+}
+
+.embed-task-card__title {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #111a2f;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.embed-task-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-shrink: 0;
+  font-size: 11.5px;
+  color: #8a97ab;
+}
+
+.embed-task-card__code {
+  font-weight: 700;
+  color: #4f5cf6;
+}
+
+.embed-priority {
+  flex-shrink: 0;
+  border-radius: 7px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.embed-priority--high {
+  color: #e65353;
+  background: #feeaea;
+}
+
+.embed-priority--medium {
+  color: #d8820c;
+  background: #fff2df;
+}
+
+.embed-priority--low {
+  color: #199866;
+  background: #e4f8ee;
+}
+
+.embed-event-card {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  width: 100%;
+  min-height: 52px;
+  border: 1px solid #e3e8f0;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.embed-event-card:hover {
+  box-shadow: 0 4px 14px rgba(17, 26, 47, 0.1);
+}
+
+.embed-event-card__link {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+}
+
+.embed-event-card__bar {
+  width: 5px;
+  flex-shrink: 0;
+}
+
+/* TASK/EVENT/SPRINT 카드의 연결 해제 버튼(X)은 없앴어요 — 같은 동작을
+   드래그 핸들을 클릭하면 열리는 블록 메뉴(타입 변경/삭제)로 이미 할 수
+   있어서, 카드마다 중복으로 둘 필요가 없었어요. */
+
+.embed-event-card--red .embed-event-card__bar {
+  background: #e65353;
+}
+
+.embed-event-card--orange .embed-event-card__bar {
+  background: #ff971d;
+}
+
+.embed-event-card--green .embed-event-card__bar {
+  background: #24b974;
+}
+
+.embed-event-card--blue .embed-event-card__bar {
+  background: #2769ed;
+}
+
+.embed-event-card--purple .embed-event-card__bar {
+  background: #8b5cf6;
+}
+
+.embed-event-card__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 8px 12px 8px 0;
+}
+
+.embed-event-card__body strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111a2f;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.embed-event-card__body span {
+  font-size: 11.5px;
+  color: #8a97ab;
+}
+
+/* 스프린트 연결 카드(SPRINT 블록) — TASK/EVENT 카드와 같은 톤이되,
+   진행률 바가 있어서 세로 공간을 조금 더 써요. */
+
+.embed-sprint-card {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  width: 100%;
+  min-width: 320px;
+  min-height: 48px;
+  border: 1px solid #e3e8f0;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.embed-sprint-card:hover {
+  box-shadow: 0 4px 14px rgba(17, 26, 47, 0.1);
+}
+
+.embed-sprint-card__link {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+}
+
+.embed-sprint-card__bar {
+  width: 5px;
+  flex-shrink: 0;
+}
+
+.embed-sprint-card--indigo .embed-sprint-card__bar {
+  background: #4f5cf6;
+}
+
+.embed-sprint-card--sky .embed-sprint-card__bar {
+  background: #38bdf8;
+}
+
+.embed-sprint-card--green .embed-sprint-card__bar {
+  background: #24b974;
+}
+
+.embed-sprint-card--amber .embed-sprint-card__bar {
+  background: #f5a524;
+}
+
+.embed-sprint-card--gray .embed-sprint-card__bar {
+  background: #a1abbd;
+}
+
+/* 세로로 3줄(이름/목표/진행률) 쌓던 걸 가로 한 줄로 바꿨어요 — 이름+상태는
+   줄어들지 않게 고정폭, 목표는 남는 공간을 가져가되 넘치면 말줄임표,
+   진행률은 오른쪽에 고정폭으로 붙어요. TASK/EVENT 카드처럼 한 줄짜리
+   임베드로 통일된 느낌을 줘요. */
+.embed-sprint-card__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 14px 0 0;
+}
+
+.embed-sprint-card__top {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.embed-sprint-card__top strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111a2f;
+  white-space: nowrap;
+}
+
+.embed-sprint-card__status {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #f0efff;
+  color: #4f5cf6;
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* 카드 폭이 늘어나거나 줄어들어도 목표 텍스트 칸의 길이는 항상
+   일정하도록 flex:1(남는 공간 다 차지) 대신 고정폭을 줬어요 — 그 폭보다
+   내용이 길면 말줄임표(...)로 잘려요. */
+.embed-sprint-card__goal {
+  flex-shrink: 0;
+  width: 260px;
+  font-size: 11.5px;
+  color: #8a97ab;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.embed-sprint-card__progress {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 210px;
+}
+
+.embed-sprint-card__progress-track {
+  flex: 1;
+  height: 5px;
+  border-radius: 999px;
+  background: #eef1f5;
+  overflow: hidden;
+}
+
+.embed-sprint-card__progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #4f5cf6;
+}
+
+.embed-sprint-card__progress-label {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #62728b;
+  white-space: nowrap;
+}
+
+/* =====================================================
+   표(SimpleTableBlock) / 데이터베이스(DatabaseBlock) 공용 그리드 스타일.
+   .db-table, .db-cell-input 등 표 자체의 모양은 두 컴포넌트가 그대로
+   공유하고, 제목·속성 타입·SELECT 등 "데이터베이스"만의 기능만 아래에서
+   .db-block/.db-table__head-type 같은 별도 클래스로 얹어요.
+   ===================================================== */
+
+/* width:100%였을 땐 이 블록(카드)이 부모(.block-body)의 가로폭을 그대로
+   다 차지해서, 열이 몇 개든 상관없이 표 카드가 항상 페이지 끝까지
+   늘어나 보였어요(요청: 카드 폭은 지금까지 만든 열들의 실제 폭만큼만).
+   width를 아예 빼서 fit-content로 동작하게 했어요 — 안의 표(.db-table,
+   table-layout:fixed + 열마다 지정된 width)가 결정하는 실제 콘텐츠
+   폭까지만 카드가 줄어들어요. 표가 넓어져서 가로 스크롤이 필요해지는
+   경우엔 .db-table-scroll의 overflow-x:auto가 여전히 처리해요. */
+.simple-table-block {
+  width: fit-content;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.db-block {
+  width: fit-content;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.db-block__title {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 700;
+  color: #111a2f;
+  padding: 2px 0;
+}
+
+.db-block__title::placeholder {
+  color: #c3cad8;
+}
+
+.db-block-wrap {
+  border: 1px solid #e3e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+
+/* 노션처럼 컬럼을 계속 추가해도 표 전체 너비를 제한하지 않고, 대신 이
+   스크롤 컨테이너 안에서만 가로 스크롤이 생겨요. table-layout: fixed라서
+   각 <th>의 width(컬럼별로 다를 수 있음, 기본 200px)가 그대로 표 너비를
+   결정해요. */
+.db-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  /* .db-add-col-zone(열 추가 호버 영역)이 이 컨테이너 기준으로
+     position:absolute + top/bottom:0로 표 전체 높이만큼 늘어나요.
+     예전엔 여기에 padding-right로 여백을 따로 예약해뒀는데, 그러면
+     호버 안 해도 표 오른쪽에 여백이 계속 보여서(요청: "셀이 안 보여야
+     한다") 없앴어요 — 이제 평소엔 완전히 비어 있고, 호버했을 때만 표
+     맨 오른쪽 칸 위에 살짝 겹쳐서 +가 뜨는 방식이에요. */
+  position: relative;
+}
+
+/* table-layout:fixed는 <th>에 지정한 width를 "그대로" 쓰지만, 그건
+   표 자신의 width가 정해져 있을 때 얘기예요. 표 자체엔 width가 없어서
+   지금까지는 조상들(.db-block 등)이 fit-content로 줄어들 때 표도 같이
+   줄어들면서 열 폭이 비율대로 눌렸어요(요청 위반: 열 추가하다 페이지를
+   넘으면 열은 그대로, 스크롤이 생겨야 함). width:max-content로 표
+   자신의 폭을 "열 width의 합"으로 못박아서, 부모가 좁아져도 표는 절대
+   안 눌리고 대신 .db-table-scroll의 overflow-x:auto가 가로 스크롤로
+   넘겨요. */
+.db-table {
+  width: max-content;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.db-table th,
+.db-table td {
+  position: relative;
+  border-bottom: 1px solid #eef1f5;
+  border-right: 1px solid #eef1f5;
+  padding: 0;
+  vertical-align: middle;
+}
+
+.db-table th:last-child,
+.db-table td:last-child {
+  border-right: none;
+}
+
+.db-table thead th {
+  background: #fbfcfe;
+}
+
+.db-table__head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+}
+
+.db-table__head-input {
+  flex: 1;
+  min-width: 0;
+  /* <input>은 flex:1 + min-width:0만으로는 안 줄어들어요 — size 속성 기반의
+     자체 기본 너비(대략 180px대)를 최소치로 깔고 앉아서, 컬럼을 90px로
+     줄이려 해도 th 자체가 그 기본 너비 밑으로 못 내려가고 버텼어요(실제
+     리사이즈가 "처음 너비 밑으로는 절대 안 줄어드는" 것처럼 보였던 원인).
+     width: 0을 같이 줘야 flex-basis가 진짜 0이 되고, 그다음부터 flex-grow가
+     남는 공간만큼 다시 채워줘요 — 즉 넓을 땐 그대로 늘어나고, 좁을 땐
+     제대로 줄어들어요. */
+  width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 700;
+  color: #2b3548;
+  padding: 4px 2px;
+}
+
+/* 속성 유형 — 예전엔 네이티브 <select>였는데, 옵션마다 아이콘을 못 넣어서
+   (SELECT 셀 팝오버와 같은 이유) 버튼 + 커스텀 팝오버(ColumnTypePicker)로
+   바꿨어요. */
+
+.db-table__head-type-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.db-table__head-type {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  height: 20px;
+  padding: 0 4px;
+  border: none;
+  border-radius: 5px;
+  outline: none;
+  background: transparent;
+  color: #a1abbd;
+  font-size: 10.5px;
+  font-weight: 600;
+  max-width: 90px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.db-table__head-type span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.db-table__head-type:hover {
+  background: #f0efff;
+  color: #4f5cf6;
+}
+
+/* PopoverPortal이 이미 이 박스를 감싸는 .db-popover-portal에
+   position:fixed + 실제 top/left를 인라인으로 넣어줘서, 여기선 위치를
+   따로 지정하지 않아요(예전엔 여기 자체가 position:absolute였는데,
+   그러면 이중으로 오프셋이 겹쳐요). */
+.db-type-picker {
+  width: 200px;
+  border: 1px solid #e3e8f0;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(17, 26, 47, 0.14);
+  overflow: hidden;
+  text-align: left;
+}
+
+.db-type-picker__search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid #eef1f5;
+  color: #a1abbd;
+}
+
+.db-type-picker__search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 12.5px;
+  color: #2b3548;
+}
+
+.db-type-picker__list {
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.db-type-picker__option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  color: #62728b;
+  font-size: 12.5px;
+}
+
+.db-type-picker__option:hover {
+  background: #f6f7fb;
+}
+
+.db-type-picker__option--active {
+  color: #4f5cf6;
+  background: #f0efff;
+}
+
+.db-type-picker__option span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.db-type-picker__check {
+  flex-shrink: 0;
+  color: #4f5cf6;
+}
+
+.db-type-picker__empty {
+  margin: 0;
+  padding: 10px 8px;
+  font-size: 11.5px;
+  color: #c3cad8;
+}
+
+/* 노션 표처럼, 헤더의 "⋯" 더보기 버튼(옵션 관리·삭제를 묶은 메뉴)은
+   평소엔 숨겨뒀다가 그 컬럼(th)에 마우스를 올렸을 때만 나타나게 해요 —
+   늘 떠 있으면 헤더가 버튼투성이로 보여서 표가 지저분해 보였어요.
+   display:none 대신 opacity만 바꿔서 레이아웃 폭은 그대로 두고(호버할
+   때마다 헤더 너비가 실룩거리지 않게), .db-title-cell__open과 같은
+   방식을 그대로 따랐어요. 더보기 메뉴가 열려 있는 동안은(.is-open)
+   마우스가 팝오버 쪽으로 빠져나가도 트리거 버튼이 사라지지 않게 강제로
+   보이게 해요. */
+.db-table__head-more-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.db-table__head-more {
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: #a1abbd;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.db-table__head-more:hover {
+  background: #f0efff;
+  color: #4f5cf6;
+}
+
+.db-table thead th:hover .db-table__head-more,
+.db-table__head-more:focus-visible,
+.db-table__head-more.is-open {
+  opacity: 1;
+}
+
+/* 위치는 PopoverPortal의 .db-popover-portal이 인라인으로 잡아줘요. */
+.db-select-options {
+  width: 220px;
+  padding: 10px;
+  border: 1px solid #e3e8f0;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(17, 26, 47, 0.14);
+  text-align: left;
+}
+
+.db-select-options__label {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #a1abbd;
+}
+
+.db-select-options__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.db-select-options__empty {
+  margin: 0;
+  font-size: 11.5px;
+  color: #c3cad8;
+}
+
+.db-select-options__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.db-select-options__dot {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+}
+
+.db-select-options__input {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  padding: 0 4px;
+  font-size: 12px;
+  color: #2b3548;
+}
+
+.db-select-options__input:hover,
+.db-select-options__input:focus {
+  background: #f6f7fb;
+  outline: none;
+}
+
+.db-select-options__group {
+  flex-shrink: 0;
+  height: 22px;
+  padding: 0 7px;
+  border: none;
+  border-radius: 6px;
+  background: #eef1f5;
+  color: #62728b;
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.db-select-options__group:hover {
+  background: #e2e6ee;
+}
+
+.db-select-options__remove {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: #c3cad8;
+  display: grid;
+  place-items: center;
+}
+
+.db-select-options__remove:hover {
+  background: #feeaea;
+  color: #e65353;
+}
+
+.db-select-options__add {
+  display: flex;
+  gap: 6px;
+}
+
+.db-select-options__add input {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid #e3e8f0;
+  border-radius: 7px;
+  font-size: 12px;
+  color: #2b3548;
+}
+
+.db-select-options__add input:focus {
+  outline: none;
+  border-color: #c9cffb;
+}
+
+.db-select-options__add button {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 7px;
+  background: #f0efff;
+  color: #4f5cf6;
+  display: grid;
+  place-items: center;
+}
+
+.db-select-options__add button:hover {
+  background: #e2e0fd;
+}
+
+/* 옵션 관리 팝오버의 색 스와치(클릭하면 순서대로 색이 바뀜) */
+
+.db-dot--red { background: #e65353; }
+.db-dot--orange { background: #ff971d; }
+.db-dot--green { background: #24b974; }
+.db-dot--blue { background: #2769ed; }
+.db-dot--purple { background: #8b5cf6; }
+.db-dot--pink { background: #e6499a; }
+.db-dot--gray { background: #8a97ab; }
+
+/* SELECT 셀 — 네이티브 <select>는 옵션에 색을 입힐 수 없어서, 클릭하면
+   뜨는 커스텀 팝오버(검색 + 기존 옵션 + 새로 만들기)로 바꿨어요. */
+
+.db-select-cell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.db-select-cell__trigger {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 36px;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.db-select-cell__trigger:hover {
+  background: #f7f8ff;
+}
+
+.db-select-cell__placeholder {
+  font-size: 12px;
+  color: #c3cad8;
+}
+
+/* PopoverPortal — 헤더/셀의 모든 팝오버(속성 유형, 옵션 관리, SELECT·
+   MULTI_SELECT·STATUS·PERSON 셀)가 document.body로 포털링되면서 공통으로
+   쓰는 포지셔닝 래퍼예요. .db-block-wrap(overflow:hidden)과
+   .db-table-scroll(overflow-x:auto → overflow-y도 자동으로 auto 취급)이
+   팝오버를 아래로 잘라먹어서 "행 추가" 버튼과 겹쳐 보이던 문제를, 이
+   두 겹의 overflow 바깥(body)에 position:fixed로 직접 그려서 해결해요.
+   실제 top/left 좌표는 PopoverPortal 컴포넌트가 인라인 style로 넣어줘요.
+   "바깥 클릭하면 닫기"는(전체 화면을 덮어서 다른 버튼의 클릭까지
+   가로채던 예전의 오버레이 div 대신) PopoverPortal 안의 mousedown
+   리스너가 처리해서, 여기엔 오버레이용 CSS가 따로 없어요. */
+
+.db-popover-portal {
+  z-index: 31;
+}
+
+/* 위치는 PopoverPortal의 .db-popover-portal이 인라인으로 잡아줘요. */
+.db-select-cell-popover {
+  width: 220px;
+  border: 1px solid #e3e8f0;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(17, 26, 47, 0.14);
+  overflow: hidden;
+}
+
+.db-select-cell-popover__search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid #eef1f5;
+  color: #a1abbd;
+}
+
+.db-select-cell-popover__search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 12.5px;
+  color: #2b3548;
+}
+
+.db-select-cell-popover__list {
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.db-select-cell-popover__option,
+.db-select-cell-popover__clear,
+.db-select-cell-popover__create {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  color: #62728b;
+  font-size: 12px;
+}
+
+.db-select-cell-popover__option {
+  justify-content: space-between;
+}
+
+.db-select-cell-popover__option:hover,
+.db-select-cell-popover__clear:hover {
+  background: #f6f7fb;
+}
+
+.db-select-cell-popover__check {
+  flex-shrink: 0;
+  color: #4f5cf6;
+}
+
+.db-select-cell-popover__create {
+  color: #4f5cf6;
+  font-weight: 600;
+}
+
+.db-select-cell-popover__create span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.db-select-cell-popover__create:hover {
+  background: #f0efff;
+}
+
+.db-select-cell-popover__empty {
+  margin: 0;
+  padding: 8px 6px;
+  font-size: 11.5px;
+  color: #c3cad8;
+}
+
+/* 컬럼 리사이즈 핸들 — th 오른쪽 끝에 붙는 얇은 드래그 영역. th에는
+   .db-table th, .db-table td { position: relative } 규칙이 이미 있어서
+   따로 안 줘도 이 핸들이 그 th 기준으로 꽉 채워져요. */
+.db-col-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 1;
+}
+
+.db-col-resize-handle:hover,
+.db-col-resize-handle:active {
+  background: #c9cffb;
+}
+
+/* 열 추가(+) 호버 영역 — .db-table-scroll 기준 position:absolute +
+   top/bottom:0라서 헤더부터 마지막 행까지 표 전체 높이만큼 늘어나요.
+   따로 여백을 예약해두지 않고 표의 맨 오른쪽 끝(마지막 컬럼 위)에
+   딱 붙여놨어요 — 평소엔 opacity:0라서 진짜 아무것도 안 보이다가,
+   이 영역에 마우스를 올렸을 때만 마지막 컬럼 위에 살짝 겹쳐서 세로로
+   길게 하이라이트되면서 가운데에 +가 나타나요. 헤더에만 있던 작은 칸
+   하나가 아니라 표 전체가 "병합된" 느낌이 나면서도, 호버 전엔 칸이
+   있다는 흔적 자체가 안 남아요. */
+.db-add-col-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.db-add-col-trigger {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: #a1abbd;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transition: opacity 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+
+.db-add-col-zone:hover .db-add-col-trigger,
+.db-add-col-trigger:focus-visible {
+  opacity: 1;
+  color: #4f5cf6;
+  background: #f0efff;
+}
+
+.db-row:hover {
+  background: #fbfcfe;
+}
+
+/* 기본 텍스트 셀은 <input>에서 <textarea>로 바뀌었어요(줄바꿈 지원) —
+   이 클래스는 NUMBER/DATE/URL 등 여전히 <input>인 셀들과도 같이 쓰여서,
+   resize·white-space·word-break·line-height는 <textarea>에서만 의미가
+   있지만 <input>엔 아무 영향이 없어서 그냥 공통으로 둬도 돼요. height는
+   JS(ref/onInput)에서 scrollHeight로 매번 인라인으로 다시 잡아주니까
+   height:100%는 <textarea>가 처음 그려질 때만 잠깐 쓰이고 바로 덮어써요. */
+.db-cell-input {
+  width: 100%;
+  height: 100%;
+  min-height: 36px;
+  border: none;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  padding: 8px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #2b3548;
+  font-family: inherit;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.db-cell-input:focus {
+  background: #f7f8ff;
+}
+
+.db-cell-checkbox {
+  display: block;
+  margin: 0 auto;
+  width: 16px;
+  height: 16px;
+  accent-color: #4f5cf6;
+}
+
+.db-tag {
+  display: inline-block;
+  border-radius: 7px;
+  padding: 3px 9px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.db-tag--red {
+  color: #e65353;
+  background: #feeaea;
+}
+
+.db-tag--orange {
+  color: #d8820c;
+  background: #fff2df;
+}
+
+.db-tag--green {
+  color: #199866;
+  background: #e4f8ee;
+}
+
+.db-tag--blue {
+  color: #2769ed;
+  background: #eaf2ff;
+}
+
+.db-tag--purple {
+  color: #7c4ec4;
+  background: #eee4fb;
+}
+
+.db-tag--pink {
+  color: #c22a80;
+  background: #fce7f3;
+}
+
+.db-tag--gray {
+  color: #62728b;
+  background: #eef1f5;
+}
+
+/* 제목(TITLE) 열 = 행 = 페이지 (데이터베이스 전용). 예전엔 이 역할을
+   맨 앞의 전용 열(.db-row-page-*)이 따로 맡았는데, 노션처럼 제목 열
+   자체가 아이콘 + 제목 편집 + 열기를 다 겸하도록 합쳤어요. */
+
+.db-title-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  padding: 0 8px;
+}
+
+.db-title-cell__icon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  line-height: 1;
+  color: #a1abbd;
+}
+
+.db-title-cell__input {
+  flex: 1;
+  min-width: 0;
+  width: 0;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #2b3548;
+  font-family: inherit;
+}
+
+.db-title-cell__open {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: #a1abbd;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+}
+
+.db-row:hover .db-title-cell__open {
+  opacity: 1;
+}
+
+.db-title-cell__open:hover {
+  background: #f0efff;
+  color: #4f5cf6;
+}
+
+.db-title-cell--missing {
+  gap: 6px;
+  color: #c3cad8;
+  font-size: 12px;
+}
+
+/* 행 왼쪽 ⋯ — 예전엔 행 오른쪽 끝에 휴지통 아이콘 전용 칸이 있었는데,
+   (1) 노션처럼 행 조작은 왼쪽이 UX상 더 자연스럽고, (2) "삭제"만 되는
+   휴지통보다는 블록 에디터의 block-actions/block-more-btn(⋯)과 같은
+   모양으로 만들어서 나중에 "위로 이동"/"아래로 이동" 같은 메뉴 항목을
+   보태기 쉽게 했어요.
+
+   처음엔 왼쪽에도 전용 칸(db-row-handle-cell)을 따로 뒀었는데, 그러면
+   호버 안 해도 그 칸 너비만큼 빈 여백이 표 왼쪽에 항상 남아서 "칸이
+   보인다"는 문제가 똑같이 남아 있었어요(요청: 칸 자체가 안 보여야
+   한다). 그래서 전용 칸을 없애고, 첫 번째 컬럼 칸(.db-cell--first)
+   위에 position:absolute로 겹쳐서 띄워요 — 평소엔 표 레이아웃에
+   전혀 자리를 차지하지 않고, 버튼은 .db-title-cell__open과 같은
+   방식으로 opacity만 바뀌어서 그 행에 마우스를 올렸을 때만 보여요. */
+.db-cell--first {
+  position: relative;
+}
+
+.db-row-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 2px;
+  display: flex;
+  align-items: center;
+  z-index: 2;
+}
+
+.db-row-handle-btn {
+  width: 22px;
+  height: 22px;
+  margin: 0 auto;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: #c3cad8;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transition: opacity 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+
+.db-row-handle-btn:hover {
+  background: #eef1f5;
+  color: #4f5cf6;
+}
+
+.db-row:hover .db-row-handle-btn,
+.db-row-handle-btn:focus-visible,
+.db-row-handle-btn.is-open {
+  opacity: 1;
+}
+
+/* PopoverPortal로 띄우는 행 메뉴 — 블록 에디터의 .block-menu(⋯ 메뉴)와
+   같은 버튼 스타일(danger 삭제 포함)을 그대로 재사용하고, .db-row-menu는
+   .block-menu 원래의 position:absolute; top:30px; right:0만 없애요 —
+   여기선 PopoverPortal이 이미 position:fixed로 화면 좌표를 잡아주니까
+   이중으로 위치를 잡을 필요가 없어요. */
+.block-menu.db-row-menu {
+  position: static;
+  width: 150px;
+}
+
+/* 행 추가 — .db-block-wrap(카드) 안에 있을 땐 카드 자신의 border가
+   이 버튼까지 감싸서, 호버 전에도 좌우/아래쪽에 테두리가 있는 것처럼
+   보였어요(요청: 표 마지막 행 밑 경계선은 카드 테두리로 그대로 보이되,
+   행 추가 부분엔 테두리 자체가 없어야 함). 그래서 JSX에서 이 버튼을
+   카드 바깥, 페이지의 빈 여백 위로 뺐어요 — 이제 카드는 표에서
+   정확히 끝나고(마지막 행 밑 경계선이 곧 카드 테두리라 항상 그대로
+   보여요), 이 버튼은 자기 테두리도 감싸는 카드 테두리도 없는 완전히
+   빈 공간이에요. 평소엔 배경도 투명해서 흔적이 안 남다가, 호버했을
+   때만 옅은 배경과 +/글자가 작게 나타나요. */
+.db-add-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 12px;
+  padding: 0 6px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  width: 100%;
+  color: #a1abbd;
+  font-size: 10px;
+  font-weight: 600;
+  transition: background 0.12s ease;
+}
+
+.db-add-row svg,
+.db-add-row span {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.db-add-row:hover {
+  background: #f8f9fc;
+  color: #4f5cf6;
+}
+
+.db-add-row:hover svg,
+.db-add-row:hover span,
+.db-add-row:focus-visible svg,
+.db-add-row:focus-visible span {
+  opacity: 1;
+}
+
+/* STATUS 셀 — SELECT처럼 태그 배경색을 쓰지 않고, 컬러 점 + 일반 텍스트로
+   보여줘요(노션 STATUS의 특징). 팝오버 안 옵션도 할 일/진행 중/완료
+   3그룹으로 나뉘어요. */
+
+.db-status-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: #2b3548;
+}
+
+.db-status-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* 위치는 PopoverPortal의 .db-popover-portal이 인라인으로 잡아줘요. */
+.db-status-popover {
+  width: 200px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid #e3e8f0;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(17, 26, 47, 0.14);
+  text-align: left;
+}
+
+.db-status-popover__group + .db-status-popover__group {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid #eef1f5;
+}
+
+.db-status-popover__group-label {
+  margin: 2px 6px 2px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #c3cad8;
+}
+
+/* MULTI_SELECT 셀 — SELECT와 팝오버 구조는 같지만, 값이 배열이라 태그를
+   여러 개 나란히 보여줘요. */
+
+.db-multi-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 100%;
+}
+
+/* PERSON 셀 — members 목록을 그대로 선택지로 써요. 아바타 원 색은
+   member.tone처럼 값을 직접 저장하지 않고, utils/avatarColor.js의
+   getAvatarTone(member.id)가 6가지 팔레트 중 하나를 결정론적으로
+   골라줘요. */
+
+.db-person-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.db-person-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #2b3548;
+  white-space: nowrap;
+}
+
+.db-avatar {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.db-avatar--blue { background: #2769ed; }
+.db-avatar--green { background: #24b974; }
+.db-avatar--purple { background: #8b5cf6; }
+.db-avatar--gray { background: #8a97ab; }
+.db-avatar--red { background: #e65353; }
+.db-avatar--orange { background: #ff971d; }
+.db-avatar--pink { background: #e6499a; }
+
+/* URL/이메일/전화번호 셀 — 값이 있으면 바로 열 수 있는 아이콘 버튼을
+   input 옆에 같이 보여줘요. */
+
+.db-link-cell {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.db-link-cell .db-cell-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.db-link-cell__open {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-right: 6px;
+  border-radius: 5px;
+  color: #a1abbd;
+  display: grid;
+  place-items: center;
+}
+
+.db-link-cell__open:hover {
+  background: #f0efff;
+  color: #4f5cf6;
+}
+
+/* 생성 일시 셀 — 읽기 전용이라 input이 아니라 그냥 텍스트예요. */
+
+.db-created-time-cell {
+  display: block;
+  padding: 8px;
+  font-size: 12px;
+  color: #62728b;
+}
+
+.db-created-time-cell--empty {
+  color: #c3cad8;
+}
+
+@media (max-width: 820px) {
+  .page-detail-page {
+    padding: 18px 16px 70px;
+  }
+}

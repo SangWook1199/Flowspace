@@ -18,6 +18,7 @@ public record DatabaseDetailResponse(
 
     public record RowData(
         Long rowId,
+        Long pageId,
         Integer position,
         List<CellData> cells
     ) {}

@@ -6,8 +6,9 @@ import styles from "../styles/classes.js";
 import { sprints } from "../mock/sprints";
 import workspaceMock from "../mock/workspaceMock";
 import FlowSpaceLogo from "../components/common/FlowSpaceLogo";
+import WorkspaceSwitcher from "./WorkspaceSwitcher";
 
-export default function Sidebar({ navigation, pages, members }) {
+export default function Sidebar({ navigation, pages, onCreatePage, onDeletePage, onOpenSettings }) {
   const Icon = ({ name, ...props }) => {
     const C = Icons[name];
     return <C strokeWidth={1.9} {...props} />;
@@ -18,7 +19,6 @@ export default function Sidebar({ navigation, pages, members }) {
 
   /* ---------- Workspace ---------- */
 
-  const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState(
     workspaceMock.currentWorkspaceId,
   );
@@ -29,7 +29,6 @@ export default function Sidebar({ navigation, pages, members }) {
 
   const changeWorkspace = (id) => {
     setCurrentWorkspaceId(id);
-    setWorkspaceOpen(false);
 
     // TODO : Spring API
     // workspaceApi.changeWorkspace(id);
@@ -45,90 +44,79 @@ export default function Sidebar({ navigation, pages, members }) {
     if (label === "회고") navigate("/retrospectives");
   };
 
-  const activeLabel = pathname.startsWith("/sprints")
-    ? "스프린트"
-    : pathname.startsWith("/kanban")
-      ? "칸반"
-      : pathname.startsWith("/calendar")
-        ? "캘린더"
-        : pathname.startsWith("/retrospectives")
-          ? "회고"
-          : "홈";
+  // "/"일 때만 홈을 active로 잡아요. 원래는 마지막 조건이 무조건 "홈"이라
+  // /pages/:pageId처럼 위 네 경로 중 어디에도 안 걸리는 페이지 상세
+  // 화면에서도 홈이 같이 active가 됐었어요(페이지는 아래 "페이지" 목록의
+  // isPageActive가 따로 표시하니까, 이땐 nav 쪽엔 아무것도 선택 안 돼야
+  // 맞아요).
+  const activeLabel = pathname === "/"
+    ? "홈"
+    : pathname.startsWith("/sprints")
+      ? "스프린트"
+      : pathname.startsWith("/kanban")
+        ? "칸반"
+        : pathname.startsWith("/calendar")
+          ? "캘린더"
+          : pathname.startsWith("/retrospectives")
+            ? "회고"
+            : null;
+
+  /* ---------- Pages ---------- */
+  // 사이드바에는 최상위 페이지만 보여줘요. 하위 페이지는 각 페이지
+  // 안의 "하위 페이지" 목록에서 오가는 구조라, 트리로 펼치는 건 아직 안 함.
+  const topLevelPages = pages.filter((page) => !page.parentPageId);
+  const isPageActive = (page) => pathname === `/pages/${page.id}`;
+
+  const handleCreatePage = () => {
+    const newPage = onCreatePage?.();
+    if (newPage) navigate(`/pages/${newPage.id}`);
+  };
+
+  const handleDeletePage = (e, page) => {
+    e.stopPropagation();
+    const hasChildren = pages.some((p) => p.parentPageId === page.id);
+    const confirmed = window.confirm(
+      hasChildren
+        ? "이 페이지를 삭제하면 하위 페이지도 모두 함께 삭제돼요. 계속할까요?"
+        : "이 페이지를 삭제할까요?",
+    );
+    if (!confirmed) return;
+
+    // 지금 보고 있는 페이지가 삭제 대상이거나 그 하위 페이지라면
+    // (재귀), 사라질 페이지에 그대로 남아있지 않도록 홈으로 보내요.
+    const deletedIds = new Set([page.id]);
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const p of pages) {
+        if (deletedIds.has(p.parentPageId) && !deletedIds.has(p.id)) {
+          deletedIds.add(p.id);
+          grew = true;
+        }
+      }
+    }
+    const activeMatch = pathname.match(/^\/pages\/(\d+)/);
+    const activePageId = activeMatch ? Number(activeMatch[1]) : null;
+
+    onDeletePage?.(page.id);
+    if (activePageId !== null && deletedIds.has(activePageId)) {
+      navigate("/");
+    }
+  };
 
   return (
     <aside className={styles.sidebar}>
       {/* ---------- Logo ---------- */}
 
-      <FlowSpaceLogo />
+      <FlowSpaceLogo onClick={() => navigate("/")} />
 
       {/* ---------- Workspace Switcher ---------- */}
 
-      <div className="workspaceSwitcher">
-        <button
-          className={styles.workspace}
-          onClick={() => setWorkspaceOpen(!workspaceOpen)}
-        >
-          <span
-            className={styles.workspaceIcon}
-            style={{
-              background: currentWorkspace.color,
-              color: "#fff", // 추가
-            }}
-          >
-            {currentWorkspace.initials}
-          </span>
-          <span>
-            <b>{currentWorkspace.name}</b>
-            <small>워크스페이스</small>
-          </span>
-
-          <Icon
-            name="ChevronDown"
-            size={18}
-            className={workspaceOpen ? "rotate" : ""}
-          />
-        </button>
-
-        {workspaceOpen && (
-          <div className="workspaceDropdown">
-            <p>내 워크스페이스</p>
-
-            {workspaceMock.workspaces.map((workspace) => (
-              <button
-                key={workspace.id}
-                className="workspaceItem"
-                onClick={() => changeWorkspace(workspace.id)}
-              >
-                <span
-                  className="workspaceAvatar"
-                  style={{ background: workspace.color }}
-                >
-                  {workspace.initials}
-                </span>
-
-                <span className="workspaceName">{workspace.name}</span>
-
-                {workspace.id === currentWorkspaceId && (
-                  <Icon name="Check" size={16} className="workspaceCheck" />
-                )}
-              </button>
-            ))}
-
-            <div className="workspaceDivider" />
-
-            <button
-              className="workspaceCreate"
-              onClick={() => {
-                setWorkspaceOpen(false);
-                navigate("/workspace/create");
-              }}
-            >
-              <Icon name="PlusCircle" size={18} />
-              <span>새 워크스페이스 만들기</span>
-            </button>
-          </div>
-        )}
-      </div>
+      <WorkspaceSwitcher
+        currentWorkspace={currentWorkspace}
+        workspaces={workspaceMock.workspaces}
+        onChange={changeWorkspace}
+      />
 
       {/* ---------- Navigation ---------- */}
 
@@ -154,14 +142,43 @@ export default function Sidebar({ navigation, pages, members }) {
 
         <p>페이지</p>
 
-        {pages.map((page) => (
-          <button className={styles.navItem} key={page}>
-            <Icon name="FileText" />
-            <span>{page}</span>
-          </button>
+        {topLevelPages.map((page) => (
+          <div
+            className={`${styles.navItem} pageNavRow ${
+              isPageActive(page) ? styles.selected : ""
+            }`}
+            key={page.id}
+          >
+            <button
+              type="button"
+              className="pageNavRow__link"
+              onClick={() => navigate(`/pages/${page.id}`)}
+            >
+              {page.icon ? (
+                <span style={{ fontSize: 16, lineHeight: 1, width: 18, textAlign: "center" }}>
+                  {page.icon}
+                </span>
+              ) : (
+                <Icon name="FileText" />
+              )}
+              <span>{page.title || "제목 없음"}</span>
+            </button>
+
+            <button
+              type="button"
+              className="pageNavRow__delete"
+              onClick={(e) => handleDeletePage(e, page)}
+              title="페이지 삭제"
+            >
+              <Icon name="Trash2" size={14} />
+            </button>
+          </div>
         ))}
 
-        <button className={`${styles.navItem} ${styles.newPage}`}>
+        <button
+          className={`${styles.navItem} ${styles.newPage}`}
+          onClick={handleCreatePage}
+        >
           <Icon name="Plus" />
           <span>새 페이지</span>
         </button>
@@ -199,24 +216,23 @@ export default function Sidebar({ navigation, pages, members }) {
         </div>
       </div>
 
-      {/* ---------- Online Members ---------- */}
+      {/* ---------- Workspace Settings ---------- */}
+      {/* 온라인 팀원 위젯이 있던 자리예요 — 헤더로 옮기고 대신 워크스페이스
+          단위 설정으로 들어가는 진입점을 둬요. 처음엔 별도 페이지로
+          만들었는데, 노션처럼 지금 보던 화면 위에 뜨는 모달이 더
+          자연스럽다고 하셔서 라우트 이동 대신 모달을 열게 바꿨어요
+          (열림 상태는 MainLayout이 들고 있어요). 지금은 화면 껍데기만
+          있고, 실제 설정 항목은 API 연결 때 채워요. 위쪽 WorkspaceSwitcher
+          (워크스페이스 전환)와는 역할이 달라요. */}
 
-      <div className={styles.memberMini}>
-        <small>
-          <em /> 온라인 팀원 2 / 4
-        </small>
-
-        <div>
-          {members.map((member) => (
-            <span
-              key={member.name}
-              className={`${styles.avatar} ${styles[member.tone]}`}
-            >
-              {member.initial}
-            </span>
-          ))}
-        </div>
-      </div>
+      <button
+        type="button"
+        className={styles.workspaceSettingsBtn}
+        onClick={onOpenSettings}
+      >
+        <Icon name="Settings" />
+        <span>워크스페이스 설정</span>
+      </button>
     </aside>
   );
 }

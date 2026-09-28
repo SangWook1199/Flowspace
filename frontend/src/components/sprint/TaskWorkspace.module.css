@@ -3,6 +3,12 @@
   grid-template-columns: minmax(700px, 1fr) 430px;
   min-height: calc(100vh - 85px);
   background: #f8f9fc;
+  /* .main이 flex-column이라 margin:0 auto만으로는 max-width가 안
+     걸려서(다른 페이지들과 동일한 이유) width:100%를 같이 줘요. */
+  width: 100%;
+  max-width: 1800px;
+  margin: 0 auto;
+  box-sizing: border-box;
 }
 .workspaceMain {
   padding: 31px 20px 34px 30px;

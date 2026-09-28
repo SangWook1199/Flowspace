@@ -1,4 +1,5 @@
 import { CheckCircle2, Clock3, Users } from "lucide-react";
+import { getAvatarTone } from "../../utils/avatarColor";
 
 export default function RetroSummary({ summary, participants }) {
   return (
@@ -64,7 +65,7 @@ export default function RetroSummary({ summary, participants }) {
               {participants.map((member) => (
                 <div
                   key={member.id}
-                  className={`summary-avatar ${member.tone}`}
+                  className={`summary-avatar ${getAvatarTone(member.id)}`}
                   title={member.name}
                 >
                   {member.initial}

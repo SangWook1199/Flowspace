@@ -1,5 +1,13 @@
 .sprintDetailPage {
+  /* .main이 flex(column)라 margin:0 auto만 쓰면 stretch가 안 먹혀서
+     max-width가 한 번도 안 걸리는 문제가 있었어요(스프린트 목록에서
+     겪은 것과 동일). width:100%를 같이 줘서 .main 폭까지는 꽉 채우고,
+     아주 넓은 화면에서만 1800px에서 멈추게 해요. */
+  width: 100%;
+  max-width: 1800px;
+  margin: 0 auto;
   padding: 24px 30px 102px;
+  box-sizing: border-box;
 }
 .detailHero {
   min-height: 158px;
