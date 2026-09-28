@@ -39,110 +39,11 @@ export const statuses = [
   },
 ];
 
-export const kanbanTasks = [
-  {
-    id: 101,
-    code: "SP1-1",
-    title: "JWT 로그인 API 구현",
-    statusId: 1,
-    priority: "HIGH",
-    start: "2026.08.28",
-    end: "2026.08.30",
-    complete: 3,
-    total: 5,
-
-    assignees: [
-      { id: 1, name: "상욱", initial: "상" },
-      { id: 2, name: "민수", initial: "민" },
-    ],
-
-    subtasks: [
-      { id: 1, title: "JWT 발급", done: true },
-      { id: 2, title: "Refresh Token 구현", done: true },
-      { id: 3, title: "Access Token 검증", done: false },
-      { id: 4, title: "예외 처리", done: false },
-      { id: 5, title: "테스트 코드 작성", done: true },
-    ],
-  },
-
-  {
-    id: 102,
-    code: "SP1-2",
-    title: "블록 드래그 기능",
-    statusId: 1,
-    priority: "MEDIUM",
-    start: "2026.08.29",
-    end: "2026.09.01",
-    complete: 1,
-    total: 2,
-
-    assignees: [{ id: 2, name: "민수", initial: "민" }],
-
-    subtasks: [
-      { id: 6, title: "Drag 이벤트 구현", done: true },
-      { id: 7, title: "Drop 위치 계산", done: false },
-    ],
-  },
-
-  {
-    id: 103,
-    code: "SP1-3",
-    title: "Sprint UI 디자인",
-    statusId: 2,
-    priority: "MEDIUM",
-    start: "2026.08.30",
-    end: "2026.09.02",
-    complete: 2,
-    total: 3,
-
-    assignees: [{ id: 3, name: "서연", initial: "서" }],
-
-    subtasks: [
-      { id: 8, title: "Hero 디자인", done: true },
-      { id: 9, title: "KPI 카드", done: true },
-      { id: 10, title: "반응형 수정", done: false },
-    ],
-  },
-
-  {
-    id: 104,
-    code: "SP1-4",
-    title: "OAuth 연동",
-    statusId: 3,
-    priority: "HIGH",
-    start: "2026.08.31",
-    end: "2026.09.03",
-    complete: 1,
-    total: 2,
-
-    assignees: [
-      { id: 1, name: "상욱", initial: "상" },
-      { id: 4, name: "지민", initial: "지" },
-    ],
-
-    subtasks: [
-      { id: 11, title: "Google OAuth", done: true },
-      { id: 12, title: "카카오 OAuth", done: false },
-    ],
-  },
-
-  {
-    id: 105,
-    code: "SP1-5",
-    title: "파일 업로드",
-    statusId: 4,
-    priority: "LOW",
-    start: "2026.08.26",
-    end: "2026.08.28",
-    complete: 3,
-    total: 3,
-
-    assignees: [{ id: 1, name: "상욱", initial: "상" }],
-
-    subtasks: [
-      { id: 13, title: "S3 연결", done: true },
-      { id: 14, title: "Multipart 업로드", done: true },
-      { id: 15, title: "다운로드 API", done: true },
-    ],
-  },
-];
+// 예전엔 여기 kanbanTasks가 따로 있었어요 — mock/sprintTasks.js의
+// sprintTaskRows와 같은 "SP1-N" 코드를 쓰면서도 서로 다른 제목/담당자를
+// 가진 완전히 별개의 목데이터였어요(예: 둘 다 SP1-2가 있지만 하나는
+// "블록 드래그 기능", 하나는 "유저 알림 시스템" — 같은 작업이 아니었어요).
+// 칸반 보드와 스프린트 작업 목록·페이지 TASK 블록이 같은 걸 봐야 하니까,
+// 칸반 보드도 이제 sprintTaskRows를 그대로 읽어요(Kanban.jsx가
+// mock/sprintTasks에서 가져와요) — 이 파일엔 칸반 화면 전용인
+// statuses/activeSprint만 남겨뒀어요.

@@ -1,23 +1,46 @@
 import { ArrowLeft, Save } from "lucide-react";
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 import TaskDetailPanel from "../components/sprint/TaskDetailPanel";
 import TaskTable from "../components/sprint/TaskTable";
-import { sprintTaskRows } from "../mock/sprintTasks";
+import { PRIORITY_KO_TO_EN, PRIORITY_LABEL, toAssignee } from "../mock/sprintTasks";
 import styles from "../components/sprint/TaskWorkspace.module.css";
 
 export default function SprintTasks() {
   const { sprintId } = useParams();
   const navigate = useNavigate();
-  const [tasks, setTasks] = useState(sprintTaskRows);
+  // 태스크 자체는 이제 MainLayout에서 끌어올린 세션 상태(sprintTasks)예요
+  // — 칸반 보드·페이지 TASK 블록과 같은 배열을 봐요. 다만 이 화면
+  // (TaskTable/TaskRow/TaskDetailPanel)은 원래부터 담당자 1명(문자열)·
+  // 한글 우선순위를 기대하게 만들어져 있어서, 그 컴포넌트들은 그대로
+  // 두고 여기서만 공용 모델(assignees 배열·영문 priority enum)과의
+  // 차이를 흡수해요.
+  const { sprintTasks, setSprintTasks } = useOutletContext();
   const [selectedId, setSelectedId] = useState("SP1-1");
   const [checkedIds, setCheckedIds] = useState([]);
   const [notice, setNotice] = useState("");
+
+  const tasks = sprintTasks.map((task) => ({
+    ...task,
+    assignee: task.assignees?.[0]?.name ?? "",
+    priority: PRIORITY_LABEL[task.priority] ?? task.priority,
+  }));
   const selectedTask = tasks.find((task) => task.id === selectedId);
+
+  // TaskDetailPanel은 onChange(key, value)로 "assignee"(문자열 이름)나
+  // "priority"(한글)를 넘겨요 — 여기서 공용 모델 필드(assignees 배열,
+  // 영문 priority)로 바꿔서 setSprintTasks에 반영해요. 그 외 필드
+  // (title/startDate/dueDate/description)는 이름이 같아서 그대로 둬요.
+  const toCanonicalPatch = (key, value) => {
+    if (key === "assignee") return { assignees: [toAssignee(value)] };
+    if (key === "priority") return { priority: PRIORITY_KO_TO_EN[value] ?? value };
+    return { [key]: value };
+  };
+
   const updateTask = (key, value) =>
-    setTasks((current) =>
+    setSprintTasks((current) =>
       current.map((task) =>
-        task.id === selectedId ? { ...task, [key]: value } : task,
+        task.id === selectedId ? { ...task, ...toCanonicalPatch(key, value) } : task,
       ),
     );
   const toggleCheck = (id) => {
@@ -32,23 +55,26 @@ export default function SprintTasks() {
     );
   };
   const addTask = () => {
-    const id = `SP1-${tasks.length + 1}`;
-    setTasks((current) => [
+    const id = `SP1-${sprintTasks.length + 1}`;
+    setSprintTasks((current) => [
       ...current,
       {
-        ...sprintTaskRows[0],
         id,
         title: "새 작업",
-        assignee: "상욱",
-        priority: "보통",
+        statusId: 1,
+        assignees: [toAssignee("상욱")],
+        priority: "MEDIUM",
+        startDate: sprintTasks[0]?.startDate ?? "",
+        dueDate: sprintTasks[0]?.dueDate ?? "",
         subtasks: [],
+        description: "",
       },
     ]);
     setSelectedId(id);
     setCheckedIds([]);
   };
   const editSubtask = (index, checked) =>
-    setTasks((current) =>
+    setSprintTasks((current) =>
       current.map((task) =>
         task.id === selectedId
           ? {
@@ -63,7 +89,7 @@ export default function SprintTasks() {
       ),
     );
   const addSubtask = (multiple) =>
-    setTasks((current) =>
+    setSprintTasks((current) =>
       current.map((task) =>
         task.id === selectedId
           ? {
@@ -73,7 +99,11 @@ export default function SprintTasks() {
                 ...(multiple
                   ? ["하위 작업 1", "하위 작업 2"]
                   : ["새 하위 작업"]
-                ).map((text) => ({ text, checked: false })),
+                ).map((text, i) => ({
+                  id: task.subtasks.length + i + 1,
+                  text,
+                  checked: false,
+                })),
               ],
             }
           : task,
@@ -81,14 +111,14 @@ export default function SprintTasks() {
     );
   const batchChange = (key, value) => {
     if (!value) return;
-    setTasks((current) =>
+    setSprintTasks((current) =>
       current.map((task) =>
-        checkedIds.includes(task.id) ? { ...task, [key]: value } : task,
+        checkedIds.includes(task.id) ? { ...task, ...toCanonicalPatch(key, value) } : task,
       ),
     );
   };
   const deleteChecked = () => {
-    setTasks((current) =>
+    setSprintTasks((current) =>
       current.filter((task) => !checkedIds.includes(task.id)),
     );
     setCheckedIds([]);

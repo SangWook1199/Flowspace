@@ -5,17 +5,57 @@
    우선순위 높음=red/보통=orange/낮음=green */
 
 .page-detail-page {
-  /* 요청: 뷰포트가 좁아지거나 넓어져도 절대 줄어들거나 늘어나지 않게
-     고정. max-width만 쓰면 화면이 이 값보다 좁을 때 같이 줄어드니까,
-     width·min-width·max-width를 전부 같은 값(1200px)으로 못박았어요.
-     .main이 overflow-x:hidden이라 화면이 1200px보다 좁으면 카드 일부가
-     가려질 수 있는데, 그것도 "줄어들지 않는다"는 요청에 포함되는
-     트레이드오프예요. */
-  width: 1200px;
-  min-width: 1200px;
-  max-width: 1200px;
+  /* 상단 바(.page-detail__topbar-zone)가 커버 사진 위에 떠 있는
+     오버레이라(position:absolute) 여기가 그 기준점이 돼요. */
+  position: relative;
+  width: 100%;
+}
+
+/* 상단 바(topbar)와 아이콘/제목/본문 블록은 예전처럼 최대 900px
+   가운데 칼럼 안에 있어요.
+
+   예전엔 width/min-width/max-width를 전부 1200px로 못박아서 "화면
+   크기가 바뀌어도 절대 안 줄어드는" 레이아웃이었는데, 창을 최대화하지
+   않은 상태(사이드바 278px를 빼면 1200px보다 좁아지는 창 너비)에서는
+   margin:auto가 음수 여백을 만들 수 없어서 그냥 왼쪽(사이드바 바로
+   옆)에 붙어버렸어요 — "가운데 있어야 하는데 왼쪽으로 쏠려 보임"의
+   원인이에요. max-width만 두고 width는 100%로 풀어서, 창이 좁을 땐
+   자연스럽게 줄어들면서 계속 가운데 있고, 넓을 땐 max-width에서 안
+   커지게 했어요.
+
+   이것만으로는 "가운데"가 아직 어색해 보일 수 있어요 — 블록(제목/
+   표 등)은 왼쪽 정렬이라, 칼럼 자체가 가운데 있어도 실제 보이는
+   글자는 칼럼 왼쪽에 붙고 칼럼이 넓을수록 오른쪽에 빈 공간만 커져서
+   "안 쏠렸는데도 쏠려 보이는" 것처럼 느껴져요. 그래서 max-width를
+   1200px에서 900px(노션 정도의 읽기 좋은 문서 폭)로 줄였어요 — 칼럼
+   자체가 좁아지니 빈 공간도 같이 줄고, 남는 여백이 양옆에 더 고르게
+   나뉘어서 실제로 가운데 있는 것처럼 보여요. 표처럼 900px보다
+   넓어져야 하는 내용은 .db-table-scroll의 가로 스크롤이 따로 처리해요. */
+.page-detail__container {
+  width: 100%;
+  max-width: 900px;
   margin: 0 auto;
-  padding: 24px 30px 90px;
+  /* 좌우 패딩을 30px에서 56px로 늘렸어요 — 블록 왼쪽의 드래그
+     핸들(.block-left-actions)이 호버 판정을 넓히려고 .block-row를
+     -52px만큼 왼쪽으로 더 파고드는데(BlockEditor.jsx 주석 참고), 이
+     칼럼의 좌우 패딩이 그보다 좁으면 핸들이 칼럼 왼쪽 경계를 넘어
+     사이드바 영역까지 삐져나가요(사이드바 위에 겹쳐 보이는 버그의
+     원인). 패딩을 52px보다 여유 있게 키워서 그 파고드는 폭이 항상
+     칼럼 안쪽에서만 끝나게 했어요. */
+  padding: 0 56px;
+}
+
+/* 커버가 있을 때만 붙는 변형 — 커버가 이미 아이콘 밑으로 공간을
+   내줬으니(아래 .page-detail__cover-zone) 위쪽 패딩이 거의 필요
+   없어요. 아이콘도 이때 커버 쪽으로 끌어올려 겹쳐요(아래
+   .page-detail__icon-wrap--overlap). */
+.page-detail__container--body {
+  padding-top: 56px;
+  padding-bottom: 90px;
+}
+
+.page-detail__container--body--with-cover {
+  padding-top: 0;
 }
 
 .page-detail__missing {
@@ -27,13 +67,41 @@
 
 /* ---------- 상단 바: 상위 페이지 이동 + 삭제 ---------- */
 
+/* 노션은 이 줄(상위 페이지 경로 · 삭제)이 따로 없지만, 이 앱은 페이지
+   트리 탐색/삭제가 필요해서 남겨뒀어요 — 대신 문서 흐름을 차지하지
+   않게 커버 위에 떠 있는 오버레이로 바꿨어요(position:absolute,
+   .page-detail-page 기준). 그래야 커버가 있든 없든 아이콘이 항상
+   커버 바로 아래(또는 커버가 없으면 페이지 맨 위)에서 시작할 수
+   있어요 — 상단 바가 문서 흐름 안에 있으면 그만큼 아이콘 시작
+   위치가 밀려서 "커버에 아이콘이 겹친다"는 느낌이 약해졌을 거예요. */
+.page-detail__topbar-zone {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 5;
+  padding-top: 16px;
+}
+
 .page-detail__topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   min-height: 32px;
-  margin-bottom: 14px;
+}
+
+/* 커버 사진 위/흰 배경 위 어디서든 글자가 잘 읽히도록, 상단 바
+   버튼들을 반투명 흰 알약(pill) 배경으로 한 번 더 감싸요. */
+.page-detail__topbar-surface {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(4px);
+  min-width: 0;
 }
 
 .page-detail__breadcrumb {
@@ -98,35 +166,86 @@
   color: #e65353;
 }
 
-/* ---------- 커버 ---------- */
-
-.page-detail__cover {
-  position: relative;
-  height: 200px;
-  border-radius: 12px;
-  overflow: hidden;
-  margin-bottom: -28px;
-  border: 1px solid #e3e8f0;
+/* 커버가 없을 때만 "커버 추가"가 여기(삭제 버튼 옆)에 들어가요 —
+   커버가 있을 때는 커버 사진 자체에 변경/삭제가 hover로 떠요(노션
+   방식, 아래 .page-detail__cover-actions). */
+.page-detail__topbar-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.page-detail__cover img {
+/* 커버 피커 팝업(.page-detail__cover-picker)의 위치 기준점. */
+.page-detail__cover-btn-wrap {
+  position: relative;
+}
+
+.page-detail__cover-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid #e3e8f0;
+  border-radius: 8px;
+  background: #fff;
+  color: #8a97ab;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.page-detail__cover-btn:hover {
+  color: #4f5cf6;
+  border-color: #c9cffb;
+  background: #f7f8ff;
+}
+
+/* ---------- 커버 ---------- */
+
+/* 커버 — 노션처럼 일반 흐름(in-flow) 요소예요. 커버가 있을 때만
+   렌더돼요(JSX에서 {page.cover && ...}). 배경처럼 뒤에 까는 방식(이전
+   버전)은 900px 칼럼 옆으로 사진이 계속 삐져나와서 본문이 "사진 위에
+   얹힌 카드"처럼 보이는 게 문제였어요 — 그래서 절대 위치를 걷어내고,
+   커버가 있으면 그만큼 실제로 아래 내용이 밀려나는 노션의 실제 동작
+   그대로 되돌렸어요. 높이는 고정값(280px)이라 사진 비율과 상관없이
+   항상 일정해요(overflow:hidden + object-fit:cover). */
+.page-detail__cover-zone {
+  position: relative;
+  width: 100%;
+  height: 280px;
+  overflow: hidden;
+}
+
+.page-detail__cover-zone img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
+/* 변경/삭제 버튼 — 커버 사진의 오른쪽 아래에 노션처럼 hover로만
+   나타나요. 사진 위라 대비를 위해 어두운 반투명 배경 + 흰 글자를
+   써요(상단 바의 흰 버튼들과는 다른 톤). */
 .page-detail__cover-actions {
   position: absolute;
-  right: 12px;
-  bottom: 12px;
+  right: 56px;
+  bottom: 16px;
   display: flex;
   gap: 8px;
   opacity: 0;
   transition: opacity 0.15s ease;
 }
 
-.page-detail__cover:hover .page-detail__cover-actions {
+.page-detail__cover-zone:hover .page-detail__cover-actions {
+  opacity: 1;
+}
+
+/* 커버 피커가 열려 있는 동안엔 마우스가 사진에서 벗어나(팝업 쪽으로
+   이동해) 있어도 hover가 풀리면서 버튼 전체가 같이 사라지면 안 돼서,
+   열림 상태를 클래스로 강제해요. */
+.page-detail__cover-actions--open {
   opacity: 1;
 }
 
@@ -148,39 +267,123 @@
   background: rgba(17, 26, 47, 0.8);
 }
 
-.page-detail__add-cover {
+.page-detail__cover-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+}
+
+/* 이 패널은 두 군데에서 재사용돼요 — 커버가 없을 때는
+   .page-detail__cover-btn-wrap(상단 바) 안에서, 있을 때는
+   .page-detail__cover-actions(커버 사진 오른쪽 아래) 안에서. 두
+   경우 다 패널을 여는 버튼 클러스터가 자기 오른쪽 끝에 있어서,
+   right:0 기준으로 열면 항상 버튼 바로 아래에 잘 맞아요. */
+.page-detail__cover-picker {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 22;
+  width: 288px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #e3e8f0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(17, 26, 47, 0.14);
+}
+
+/* "배경"/"색상" 섹션 하나 — 사진 커버와 단색 파스텔 커버를 나눠서
+   보여줘요. */
+.page-detail__cover-picker-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.page-detail__cover-picker-label {
+  padding-left: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #9aa5b8;
+}
+
+.page-detail__cover-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.page-detail__cover-thumb {
+  height: 46px;
+  padding: 0;
+  border: 1px solid #e3e8f0;
+  border-radius: 7px;
+  overflow: hidden;
+  background: #f4f6fa;
+}
+
+.page-detail__cover-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.page-detail__cover-thumb:hover {
+  border-color: #b9c0ff;
+}
+
+.page-detail__cover-upload-btn {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  width: 100%;
   height: 34px;
-  padding: 0 12px;
-  margin-bottom: 6px;
   border: 1px dashed #dfe6ef;
   border-radius: 8px;
   background: #fff;
-  color: #8a97ab;
+  color: #4f5cf6;
   font-size: 12px;
   font-weight: 600;
 }
 
-.page-detail__add-cover:hover {
-  color: #4f5cf6;
+.page-detail__cover-upload-btn:hover {
   border-color: #c9cffb;
   background: #f7f8ff;
 }
 
 /* ---------- 아이콘 + 제목 ---------- */
 
+/* 노션처럼 아이콘이 제목과 "같은 줄"이 아니라 제목 위에 따로 한
+   줄로 있어요(세로로 쌓기) — 커버가 있을 때 아이콘만 끌어올려
+   겹치고 제목은 그대로 아래 있어야 하는데, 아이콘·제목이 같은
+   가로줄이면 그게 안 돼요. */
 .page-detail__head {
   display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 22px 0 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 0 0 10px;
 }
 
 .page-detail__icon-wrap {
   position: relative;
   flex-shrink: 0;
+}
+
+/* 커버가 있을 때만 붙는 변형 — 아이콘(72px)을 커버 쪽으로 끌어올려
+   아래쪽 절반 정도가 커버에 겹치게 해요(노션의 대표적인 룩).
+   margin-top 대신 position:relative + top을 쓴 이유: flex
+   컨테이너(.page-detail__head)에서 margin-top을 음수로 주면 그만큼
+   다음 형제(제목)의 자리까지 같이 끌려 올라가요. top은 원래 차지하던
+   자리(레이아웃 공간)는 그대로 두고 보이는 위치만 옮기니까, 제목은
+   원래 자리에 그대로 있고 아이콘만 시각적으로 커버 위로 올라가요. */
+.page-detail__icon-wrap--overlap {
+  position: relative;
+  top: -40px;
 }
 
 .page-detail__icon {
@@ -206,15 +409,23 @@
   z-index: 20;
 }
 
+/* 아이콘이 24개→143개로 늘면서 검색창(.page-detail__icon-search)과
+   카테고리 구분(.page-detail__icon-picker-section, 커버 피커의
+   COVER_GROUPS와 같은 패턴)이 붙었어요 — 팝업 자체는 이제 그리드가
+   아니라 세로로(검색창 → 스크롤되는 카테고리 목록) 쌓는 flex
+   컨테이너예요. 폭도 240px→264px로 조금 늘리고(칸마다 여유가 없어서
+   이모지가 옆 칸을 침범해 보이던 문제 완화), max-width로 아주 좁은
+   창에서도 뷰포트를 못 넘게 막았어요.*/
 .page-detail__icon-picker {
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
   z-index: 21;
-  width: 240px;
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 4px;
+  width: 264px;
+  max-width: calc(100vw - 32px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   padding: 10px;
   border: 1px solid #e3e8f0;
   border-radius: 12px;
@@ -222,8 +433,54 @@
   box-shadow: 0 12px 32px rgba(17, 26, 47, 0.14);
 }
 
-.page-detail__icon-picker button {
-  height: 34px;
+.page-detail__icon-search {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid #e3e8f0;
+  border-radius: 8px;
+  background: #fbfcfe;
+  font-size: 13px;
+  color: #2b3548;
+  outline: none;
+}
+
+.page-detail__icon-search:focus {
+  border-color: #c9cffb;
+  background: #fff;
+}
+
+/* 카테고리 섹션들을 세로로 쌓고, 이 목록 전체가 스크롤돼요(개별
+   그리드가 아니라) — 그래야 스크롤하다가 카테고리 라벨이 잘리지 않고
+   자연스럽게 다음 카테고리로 넘어가요. */
+.page-detail__icon-picker-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.page-detail__icon-picker-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.page-detail__icon-picker-label {
+  padding-left: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #9aa5b8;
+}
+
+.page-detail__icon-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+}
+
+.page-detail__icon-picker-grid button {
+  height: 36px;
   border: none;
   border-radius: 7px;
   background: transparent;
@@ -232,12 +489,19 @@
   place-items: center;
 }
 
-.page-detail__icon-picker button:hover {
+.page-detail__icon-picker-grid button:hover {
   background: #f0efff;
 }
 
+.page-detail__icon-empty {
+  padding: 16px 4px;
+  text-align: center;
+  color: #9aa5b8;
+  font-size: 12px;
+}
+
 .page-detail__title {
-  flex: 1;
+  width: 100%;
   border: none;
   outline: none;
   background: transparent;
@@ -317,10 +581,23 @@
    padding-left: 52px, 위 참고) 이 핸들 묶음은 그 넓어진 자리 안쪽
    (left: 0)에 둬요 — 넓어진 부분도 여전히 .block-row의 hit-box라서,
    본문이든 핸들이든 그 사이 여백이든 마우스가 어디 있어도 hover가 안
-   끊겨요. top:50%+translateY(-50%)는 태스크/이벤트 카드처럼 키가 큰
-   블록에서도 항상 그 줄/카드의 세로 중앙에 오게 해요. */
+   끊겨요.
+
+   원래는 top:50%+translateY(-50%)로 태스크/이벤트 카드처럼 키가 큰
+   블록에서도 항상 세로 중앙에 오게 했었는데, 두 가지 문제가 있었어요.
+   1) 노션은 핸들이 블록 위쪽에 붙는데 이건 가운데라 어색했고, 2) 안에
+   같이 들어있는 .block-menu(⋯ 메뉴)가 "부모 기준 top:30px"로 뜨는데
+   부모가 세로 중앙에 있다 보니, 표나 태스크 카드처럼 키가 큰 블록에서는
+   메뉴가 카드 한가운데서부터 열려서 아래쪽 내용(하위 페이지, 표 내용
+   등)과 겹쳐 보였어요. 블록 상단에 고정(top: 1px, .block-row의 위쪽
+   패딩과 맞춤)하니 두 문제가 같이 풀려요 — 핸들도 노션처럼 위에 붙고,
+   메뉴도 항상 블록 맨 위에서부터 열려서 안 겹쳐요. */
 .block-left-actions {
   position: absolute;
+  /* 텍스트/제목처럼 한 줄짜리 블록에서는 핸들이 그 줄 높이 한가운데
+     오는 게 자연스러워서 세로 중앙 정렬로 둬요. 표·태스크 카드처럼
+     키가 큰 블록에서는 아래 .block-row--embed 쪽에서 이 top/transform을
+     다시 덮어써요(첫 줄=표 헤더행/카드 첫 줄 높이에 맞춰 위쪽에 고정). */
   top: 50%;
   left: 0;
   transform: translateY(-50%);
@@ -337,8 +614,26 @@
   pointer-events: auto;
 }
 
+/* DATABASE(표)·TASK·EVENT·SPRINT 같은 임베드 블록은 본문이 한 줄이
+   아니라 카드/표 전체라서, 위 세로 중앙 정렬을 그대로 쓰면 핸들이
+   카드 한가운데로 내려가요. 그러면 1) 노션처럼 "첫 줄(표는 헤더행,
+   카드는 첫 줄)에 나란히" 있어야 할 핸들이 어색하게 가운데 떠 있고,
+   2) 핸들 바로 아래 붙는 .block-menu(⋯ 메뉴, top:30px는 이 요소
+   기준)도 카드 중간에서부터 열려서 아래쪽 내용과 겹쳐 보였어요. 그래서
+   임베드 블록에서만 위쪽 고정으로 덮어써요 — 6px는 표 헤더행 패딩
+   (.db-table__head의 6px)과 맞춰서, 핸들 중심이 대략 헤더행/카드 첫
+   줄의 세로 중앙 근처에 오게 잡은 값이에요. */
+.block-row--embed .block-left-actions {
+  top: 6px;
+  transform: none;
+}
+
 .block-add-btn {
-  width: 24px;
+  /* 24px→20px로 줄였어요 — "+"랑 드래그 핸들 사이가 떨어져 보인다는
+     요청. gap은 이미 0이라, 실제로 벌어져 보이던 건 두 버튼 안
+     아이콘(16px)을 둘러싼 여백(버튼 24px − 아이콘 16px = 양옆 4px씩)
+     때문이었어요. */
+  width: 20px;
   height: 30px;
   border: none;
   border-radius: 6px;
@@ -361,7 +656,7 @@
 .block-drag-handle {
   position: relative;
   flex-shrink: 0;
-  width: 24px;
+  width: 20px;
   height: 30px;
   border: none;
   border-radius: 6px;
@@ -750,12 +1045,51 @@
   background: #fff;
 }
 
+/* 리사이즈 핸들의 위치 기준이자, "지금 이미지가 실제로 얼마나 넓게
+   그려지는지"를 결정하는 요소예요. 커스텀 폭이 없으면(image.width가
+   없을 때) width:100%로 예전과 똑같이 박스를 꽉 채우고, 있으면
+   BlockImage의 인라인 style이 그 값(px)으로 덮어써요 — .page-image-box가
+   display:flex라 자식이 기본으로 폭 전체에 늘어나는데(align-items:
+   stretch), 인라인 width가 있으면 그쪽이 우선해서 실제로 좁아져요.
+   max-width:100%는 창을 줄였을 때 저장된 px값이 박스보다 커지는 경우의
+   안전장치예요. */
+.block-image-frame {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+}
+
 .block-image-preview {
   width: 100%;
   max-height: 360px;
   object-fit: cover;
   border-radius: 7px;
   display: block;
+}
+
+/* 오른쪽 가장자리의 세로 막대 — 잡고 끌면(BlockImage.handleResizeStart)
+   폭이 바뀌어요. 평소엔 숨겨뒀다가 이미지에 마우스를 올리면만 보이게
+   해서(핸들 버튼들과 같은 hover-reveal 패턴) 평소엔 깔끔해요. */
+.block-image-resize-handle {
+  position: absolute;
+  top: 50%;
+  right: -4px;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 44px;
+  border-radius: 4px;
+  background: rgba(17, 26, 47, 0.35);
+  cursor: ew-resize;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.block-image-frame:hover .block-image-resize-handle {
+  opacity: 1;
+}
+
+.block-image-resize-handle:hover {
+  background: rgba(79, 92, 246, 0.75);
 }
 
 .block-image-placeholder {
@@ -826,7 +1160,10 @@
 }
 
 .embed-task-card {
+  /* 서브태스크 목록을 링크 버튼 아래로 쌓기 위해 세로 방향으로 바꿨어요
+     (원래는 링크 버튼 하나뿐이라 가로 flex로도 충분했어요). */
   display: flex;
+  flex-direction: column;
   align-items: stretch;
   gap: 4px;
   width: 100%;
@@ -876,6 +1213,48 @@
 .embed-task-card__code {
   font-weight: 700;
   color: #4f5cf6;
+}
+
+.embed-task-card__subtask-count {
+  font-weight: 700;
+  color: #6d7891;
+  background: #f1f3f9;
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+/* 태스크 카드 안 서브태스크 체크리스트 — 스프린트 화면까지 안 가도
+   페이지에서 바로 진행 상황을 체크할 수 있게 해요. */
+.embed-task-card__subtasks {
+  list-style: none;
+  margin: 0;
+  padding: 8px 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 1px solid #eef1f7;
+}
+
+.embed-task-card__subtasks label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: #4b5468;
+  cursor: pointer;
+}
+
+.embed-task-card__subtasks input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: #4f5cf6;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.embed-task-card__subtask--done {
+  color: #aab2c5;
+  text-decoration: line-through;
 }
 
 .embed-priority {

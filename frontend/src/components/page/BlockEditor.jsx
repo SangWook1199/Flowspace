@@ -25,11 +25,12 @@ import {
   File as FileIcon,
   Pause,
   Flag,
+  RefreshCw,
 } from "lucide-react";
 
 import DatabaseBlock from "./DatabaseBlock";
 import SimpleTableBlock from "./SimpleTableBlock";
-import { sprintTaskRows } from "../../mock/sprintTasks";
+import { sprintTaskRows, PRIORITY_LABEL } from "../../mock/sprintTasks";
 import { calendarEvents } from "../../mock/calendar";
 import { sprints } from "../../mock/sprints";
 
@@ -110,7 +111,11 @@ function filterBlockTypes(options, query) {
 const MULTILINE_TYPES = ["TEXT", "CODE", "QUOTE"];
 const LIST_TYPES = ["BULLET", "NUMBERED", "TODO"];
 
-const PRIORITY_CLASS = { 높음: "high", 보통: "medium", 낮음: "low" };
+// mock/sprintTasks.js가 이제 우선순위를 영문 enum(HIGH/MEDIUM/LOW)으로
+// 저장해요(칸반 보드와 공유하는 공용 모델이라서) — 여기선 CSS 클래스용
+// 키만 영문으로 맞추고, 배지에 보여줄 한글 라벨은 PRIORITY_LABEL로
+// 따로 가져와요.
+const PRIORITY_CLASS = { HIGH: "high", MEDIUM: "medium", LOW: "low" };
 const EVENT_COLOR_CLASS = {
   RED: "red",
   ORANGE: "orange",
@@ -126,6 +131,13 @@ export default function BlockEditor({
   onCreateChildPage,
   onRenameRowPage,
   onDeleteRowPage,
+  // sprintTasks가 안 넘어오면(다른 화면에서 아직 안 챙겨줬다면) 정적
+  // import를 그대로 써서 예전처럼은 동작하게 해요 — 다만 그러면 체크박스로
+  // 토글해도 화면엔 안 남아요(상태를 들고 있는 쪽이 없으니까). 진짜로
+  // 저장되게 하려면 상위(PageDetailPage → MainLayout)에서 상태로 끌어올린
+  // sprintTasks/onToggleSubtask를 내려줘야 해요.
+  sprintTasks = sprintTaskRows,
+  onToggleSubtask,
 }) {
   // pages/{pageId}/blocks API로 교체 예정. onChange가 있으면 상위(페이지 목록
   // 상태)로 변경 사항을 올려서 다른 화면에서도 최신 블록이 보이게 해요.
@@ -223,7 +235,7 @@ export default function BlockEditor({
 
   const deleteBlock = (id) => {
     const target = blocks.find((b) => b.id === id);
-    if (!deleteOwnedPages(target, "이 블록을 지우면 연결된 하위 페이지도 함께 삭제돼요. 계속할까요?")) {
+    if (!deleteOwnedPages(target, "이 블록을 지우면 연결된 하위 페이지도 함께 휴지통으로 이동해요. 계속할까요?")) {
       return;
     }
 
@@ -344,7 +356,7 @@ export default function BlockEditor({
     // 새 database로 덮어씀) — 그대로 두면 deleteBlock과 똑같이 고아
     // 페이지가 생겨서, 같은 확인+cascade delete를 여기서도 해요.
     const current = blocks.find((b) => b.id === id);
-    const confirmMessage = "타입을 바꾸면 이 블록에 연결된 하위 페이지도 함께 삭제돼요. 계속할까요?";
+    const confirmMessage = "타입을 바꾸면 이 블록에 연결된 하위 페이지도 함께 휴지통으로 이동해요. 계속할까요?";
 
     if (type === "CHILD_PAGE") {
       // 새 하위 페이지를 바로 만들고, 이 블록을 그 페이지로 가는
@@ -381,9 +393,9 @@ export default function BlockEditor({
       ...(type === "TODO" ? { checked: false } : {}),
       ...(type === "IMAGE" ? { image: null } : {}),
       ...(type === "DATABASE" ? { database: createDefaultDatabase(onCreateChildPage) } : {}),
-      ...(type === "TASK" ? { task: null } : {}),
-      ...(type === "EVENT" ? { event: null } : {}),
-      ...(type === "SPRINT" ? { sprint: null } : {}),
+      ...(type === "TASK" ? { taskId: null } : {}),
+      ...(type === "EVENT" ? { eventId: null } : {}),
+      ...(type === "SPRINT" ? { sprintId: null } : {}),
     });
     setSlashMenu(null);
     setBlockMenu(null);
@@ -516,6 +528,132 @@ export default function BlockEditor({
     reader.readAsDataURL(file);
   };
 
+  // 노션처럼, 텍스트 블록에 커서를 둔 채로 이미지를 붙여넣거나(Ctrl+V)
+  // 파일을 페이지 위에 바로 끌어다 놓으면 "이미지" 타입을 슬래시 메뉴에서
+  // 먼저 고를 필요 없이 새 이미지 블록이 만들어지면서 바로 임베드돼요.
+  // insertBlockAfter/handleImageSelect를 합친 모양이에요 — 새 블록을
+  // 만들자마자 그 자리의 id로 이미지를 채워요.
+  const insertImageBlockAfter = (id, file) => {
+    if (!file) return;
+    const newId = nextId();
+
+    setBlocks((prev) => {
+      const index = prev.findIndex((b) => b.id === id);
+      const next = [...prev];
+      next.splice(index === -1 ? prev.length : index + 1, 0, createEmptyBlock(newId, "IMAGE", onCreateChildPage));
+      return next;
+    });
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      updateBlock(newId, {
+        image: { fileName: file.name, fileSize: formatFileSize(file.size), url: reader.result },
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // 커서가 있는 블록에서 클립보드에 이미지가 있을 때만 가로채요 — 일반
+  // 텍스트 붙여넣기는 건드리지 않고 그대로 기본 동작으로 흘려보내요.
+  const handlePasteImage = (block, e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const imageItem = Array.from(items).find(
+      (item) => item.kind === "file" && item.type?.startsWith("image/"),
+    );
+    if (!imageItem) return;
+
+    e.preventDefault();
+    insertImageBlockAfter(block.id, imageItem.getAsFile());
+  };
+
+  // 컴퓨터 파일 탐색기에서, 또는 다른 브라우저 탭/웹페이지에서 이미지를
+  // 페이지 위로 끌어다 놓은 경우들을 처리해요. 아래 세 함수가 같이
+  // 동작해요:
+  //  - resolveDropAnchor: 마우스를 놓은 지점(clientX/clientY) 아래에
+  //    어떤 .block-row가 있는지 document.elementFromPoint로 찾아서,
+  //    그 블록의 앞/뒤 중 어디에 끼워 넣을지 계산해요. 드롭 지점을 못
+  //    찾으면(예: 블록 없는 빈 하단 영역) null을 돌려주고, 이땐
+  //    맨 끝에 추가돼요.
+  //  - spliceBlockAt: 그 앵커에 맞춰 실제로 배열에 끼워 넣어요.
+  //  - extractDroppedImageUrl: OS 파일이 아니라(dataTransfer.files가
+  //    비어있는) 웹페이지의 <img>를 바로 끌어다 놓은 경우, 브라우저가
+  //    대신 넣어주는 text/uri-list나 text/html의 <img src>에서 URL을
+  //    꺼내요.
+  // 이전엔 항상 맨 끝에만 추가돼서, 블록이 많은 페이지에서 드롭해도
+  // 스크롤을 안 내리면 안 보이는 게 "임베드가 안 된다"로 오해됐었어요.
+  const spliceBlockAt = (prev, newBlock, anchor) => {
+    const next = [...prev];
+    if (anchor?.atStart) {
+      next.unshift(newBlock);
+    } else if (anchor?.afterBlockId != null) {
+      const index = next.findIndex((b) => b.id === anchor.afterBlockId);
+      next.splice(index === -1 ? next.length : index + 1, 0, newBlock);
+    } else {
+      next.push(newBlock);
+    }
+    return next;
+  };
+
+  const resolveDropAnchor = (e) => {
+    const rowEl = document.elementFromPoint(e.clientX, e.clientY)?.closest(".block-row");
+    if (!rowEl) return null;
+
+    const hoveredId = Number(rowEl.dataset.blockId);
+    const rect = rowEl.getBoundingClientRect();
+    const isAfter = e.clientY - rect.top > rect.height / 2;
+    if (isAfter) return { afterBlockId: hoveredId };
+
+    const index = blocks.findIndex((b) => b.id === hoveredId);
+    if (index <= 0) return { atStart: true };
+    return { afterBlockId: blocks[index - 1].id };
+  };
+
+  const extractDroppedImageUrl = (dataTransfer) => {
+    const uriList = dataTransfer.getData("text/uri-list") || dataTransfer.getData("URL");
+    if (uriList) {
+      const url = uriList.split("\n").find((line) => line && !line.startsWith("#"));
+      if (url) return url.trim();
+    }
+
+    const html = dataTransfer.getData("text/html");
+    if (html) {
+      const match = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+      if (match) return match[1];
+    }
+
+    return null;
+  };
+
+  const insertImageBlocksFromFiles = (files, anchor) => {
+    const imageFiles = Array.from(files || []).filter((file) => file.type?.startsWith("image/"));
+    let currentAnchor = anchor;
+
+    imageFiles.forEach((file) => {
+      const newId = nextId();
+      setBlocks((prev) => spliceBlockAt(prev, createEmptyBlock(newId, "IMAGE", onCreateChildPage), currentAnchor));
+      currentAnchor = { afterBlockId: newId }; // 여러 장을 한 번에 드롭하면 순서대로 이어 꽂혀요.
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        updateBlock(newId, {
+          image: { fileName: file.name, fileSize: formatFileSize(file.size), url: reader.result },
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const insertImageBlockFromUrl = (url, anchor) => {
+    if (!url) return;
+    const newId = nextId();
+    setBlocks((prev) => spliceBlockAt(prev, createEmptyBlock(newId, "IMAGE", onCreateChildPage), anchor));
+
+    const fileName = decodeURIComponent(url.split("/").pop()?.split("?")[0] || "image");
+    updateBlock(newId, { image: { fileName, fileSize: "", url } });
+  };
+
   const numbers = computeNumbers(blocks);
 
   return (
@@ -523,10 +661,29 @@ export default function BlockEditor({
       className="block-editor"
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
+        e.preventDefault();
+
+        // 컴퓨터에서 이미지 파일을 바로 끌어다 놓은 경우(외부 드래그)는
+        // dataTransfer.files가 채워져 있어요 — 블록 순서를 바꾸는 내부
+        // 드래그(핸들로 시작)는 이게 없어서, files 유무로 둘을 갈라요.
+        // files가 비어있어도 다른 브라우저 탭/웹페이지의 이미지를 끌어다
+        // 놓은 경우일 수 있어서, 그땐 URL을 대신 꺼내요.
+        const hasFiles = e.dataTransfer.files && e.dataTransfer.files.length > 0;
+        const externalUrl = hasFiles ? null : extractDroppedImageUrl(e.dataTransfer);
+
+        if (hasFiles || externalUrl) {
+          const anchor = resolveDropAnchor(e);
+          if (hasFiles) insertImageBlocksFromFiles(e.dataTransfer.files, anchor);
+          else insertImageBlockFromUrl(externalUrl, anchor);
+
+          setDragBlockId(null);
+          setBlockDropTarget(null);
+          return;
+        }
+
         // dragend가 어떤 이유로든 블록까지 안 오는 극단적인 경우를
         // 대비한 보험(칸반 보드 레벨의 onDrop과 같은 패턴) — 이미
         // 커밋됐으면 commitBlockDrop 안에서 조용히 무시돼요.
-        e.preventDefault();
         commitBlockDrop();
       }}
     >
@@ -559,16 +716,30 @@ export default function BlockEditor({
             moreMode={blockMenu?.blockId === block.id ? blockMenu.mode : "main"}
             onChange={(value) => handleChange(block, value)}
             onKeyDown={(e) => handleKeyDown(e, block)}
+            onPasteImage={(e) => handlePasteImage(block, e)}
             onFocus={() => handleFocus(block)}
             onBlur={() => handleBlur(block)}
             onToggleCheck={() => updateBlock(block.id, { checked: !block.checked })}
             onImageSelect={(file) => handleImageSelect(block, file)}
+            onImageResize={(width) => updateBlock(block.id, { image: { ...block.image, width } })}
             onDatabaseChange={(database) => updateBlock(block.id, { database })}
             onRenameRowPage={onRenameRowPage}
             onDeleteRowPage={onDeleteRowPage}
-            onTaskChange={(task) => updateBlock(block.id, { task })}
-            onEventChange={(event) => updateBlock(block.id, { event })}
-            onSprintChange={(sprint) => updateBlock(block.id, { sprint })}
+            sprintTasks={sprintTasks}
+            onToggleSubtask={onToggleSubtask}
+            onTaskChange={(taskId) => updateBlock(block.id, { taskId })}
+            onEventChange={(eventId) => updateBlock(block.id, { eventId })}
+            onSprintChange={(sprintId) => updateBlock(block.id, { sprintId })}
+            onResetEmbed={() => {
+              // TASK/EVENT/SPRINT 카드에서 X(연결 해제) 버튼을 없앤 뒤로,
+              // 연결된 걸 바꾸려면 블록을 통째로 지우고 새로 만드는
+              // 수밖에 없었어요 — 메뉴에 "다시 선택"을 둬서, 해당 필드만
+              // null로 되돌려 피커가 다시 뜨게 해요(블록 자체는 유지).
+              if (block.type === "TASK") updateBlock(block.id, { taskId: null });
+              else if (block.type === "EVENT") updateBlock(block.id, { eventId: null });
+              else if (block.type === "SPRINT") updateBlock(block.id, { sprintId: null });
+              setBlockMenu(null);
+            }}
             onConvert={(type) => convertBlock(block.id, type)}
             onAddBelow={() => {
               insertBlockAfter(block.id);
@@ -634,16 +805,21 @@ function BlockRow({
   moreMode,
   onChange,
   onKeyDown,
+  onPasteImage,
   onFocus,
   onBlur,
   onToggleCheck,
   onImageSelect,
+  onImageResize,
   onDatabaseChange,
   onRenameRowPage,
   onDeleteRowPage,
+  sprintTasks,
+  onToggleSubtask,
   onTaskChange,
   onEventChange,
   onSprintChange,
+  onResetEmbed,
   onConvert,
   onAddBelow,
   onDelete,
@@ -659,16 +835,24 @@ function BlockRow({
 }) {
   const isMultiline = MULTILINE_TYPES.includes(block.type);
   const checkedClass = block.type === "TODO" && block.checked ? "checked" : "";
+  // IMAGE도 표/태스크·이벤트·스프린트 카드처럼 키가 큰 블록이라
+  // 여기 넣었어요 — 안 넣으면 핸들이 이미지 세로 중앙에서 열려서
+  // (.block-left-actions 기본값) 그 아래 ⋯ 메뉴가 이미지 밑의
+  // 파일명/변경 버튼 위에 겹쳐 보이던 문제가 있었어요.
   const isEmbed =
-    block.type === "DATABASE" || block.type === "TASK" || block.type === "EVENT" || block.type === "SPRINT";
+    block.type === "DATABASE" ||
+    block.type === "TASK" ||
+    block.type === "EVENT" ||
+    block.type === "SPRINT" ||
+    block.type === "IMAGE";
   const rowRef = useRef(null);
   // TASK/EVENT/SPRINT 블록이 실제 데이터에 연결돼 있으면(아직 선택 전인
   // 빈 피커 상태가 아니면) 핸들에 작은 초록 점을 같이 보여줘요 — "살아있는
   // 블록"이라는 FlowSpace만의 개념을 핸들 자리에서부터 드러내는 신호예요.
   const isLive =
-    (block.type === "TASK" && !!block.task) ||
-    (block.type === "EVENT" && !!block.event) ||
-    (block.type === "SPRINT" && !!block.sprint);
+    (block.type === "TASK" && !!block.taskId) ||
+    (block.type === "EVENT" && !!block.eventId) ||
+    (block.type === "SPRINT" && !!block.sprintId);
   // 핸들을 클릭해서 메뉴로 수정 중이거나(isMoreOpen), 잡고 끌어서
   // 위치를 옮기는 중이면(isDragging) 핸들 색을 꽉 채워서 "지금 이
   // 핸들이 뭔가를 하고 있다"는 게 호버 여부와 상관없이 계속 보이게
@@ -678,6 +862,7 @@ function BlockRow({
   return (
     <div
       ref={rowRef}
+      data-block-id={block.id}
       className={`block-row block-${block.type.toLowerCase()} ${isMoreOpen ? "menu-open" : ""} ${
         isEmbed ? "block-row--embed" : ""
       } ${isDragging ? "dragging" : ""}`}
@@ -756,6 +941,18 @@ function BlockRow({
                   <ChevronRight size={12} className="block-menu__chevron" />
                 </button>
 
+                {/* TASK/EVENT/SPRINT 카드에서 X(연결 해제) 버튼을 없앤
+                    뒤로, 연결된 걸 바꾸려면 블록을 통째로 지우고 새로
+                    만드는 수밖에 없었어요 — 이미 뭔가 연결돼 있을 때만
+                    (isLive) 보여서, 해당 필드를 null로 되돌리고 피커를
+                    다시 띄워요. */}
+                {isLive && (
+                  <button type="button" onClick={onResetEmbed}>
+                    <RefreshCw size={14} />
+                    <span>다시 선택</span>
+                  </button>
+                )}
+
                 <button type="button" onClick={onMoveUp} disabled={isFirst}>
                   <ArrowUp size={14} />
                   <span>위로 이동</span>
@@ -801,7 +998,7 @@ function BlockRow({
         {block.type === "DIVIDER" ? (
           <hr className="block-divider-line" />
         ) : block.type === "IMAGE" ? (
-          <BlockImage block={block} onImageSelect={onImageSelect} />
+          <BlockImage block={block} onImageSelect={onImageSelect} onImageResize={onImageResize} />
         ) : block.type === "DATABASE" ? (
           block.database?.kind === "TABLE" ? (
             <SimpleTableBlock table={block.database} onChange={onDatabaseChange} />
@@ -816,11 +1013,16 @@ function BlockRow({
             />
           )
         ) : block.type === "TASK" ? (
-          <TaskEmbed task={block.task} onChange={onTaskChange} />
+          <TaskEmbed
+            taskId={block.taskId}
+            tasks={sprintTasks}
+            onChange={onTaskChange}
+            onToggleSubtask={onToggleSubtask}
+          />
         ) : block.type === "EVENT" ? (
-          <EventEmbed event={block.event} onChange={onEventChange} />
+          <EventEmbed eventId={block.eventId} onChange={onEventChange} />
         ) : block.type === "SPRINT" ? (
-          <SprintEmbed sprint={block.sprint} onChange={onSprintChange} />
+          <SprintEmbed sprintId={block.sprintId} onChange={onSprintChange} />
         ) : block.pageId ? (
           <PageLinkBlock page={pageLink} />
         ) : (
@@ -848,6 +1050,7 @@ function BlockRow({
                 placeholder={isFocused ? placeholderFor(block.type) : ""}
                 onChange={(e) => onChange(e.target.value)}
                 onKeyDown={onKeyDown}
+                onPaste={onPasteImage}
                 onFocus={onFocus}
                 onBlur={onBlur}
               />
@@ -861,6 +1064,7 @@ function BlockRow({
                 onChange={(e) => onChange(e.target.value)}
                 onFocus={onFocus}
                 onKeyDown={onKeyDown}
+                onPaste={onPasteImage}
                 onBlur={onBlur}
               />
             )}
@@ -885,8 +1089,14 @@ function BlockRow({
    노션에는 없는, FlowSpace만의 블록. 스프린트 태스크·캘린더 이벤트를
    페이지 안에 그대로 가져와서 보여주고 클릭하면 실제 화면으로 이동해요. */
 
-function TaskEmbed({ task, onChange }) {
+function TaskEmbed({ taskId, tasks, onChange, onToggleSubtask }) {
   const navigate = useNavigate();
+  // taskId(참조)만 블록에 저장하고, 실제 내용은 매번 sprintTasks에서
+  // 새로 찾아 그려요 — 스프린트 화면에서 이 태스크를 수정하면(제목,
+  // 담당자, 서브태스크 체크 등) 페이지를 다시 열 때 여기도 최신 상태로
+  // 보여요. sprintTasks가 상태로 안 올라와 있으면(정적 import 기본값)
+  // 체크박스를 눌러도 onToggleSubtask가 없어서 조용히 무시돼요.
+  const task = tasks?.find((t) => t.id === taskId) || null;
 
   if (!task) {
     return (
@@ -894,21 +1104,15 @@ function TaskEmbed({ task, onChange }) {
         <select
           defaultValue=""
           onChange={(e) => {
-            const picked = sprintTaskRows.find((t) => t.id === e.target.value);
+            const picked = tasks?.find((t) => t.id === e.target.value);
             if (!picked) return;
-            onChange({
-              id: picked.id,
-              title: picked.title,
-              assignee: picked.assignee,
-              priority: picked.priority,
-              dueDate: picked.dueDate,
-            });
+            onChange(picked.id);
           }}
         >
           <option value="" disabled>
             연결할 태스크를 선택하세요
           </option>
-          {sprintTaskRows.map((t) => (
+          {tasks?.map((t) => (
             <option key={t.id} value={t.id}>
               {t.id} · {t.title}
             </option>
@@ -919,6 +1123,8 @@ function TaskEmbed({ task, onChange }) {
   }
 
   const priorityClass = PRIORITY_CLASS[task.priority] || "medium";
+  const subtasks = task.subtasks || [];
+  const doneCount = subtasks.filter((s) => s.checked).length;
 
   return (
     <div className="embed-task-card">
@@ -928,25 +1134,48 @@ function TaskEmbed({ task, onChange }) {
         onClick={() => navigate(`/sprints/1/tasks`)}
         title="태스크로 이동"
       >
-        <span className={`embed-priority embed-priority--${priorityClass}`}>{task.priority}</span>
+        <span className={`embed-priority embed-priority--${priorityClass}`}>
+          {PRIORITY_LABEL[task.priority] ?? task.priority}
+        </span>
         <span className="embed-task-card__title">{task.title}</span>
         <span className="embed-task-card__meta">
-          {/* 새로 피커로 연결한 태스크는 id 자체가 "SP1-1" 같은 코드
-              문자열이라 그대로 쓰면 되는데, pages.js에 미리 심어둔 옛
-              시드 데이터는 id(숫자)랑 code("SP1-08")가 따로 있어서
-              task.id만 보여주면 그냥 "8"처럼 숫자만 떴어요. code가
-              있으면 그걸 우선 써요. */}
-          <span className="embed-task-card__code">{task.code ?? task.id}</span>
-          <span className="embed-task-card__assignee">{task.assignee}</span>
+          <span className="embed-task-card__code">{task.id}</span>
+          <span className="embed-task-card__assignee">{task.assignees?.[0]?.name}</span>
           {task.dueDate && <span className="embed-task-card__due">~{task.dueDate}</span>}
+          {subtasks.length > 0 && (
+            <span className="embed-task-card__subtask-count">
+              {doneCount}/{subtasks.length}
+            </span>
+          )}
         </span>
       </button>
+
+      {/* 서브태스크를 스프린트 화면까지 안 가도 여기서 바로 체크할 수
+          있게 해요 — sprintTasks가 상위(MainLayout)에서 상태로 관리되면
+          이 체크가 스프린트 태스크 목록에도 그대로 반영돼요. */}
+      {subtasks.length > 0 && (
+        <ul className="embed-task-card__subtasks">
+          {subtasks.map((s, i) => (
+            <li key={i}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={!!s.checked}
+                  onChange={() => onToggleSubtask?.(task.id, i)}
+                />
+                <span className={s.checked ? "embed-task-card__subtask--done" : ""}>{s.text}</span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
 
-function EventEmbed({ event, onChange }) {
+function EventEmbed({ eventId, onChange }) {
   const navigate = useNavigate();
+  const event = calendarEvents.find((ev) => ev.event_id === eventId) || null;
 
   if (!event) {
     return (
@@ -956,13 +1185,7 @@ function EventEmbed({ event, onChange }) {
           onChange={(e) => {
             const picked = calendarEvents.find((ev) => String(ev.event_id) === e.target.value);
             if (!picked) return;
-            onChange({
-              id: picked.event_id,
-              title: picked.title,
-              start: picked.start_datetime,
-              end: picked.end_datetime,
-              color: picked.color,
-            });
+            onChange(picked.event_id);
           }}
         >
           <option value="" disabled>
@@ -991,7 +1214,7 @@ function EventEmbed({ event, onChange }) {
         <span className="embed-event-card__bar" />
         <span className="embed-event-card__body">
           <strong>{event.title}</strong>
-          <span>{formatEventRange(event.start, event.end)}</span>
+          <span>{formatEventRange(event.start_datetime, event.end_datetime)}</span>
         </span>
       </button>
     </div>
@@ -1012,8 +1235,13 @@ const SPRINT_STATUS_LABEL = {
   COMPLETED: "완료",
 };
 
-function SprintEmbed({ sprint, onChange }) {
+function SprintEmbed({ sprintId, onChange }) {
   const navigate = useNavigate();
+  // sprintId만 갖고 있다가 매번 sprints에서 새로 찾아 그리니까, 주석에서
+  // 원래 얘기했던 "progress/completed/total이 바뀌면 새로 불러올 때마다
+  // 반영된다"는 게 스냅샷을 저장하던 예전 구현과 달리 이제 실제로도
+  // 그래요.
+  const sprint = sprints.find((s) => s.id === sprintId) || null;
 
   if (!sprint) {
     return (
@@ -1023,17 +1251,7 @@ function SprintEmbed({ sprint, onChange }) {
           onChange={(e) => {
             const picked = sprints.find((s) => String(s.id) === e.target.value);
             if (!picked) return;
-            onChange({
-              id: picked.id,
-              name: picked.name,
-              goal: picked.goal,
-              status: picked.status,
-              remaining: picked.remaining,
-              progress: picked.progress,
-              completed: picked.completed,
-              total: picked.total,
-              color: picked.color,
-            });
+            onChange(picked.id);
           }}
         >
           <option value="" disabled>
@@ -1117,6 +1335,7 @@ function AutoTextarea({
   placeholder,
   onChange,
   onKeyDown,
+  onPaste,
   onFocus,
   onBlur,
 }) {
@@ -1141,6 +1360,7 @@ function AutoTextarea({
       rows={1}
       onChange={onChange}
       onKeyDown={onKeyDown}
+      onPaste={onPaste}
       onFocus={onFocus}
       onBlur={onBlur}
     />
@@ -1149,15 +1369,64 @@ function AutoTextarea({
 
 /* ================= BlockImage ================= */
 
-function BlockImage({ block, onImageSelect }) {
+function BlockImage({ block, onImageSelect, onImageResize }) {
   const fileRef = useRef(null);
+  const boxRef = useRef(null);
+  const frameRef = useRef(null);
   const image = block.image;
+
+  // 오른쪽 가장자리 핸들을 잡고 끌면 image.width(px)가 바뀌어요. width가
+  // 없으면(기본 상태) CSS가 100%로 꽉 채우는데, 그 실제 렌더 폭에서부터
+  // 드래그가 시작돼야 처음 잡아끌 때 폭이 순간 튀지 않아요 — 그래서
+  // 시작폭을 state가 아니라 .block-image-frame의 실측 너비
+  // (getBoundingClientRect)에서 가져와요. 최대치는 .page-image-box의
+  // 실제 사용 가능 폭(패딩 10px×2를 뺀 값)으로 묶어서, 박스 밖으로
+  // 넘치지 않게 해요.
+  const handleResizeStart = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const boxEl = boxRef.current;
+    const frameEl = frameRef.current;
+    if (!boxEl || !frameEl || !onImageResize) return;
+
+    const startX = e.clientX;
+    const startWidth = frameEl.getBoundingClientRect().width;
+    const maxWidth = boxEl.clientWidth - 20;
+
+    const handleMove = (moveEvent) => {
+      const nextWidth = Math.round(
+        Math.min(maxWidth, Math.max(160, startWidth + (moveEvent.clientX - startX))),
+      );
+      onImageResize(nextWidth);
+    };
+    const handleUp = () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+    };
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+  };
 
   if (image) {
     return (
-      <div className="page-image-box">
+      <div className="page-image-box" ref={boxRef}>
         {image.url ? (
-          <img src={image.url} alt={image.fileName} className="block-image-preview" />
+          <div
+            className="block-image-frame"
+            ref={frameRef}
+            style={image.width ? { width: image.width } : undefined}
+          >
+            <img src={image.url} alt={image.fileName} className="block-image-preview" />
+
+            {/* 드래그로 폭 조절, 더블클릭하면 원래(100% 채움) 크기로
+                되돌아가요 — 표시는 호버 중일 때만. */}
+            <div
+              className="block-image-resize-handle"
+              onMouseDown={handleResizeStart}
+              onDoubleClick={() => onImageResize?.(null)}
+              title="드래그해서 크기 조절 · 더블클릭하면 원래 크기로"
+            />
+          </div>
         ) : (
           <div className="block-image-placeholder">
             <ImageIcon size={22} />
@@ -1262,9 +1531,9 @@ function createEmptyBlock(id, type, onCreateRowPage) {
   if (type === "IMAGE") return { id, type, image: null };
   if (type === "DATABASE") return { id, type, database: createDefaultDatabase(onCreateRowPage) };
   if (type === "TABLE") return { id, type: "DATABASE", database: createSimpleTable() };
-  if (type === "TASK") return { id, type, task: null };
-  if (type === "EVENT") return { id, type, event: null };
-  if (type === "SPRINT") return { id, type, sprint: null };
+  if (type === "TASK") return { id, type, taskId: null };
+  if (type === "EVENT") return { id, type, eventId: null };
+  if (type === "SPRINT") return { id, type, sprintId: null };
   return { id, type, content: "" };
 }
 

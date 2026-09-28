@@ -1,12 +1,19 @@
 import { useState, Fragment } from "react";
 import { Plus } from "lucide-react";
+import { useOutletContext } from "react-router-dom";
 
 import KanbanColumn from "../components/kanban/KanbanColumn";
 import StatusModal from "../components/kanban/StatusModal";
 
-import { activeSprint, statuses as statusesMock, kanbanTasks } from "../mock/kanban";
+import { activeSprint, statuses as statusesMock } from "../mock/kanban";
 
 export default function Kanban() {
+  // 태스크 자체(sprintTasks)는 이제 MainLayout에서 끌어올린 세션
+  // 상태예요 — 스프린트 작업 목록(SprintTasks.jsx)·페이지 TASK 블록
+  // (BlockEditor.jsx)과 이 배열을 그대로 같이 써서, 어느 화면에서
+  // 바꾸든 나머지에도 반영돼요. 컬럼(statuses) 순서/카드 위치는 아직
+  // 이 화면(칸반 보드)만의 관심사라 로컬 상태로 남겨뒀어요.
+  const { sprintTasks, setSprintTasks } = useOutletContext();
   const [createOpen, setCreateOpen] = useState(false);
 
   // 컬럼(상태) 순서도 카드랑 똑같은 방식이에요 — 드래그 중엔 배열을 안
@@ -132,7 +139,7 @@ export default function Kanban() {
   // 하는 순간 딱 한 번만 실제로 배열을 바꿔요(commitDrop). 드래그 중인
   // 카드는 원래 자리에 계속 남아있어서(반투명 표시만 됨) unmount 문제가
   // 없고, 목표 위치는 지라처럼 파란 줄(.dropIndicator)로 보여줘요.
-  const [tasks, setTasks] = useState(() => [...kanbanTasks]);
+  const tasks = sprintTasks;
   const [dragTaskId, setDragTaskId] = useState(null);
   const [dropTarget, setDropTarget] = useState(null); // { statusId, beforeTaskId }
 
@@ -222,7 +229,7 @@ export default function Kanban() {
   // 커밋된 뒤 중복 호출된 경우) 조용히 넘어가요.
   const commitDrop = () => {
     if (dragTaskId !== null && dropTarget) {
-      setTasks((prev) => {
+      setSprintTasks((prev) => {
         const next = [...prev];
         const fromIndex = next.findIndex((t) => t.id === dragTaskId);
         if (fromIndex === -1) return prev;

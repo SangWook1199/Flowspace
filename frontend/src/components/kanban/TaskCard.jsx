@@ -14,6 +14,13 @@ const priorityLabel = {
   LOW: "낮음",
 };
 
+// "2025-05-28" → "2025.05.28". 공용 태스크 모델(mock/sprintTasks.js)의
+// 날짜는 스프린트 작업 목록과 맞춰 하이픈(ISO) 형식이라, 칸반 카드에서
+// 원래 쓰던 점(.) 표기로 보이게만 바꿔줘요.
+function formatDotDate(iso) {
+  return iso ? iso.replaceAll("-", ".") : "";
+}
+
 export default function TaskCard({
   task,
   isDragging = false,
@@ -23,7 +30,13 @@ export default function TaskCard({
 }) {
   const [open, setOpen] = useState(false);
 
-  const percent = (task.complete / task.total) * 100;
+  // complete/total을 따로 저장해두지 않고 매번 subtasks에서 세요 —
+  // 서브태스크 체크 상태(스프린트 작업 목록이나 페이지 TASK 블록에서
+  // 바뀔 수 있어요)와 진행률 표시가 어긋날 일이 없어져요.
+  const subtasks = task.subtasks ?? [];
+  const complete = subtasks.filter((s) => s.checked).length;
+  const total = subtasks.length;
+  const percent = total ? (complete / total) * 100 : 0;
 
   return (
     <article
@@ -52,7 +65,7 @@ export default function TaskCard({
       onDragEnd={() => onDragEnd?.()}
     >
       <div className="cardTop">
-        <small className="cardKey">{task.code}</small>
+        <small className="cardKey">{task.id}</small>
 
         <button className="cardMenu">
           <MoreHorizontal size={16} />
@@ -63,7 +76,7 @@ export default function TaskCard({
 
       <div className="cardMeta">
         <div className="cardMembers">
-          {task.assignees.map((user) => (
+          {(task.assignees ?? []).map((user) => (
             <span key={user.id} className="cardAvatar" title={user.name}>
               {user.initial}
             </span>
@@ -77,14 +90,14 @@ export default function TaskCard({
 
       <div className="cardDate">
         <CalendarDays size={13} />
-        {task.start} ~ {task.end}
+        {formatDotDate(task.startDate)} ~ {formatDotDate(task.dueDate)}
       </div>
 
       <div className="cardProgress">
         <div>
           <span>하위 작업</span>
           <b>
-            {task.complete}/{task.total}
+            {complete}/{total}
           </b>
         </div>
 
@@ -95,10 +108,10 @@ export default function TaskCard({
 
       <button className="subtaskToggle" onClick={() => setOpen(!open)}>
         {open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
-        하위 작업 {task.subtasks?.length ?? 0}개
+        하위 작업 {total}개
       </button>
 
-      {open && <SubTaskList subtasks={task.subtasks ?? []} />}
+      {open && <SubTaskList subtasks={subtasks} />}
     </article>
   );
 }

@@ -99,8 +99,48 @@
   margin-top: 8px;
 }
 .pageNavRow {
+  position: relative;
   padding: 0 8px 0 18px;
   gap: 0;
+}
+/* 드래그 핸들 — 행 자체에 이미 있던 왼쪽 18px 패딩 자리에 얹어서
+   (block-drag-handle을 만들 때처럼 폭을 늘리거나 별도 공간을
+   만들 필요 없이) 평소엔 숨어있다가 이 줄에 호버할 때만 보여요.
+   패딩 안쪽에 얹는 거라 마우스를 아이콘 쪽으로 옮겨도 이 줄의
+   hover 판정이 끊기지 않아요. */
+.pageNavRow__grip {
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  color: #a1abbd;
+  opacity: 0;
+  cursor: grab;
+  transition: opacity 0.12s ease;
+}
+.pageNavRow:hover .pageNavRow__grip {
+  opacity: 1;
+}
+.pageNavRow__grip:active {
+  cursor: grabbing;
+}
+.pageNavRow.dragging {
+  opacity: 0.45;
+}
+/* 순서 변경 중 놓일 위치를 보여주는 줄 — 블록 에디터의
+   .block-drop-indicator와 같은 색·두께로 통일했어요. */
+.page-drop-indicator {
+  height: 3px;
+  margin: 2px 11px;
+  border-radius: 999px;
+  background: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
 }
 .pageNavRow__link {
   flex: 1;
@@ -141,6 +181,114 @@
 .pageNavRow__delete:hover {
   background: #fde8e8;
   color: #e65353;
+}
+/* 휴지통 섹션 — 평소엔 접혀 있다가 눌러서 펼쳐요. 페이지 목록과
+   톤은 맞추되, 삭제 관련 UI라는 걸 알 수 있게 회색 계열로 살짝
+   낮춰요. */
+.trashSection {
+  margin-top: 4px;
+}
+.trashSection__toggle {
+  width: 100%;
+  height: 40px;
+  border: 0;
+  background: transparent;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 11px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+  color: #7c879c;
+}
+.trashSection__toggle:hover {
+  background: #f4f6fa;
+}
+.trashSection__toggle svg {
+  color: #96a2b8;
+  flex-shrink: 0;
+}
+.trashSection__toggle span {
+  flex: 1;
+}
+.trashSection__toggle b {
+  font-size: 11px;
+  font-weight: 600;
+  color: #96a2b8;
+}
+.trashSection__chevron {
+  transition: transform 0.15s ease;
+}
+.trashSection__chevron.open {
+  transform: rotate(90deg);
+}
+.trashSection__list {
+  padding: 2px 2px 4px 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.trashRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 8px 0 27px;
+  border-radius: 8px;
+}
+.trashRow:hover {
+  background: #f8fafc;
+}
+.trashRow__title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #9aa4b8;
+}
+.trashRow__title span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trashRow__action {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #96a2b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.trashRow__action:hover {
+  background: #eef2ff;
+  color: #4e6dff;
+}
+.trashRow__action--danger:hover {
+  background: #fde8e8;
+  color: #e65353;
+}
+.trashSection__empty {
+  margin-top: 4px;
+  height: 34px;
+  padding: 0 27px;
+  border: 0;
+  background: transparent;
+  border-radius: 8px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 500;
+  color: #b3364a;
+}
+.trashSection__empty:hover {
+  background: #fde8e8;
 }
 .workspaceSettingsBtn {
   /* 온라인 팀원 위젯이 있던 자리(margin-top:auto로 사이드바 맨 아래에

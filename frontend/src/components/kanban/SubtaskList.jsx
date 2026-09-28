@@ -3,9 +3,12 @@ export default function SubtaskList({ subtasks }) {
     <div className="subtask-list">
       {subtasks.map((subtask) => (
         <div key={subtask.id} className="subtask-item">
-          <input type="checkbox" checked={subtask.done} readOnly />
+          {/* 여기(칸반 카드)는 미리보기라 읽기 전용이에요 — 실제로 체크는
+              페이지 TASK 블록이나 스프린트 작업 목록에서 해요(같은
+              sprintTasks 상태를 보니까 여기도 바로 반영돼요). */}
+          <input type="checkbox" checked={subtask.checked} readOnly />
 
-          <span className={subtask.done ? "done" : ""}>{subtask.title}</span>
+          <span className={subtask.checked ? "done" : ""}>{subtask.text}</span>
         </div>
       ))}
     </div>

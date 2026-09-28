@@ -281,12 +281,13 @@ export default function DatabaseBlock({
   };
 
   // 행 = 페이지라서, 행을 지우면 그 페이지(안의 내용까지 전부)도 같이
-  // 사라져요 — 되돌릴 수 없는 일이라 확인을 한 번 받아요.
+  // 휴지통으로 이동해요 — deletePage가 이제 소프트 삭제라 필요하면
+  // 휴지통에서 복원할 수 있어요.
   const deleteRow = (rowId) => {
     const row = rows.find((r) => r.id === rowId);
     if (row?.pageId) {
       const confirmed = window.confirm(
-        "이 행을 지우면 연결된 페이지도 함께 삭제돼요. 계속할까요?",
+        "이 행을 지우면 연결된 페이지도 함께 휴지통으로 이동해요. 계속할까요?",
       );
       if (!confirmed) return;
       onDeleteRowPage?.(row.pageId);
