@@ -3,6 +3,7 @@ import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { Camera, ChevronRight, ImagePlus, Smile, X } from "lucide-react";
 
 import BlockEditor from "../components/page/BlockEditor";
+import PopoverPortal from "../components/page/PopoverPortal";
 import "../styles/page-detail.css";
 
 // 검색이 되려면 이모지마다 찾아볼 키워드가 있어야 해서, 이모지 문자열만
@@ -276,6 +277,7 @@ export default function PageDetailPage() {
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const [iconQuery, setIconQuery] = useState("");
   const [coverPickerOpen, setCoverPickerOpen] = useState(false);
+  const [coverAnchor, setCoverAnchor] = useState(null);
   const coverInputRef = useRef(null);
 
   const page = pages.find((p) => String(p.id) === pageId);
@@ -368,12 +370,17 @@ export default function PageDetailPage() {
   ) : null;
 
   // "커버 추가"/"변경" 버튼 둘 다 이 패널을 열어요 — 기본 커버 16장을
-  // 고르거나 업로드를 선택할 수 있어요. 이제 두 버튼이 같은 자리(상단
-  // 바의 .page-detail__cover-btn-wrap)에 있어서 패널도 하나만 두면
-  // 돼요.
+  // 고르거나 업로드를 선택할 수 있어요. 커버가 있을 때(변경 버튼)는
+  // .page-detail__cover-zone에 overflow:hidden(280px 고정 높이)이
+  // 걸려 있어서 예전처럼 그 안에서 absolute로 띄우면 패널이 바닥
+  // 밑으로 넘쳐 그대로 잘려 안 보였어요 — PopoverPortal(다른 메뉴들과
+  // 같은 컴포넌트)로 document.body에 fixed로 띄워서 그 문제를
+  // 없앴어요. align="end"는 예전 CSS의 right:0 의도 그대로 트리거
+  // 오른쪽 끝에 패널 오른쪽 끝을 맞춰요. 두 버튼 중 실제로 클릭된
+  // 쪽을 anchorEl로 써야 해서, 클릭 시 e.currentTarget을 coverAnchor에
+  // 같이 저장해요.
   const coverPickerPanel = coverPickerOpen ? (
-    <>
-      <div className="page-detail__cover-overlay" onClick={() => setCoverPickerOpen(false)} />
+    <PopoverPortal anchorEl={coverAnchor} onClose={() => setCoverPickerOpen(false)} align="end">
       <div className="page-detail__cover-picker">
         {COVER_GROUPS.map((group) => (
           <div key={group.title} className="page-detail__cover-picker-section">
@@ -408,7 +415,7 @@ export default function PageDetailPage() {
           업로드
         </button>
       </div>
-    </>
+    </PopoverPortal>
   ) : null;
 
   return (
@@ -427,7 +434,13 @@ export default function PageDetailPage() {
               coverPickerOpen ? " page-detail__cover-actions--open" : ""
             }`}
           >
-            <button type="button" onClick={() => setCoverPickerOpen((v) => !v)}>
+            <button
+              type="button"
+              onClick={(e) => {
+                setCoverAnchor(e.currentTarget);
+                setCoverPickerOpen((v) => !v);
+              }}
+            >
               <Camera size={13} />
               변경
             </button>
@@ -468,7 +481,10 @@ export default function PageDetailPage() {
                 <button
                   type="button"
                   className="page-detail__cover-btn"
-                  onClick={() => setCoverPickerOpen((v) => !v)}
+                  onClick={(e) => {
+                    setCoverAnchor(e.currentTarget);
+                    setCoverPickerOpen((v) => !v);
+                  }}
                 >
                   <ImagePlus size={13} />
                   커버 추가

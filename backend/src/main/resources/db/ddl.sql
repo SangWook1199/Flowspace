@@ -202,7 +202,7 @@ CREATE TABLE blocks (
     image_file_id BIGINT NULL,
     parent_block_id BIGINT NULL,
     type ENUM('TEXT', 'H1', 'H2', 'TODO', 'BULLET', 'NUMBERED',
-		'QUOTE', 'TASK', 'EVENT', 'SPRINT', 'DATABASE', 'IMAGE', 'DIVIDER', 'CODE') NOT NULL DEFAULT 'TEXT',
+		'QUOTE', 'TASK', 'EVENT', 'SPRINT', 'DATABASE', 'IMAGE', 'FILE', 'DIVIDER', 'CODE') NOT NULL DEFAULT 'TEXT',
     position DECIMAL(20,10) NOT NULL,
     content JSON NULL,
     created_by BIGINT NOT NULL,
