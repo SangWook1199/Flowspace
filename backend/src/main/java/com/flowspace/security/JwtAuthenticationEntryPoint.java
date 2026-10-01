@@ -31,6 +31,7 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
                 response.getWriter(),
                 Map.of(
                         "status", 401,
+                        "code", "UNAUTHORIZED",
                         "message", "인증이 필요합니다."));
     }
 }

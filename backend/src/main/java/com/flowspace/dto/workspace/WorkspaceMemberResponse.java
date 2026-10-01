@@ -12,6 +12,7 @@ public record WorkspaceMemberResponse(
     String name,
     String nickname,
     Long profileFileId,
+    String profileImageUrl,
     WorkspaceRole role
 
 ) {
@@ -24,6 +25,9 @@ public record WorkspaceMemberResponse(
             member.getUser().getProfileFile() == null
                 ? null
                 : member.getUser().getProfileFile().getFileId(),
+            member.getUser().getProfileFile() == null
+                ? null
+                : member.getUser().getProfileFile().getFileUrl(),
             member.getRole()
         );
     }

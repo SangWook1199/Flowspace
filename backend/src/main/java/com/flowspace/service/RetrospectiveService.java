@@ -5,9 +5,13 @@ import java.util.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.flowspace.dto.page.PageDetailResponse;
 import com.flowspace.dto.retrospective.*;
 import com.flowspace.entity.*;
+import com.flowspace.entity.enums.BlockType;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.repository.*;
@@ -28,6 +32,10 @@ public class RetrospectiveService {
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final PageService pageService;
     private final SprintRepository sprintRepository;
+    private final WorkspaceRepository workspaceRepository;
+    private final BlockRepository blockRepository;
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     // 회고 단건 조회
     public RetrospectiveResponse getRetrospective(Long retrospectiveId, String email) {
@@ -65,6 +73,58 @@ public class RetrospectiveService {
             statuses.stream().map(StatusSnapshotItem::from).toList(), taskItems, page);
     }
 
+    // 워크스페이스 회고 목록 조회 (회고가 아직 없는 스프린트도 함께 반환)
+    public List<RetrospectiveListItem> getRetrospectives(Long workspaceId, String email) {
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        Workspace workspace = workspaceRepository.findById(workspaceId)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        return sprintRepository.findByWorkspaceOrderByStartDateDesc(workspace).stream()
+            .map(sprint -> retrospectiveRepository.findBySprint(sprint).map(retrospective -> {
+
+                List<TaskSnapshot> snapshots = taskSnapshotRepository
+                    .findByRetrospectiveOrderBySnapshotStatus_PositionAscPositionAsc(retrospective);
+
+                return RetrospectiveListItem.of(sprint, retrospective, createSummary(snapshots),
+                    countActionItems(retrospective));
+
+            }).orElseGet(() -> RetrospectiveListItem.withoutRetrospective(sprint))).toList();
+    }
+
+    // 회고 페이지의 미완료 TODO 블록 수 (Action Item)
+    private int countActionItems(Retrospective retrospective) {
+
+        int count = 0;
+
+        for (Block block : blockRepository.findByPageOrderByPositionAsc(retrospective.getPage())) {
+
+            if (block.getType() != BlockType.TODO) {
+                continue;
+            }
+
+            boolean checked = false;
+
+            try {
+                JsonNode node = block.getContent() == null ? null : OBJECT_MAPPER.readTree(block.getContent());
+                checked = node != null && node.path("checked").asBoolean(false);
+            } catch (Exception e) {
+                // 형식이 올바르지 않은 content는 미완료로 계산해요.
+            }
+
+            if (!checked) {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
     // 회고 요약 생성
     private RetrospectiveSummary createSummary(List<TaskSnapshot> snapshots) {
 
@@ -91,7 +151,8 @@ public class RetrospectiveService {
 
                 participantMap.putIfAbsent(assignee.getOriginalUserId(),
                     new ParticipantItem(assignee.getOriginalUserId(), assignee.getNickname(),
-                        assignee.getProfileFile() == null ? null : assignee.getProfileFile().getFileId()));
+                        assignee.getProfileFile() == null ? null : assignee.getProfileFile().getFileId(),
+                        assignee.getProfileFile() == null ? null : assignee.getProfileFile().getFileUrl()));
             }
         }
 

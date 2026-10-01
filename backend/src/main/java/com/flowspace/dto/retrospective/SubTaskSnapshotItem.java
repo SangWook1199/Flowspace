@@ -16,6 +16,8 @@ public record SubTaskSnapshotItem(
 
     Long assigneeProfileFileId,
 
+    String assigneeProfileImageUrl,
+
     Integer position
 
 ) {
@@ -29,6 +31,9 @@ public record SubTaskSnapshotItem(
             subtask.getAssigneeProfileFile() == null
                 ? null
                 : subtask.getAssigneeProfileFile().getFileId(),
+            subtask.getAssigneeProfileFile() == null
+                ? null
+                : subtask.getAssigneeProfileFile().getFileUrl(),
             subtask.getPosition()
         );
     }

@@ -15,6 +15,7 @@ public record ActivityResponse(
     Long userId,
     String userName,
     Long profileFileId,
+    String profileImageUrl,
 
     ActivityType type,
     ActivityTargetType targetType,
@@ -33,6 +34,9 @@ public record ActivityResponse(
             activity.getUser().getProfileFile() == null
                 ? null
                 : activity.getUser().getProfileFile().getFileId(),
+            activity.getUser().getProfileFile() == null
+                ? null
+                : activity.getUser().getProfileFile().getFileUrl(),
 
             activity.getType(),
             activity.getTargetType(),

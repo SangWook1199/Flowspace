@@ -15,9 +15,11 @@ public record PageResponse(
     String title,
     String icon,
     String coverUrl,
+    Integer position,
     Long createdBy,
     LocalDateTime createdAt,
-    LocalDateTime updatedAt
+    LocalDateTime updatedAt,
+    LocalDateTime deletedAt
 
 ) {
 
@@ -29,9 +31,11 @@ public record PageResponse(
             page.getTitle(),
             page.getIcon(),
             page.getCoverFile() == null ? null : page.getCoverFile().getFileUrl(),
+            page.getPosition(),
             page.getCreatedBy().getUserId(),
             page.getCreatedAt(),
-            page.getUpdatedAt()
+            page.getUpdatedAt(),
+            page.getDeletedAt()
         );
     }
 }

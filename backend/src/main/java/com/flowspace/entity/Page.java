@@ -36,6 +36,10 @@ public class Page extends BaseEntity {
     @JoinColumn(name = "cover_file_id")
     private File coverFile;
 
+    @Column(name = "position", nullable = false)
+    @Builder.Default
+    private Integer position = 0;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
@@ -55,8 +59,26 @@ public class Page extends BaseEntity {
     }
 
     public void delete() {
+        delete(LocalDateTime.now());
+    }
+
+    // 상위 페이지와 같은 시각으로 삭제해야 복원할 때 함께 삭제된 묶음을 구분할 수 있어요.
+    public void delete(LocalDateTime deletedAt) {
         this.isDeleted = true;
-        this.deletedAt = LocalDateTime.now();
+        this.deletedAt = deletedAt;
+    }
+
+    public void restore() {
+        this.isDeleted = false;
+        this.deletedAt = null;
+    }
+
+    public void updateParent(Page parentPage) {
+        this.parentPage = parentPage;
+    }
+
+    public void updatePosition(Integer position) {
+        this.position = position;
     }
 
     public void updateCover(File coverFile) {

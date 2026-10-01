@@ -28,6 +28,6 @@ public class GlobalExceptionHandler {
                 .getDefaultMessage();
 
         return ResponseEntity.badRequest()
-                .body(new ErrorResponse(400, message));
+                .body(new ErrorResponse(400, "VALIDATION_ERROR", message));
     }
 }

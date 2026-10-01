@@ -16,6 +16,7 @@ public record BlockResponse(
 
     Long taskId,
     Long eventId,
+    Long sprintId,
     Long databaseId,
     String imageUrl,
 
@@ -36,6 +37,7 @@ public record BlockResponse(
 
             block.getTask() == null ? null : block.getTask().getTaskId(),
             block.getEvent() == null ? null : block.getEvent().getEventId(),
+            block.getSprint() == null ? null : block.getSprint().getSprintId(),
             block.getDatabase() == null ? null : block.getDatabase().getDatabaseId(),
             block.getImageFile() == null ? null : block.getImageFile().getFileUrl(),
 

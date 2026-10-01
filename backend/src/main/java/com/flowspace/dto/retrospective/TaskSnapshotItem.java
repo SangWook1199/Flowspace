@@ -40,7 +40,10 @@ public record TaskSnapshotItem(
                     assignee.getNickname(),
                     assignee.getProfileFile() == null
                         ? null
-                        : assignee.getProfileFile().getFileId()
+                        : assignee.getProfileFile().getFileId(),
+                    assignee.getProfileFile() == null
+                        ? null
+                        : assignee.getProfileFile().getFileUrl()
                 ))
                 .toList(),
             subtasks.stream()

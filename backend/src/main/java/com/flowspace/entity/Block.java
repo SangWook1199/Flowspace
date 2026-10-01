@@ -34,6 +34,10 @@ public class Block extends BaseEntity {
     @JoinColumn(name = "event_id")
     private Event event;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sprint_id")
+    private Sprint sprint;
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "image_file_id")
     private File imageFile;
@@ -86,6 +90,12 @@ public class Block extends BaseEntity {
 
     public void updateType(BlockType type) {
         this.type = type;
+    }
+
+    public void updateLinks(Task task, Event event, Sprint sprint) {
+        this.task = task;
+        this.event = event;
+        this.sprint = sprint;
     }
 
     public void updateImage(File image) {

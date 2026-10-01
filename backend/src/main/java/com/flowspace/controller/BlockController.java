@@ -11,6 +11,8 @@ import com.flowspace.dto.block.BlockCreateRequest;
 import com.flowspace.dto.block.BlockIndentRequest;
 import com.flowspace.dto.block.BlockReorderRequest;
 import com.flowspace.dto.block.BlockResponse;
+import com.flowspace.dto.block.BlockSyncRequest;
+import com.flowspace.dto.block.BlockSyncResponse;
 import com.flowspace.dto.block.BlockUpdateRequest;
 import com.flowspace.service.BlockService;
 
@@ -38,6 +40,13 @@ public class BlockController {
     @GetMapping("/pages/{pageId}/blocks")
     public List<BlockResponse> getBlocks(@PathVariable Long pageId, @AuthenticationPrincipal UserDetails userDetails) {
         return blockService.getBlocks(pageId, userDetails.getUsername());
+    }
+
+    @Operation(summary = "블록 일괄 동기화", description = "목록 순서를 블록 순서로 저장하고, 목록에 없는 기존 블록은 삭제합니다.")
+    @PutMapping("/pages/{pageId}/blocks")
+    public BlockSyncResponse syncBlocks(@PathVariable Long pageId, @Valid @RequestBody BlockSyncRequest request,
+        @AuthenticationPrincipal UserDetails userDetails) {
+        return blockService.syncBlocks(pageId, request, userDetails.getUsername());
     }
 
     @Operation(summary = "블록 수정")

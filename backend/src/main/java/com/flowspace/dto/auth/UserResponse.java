@@ -10,13 +10,15 @@ public record UserResponse(
         String email,
         String nickname,
         Provider provider,
-        UserStatus status) {
+        UserStatus status,
+        String profileImageUrl) {
     public static UserResponse from(User user) {
         return new UserResponse(
                 user.getUserId(),
                 user.getEmail(),
                 user.getNickname(),
                 user.getProvider(),
-                user.getStatus());
+                user.getStatus(),
+                user.getProfileFile() == null ? null : user.getProfileFile().getFileUrl());
     }
 }
