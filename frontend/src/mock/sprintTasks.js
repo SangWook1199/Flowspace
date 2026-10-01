@@ -33,15 +33,18 @@ export function toAssignee(name) {
 export const PRIORITY_LABEL = { HIGH: "높음", MEDIUM: "보통", LOW: "낮음" };
 export const PRIORITY_KO_TO_EN = { 높음: "HIGH", 보통: "MEDIUM", 낮음: "LOW" };
 
+// sprintId는 이 작업이 속한 스프린트(mock/sprints.js의 id)예요 — 스프린트 상세/작업 목록 화면은 이 값으로
+// 자기 스프린트의 작업만 걸러서 보여줘요. 백로그 작업은 sprintId가 null이에요.
 export const sprintTaskRows = [
   {
     id: "SP1-1",
+    sprintId: 1,
     title: "JWT 로그인 API 구현",
     statusId: 2,
     assignees: [toAssignee("상욱")],
     priority: "HIGH",
-    startDate: "2025-05-28",
-    dueDate: "2025-05-31",
+    startDate: "2026-05-28",
+    dueDate: "2026-05-31",
     subtasks: [
       { id: 1, text: "JWT 토큰 발급", checked: true },
       { id: 2, text: "Refresh Token 발급", checked: true },
@@ -54,12 +57,13 @@ export const sprintTaskRows = [
   },
   {
     id: "SP1-2",
+    sprintId: 1,
     title: "유저 알림 시스템",
     statusId: 1,
     assignees: [toAssignee("민수")],
     priority: "MEDIUM",
-    startDate: "2025-05-30",
-    dueDate: "2025-06-03",
+    startDate: "2026-05-30",
+    dueDate: "2026-06-03",
     subtasks: [
       { id: 1, text: "알림 모델 작성", checked: true },
       { id: 2, text: "알림 API 구현", checked: false },
@@ -70,12 +74,13 @@ export const sprintTaskRows = [
   },
   {
     id: "SP1-3",
+    sprintId: 1,
     title: "대시보드 퍼블리싱",
     statusId: 2,
     assignees: [toAssignee("서연")],
     priority: "MEDIUM",
-    startDate: "2025-05-30",
-    dueDate: "2025-06-04",
+    startDate: "2026-05-30",
+    dueDate: "2026-06-04",
     subtasks: [
       { id: 1, text: "레이아웃 제작", checked: true },
       { id: 2, text: "반응형 처리", checked: false },
@@ -85,12 +90,13 @@ export const sprintTaskRows = [
   },
   {
     id: "SP1-4",
+    sprintId: 1,
     title: "로그인 UI 디자인",
     statusId: 3,
     assignees: [toAssignee("지민")],
     priority: "LOW",
-    startDate: "2025-05-27",
-    dueDate: "2025-05-31",
+    startDate: "2026-05-27",
+    dueDate: "2026-05-31",
     subtasks: [
       { id: 1, text: "화면 설계", checked: true },
       { id: 2, text: "디자인 시안", checked: true },
@@ -100,12 +106,13 @@ export const sprintTaskRows = [
   },
   {
     id: "SP1-5",
+    sprintId: 1,
     title: "파일 업로드 테스트",
     statusId: 1,
     assignees: [toAssignee("민수")],
     priority: "LOW",
-    startDate: "2025-05-28",
-    dueDate: "2025-05-30",
+    startDate: "2026-05-28",
+    dueDate: "2026-05-30",
     subtasks: [
       { id: 1, text: "파일 업로드", checked: false },
       { id: 2, text: "오류 확인", checked: false },
@@ -114,12 +121,13 @@ export const sprintTaskRows = [
   },
   {
     id: "SP1-6",
+    sprintId: 1,
     title: "OAuth 연동",
     statusId: 3,
     assignees: [toAssignee("상욱")],
     priority: "HIGH",
-    startDate: "2025-06-02",
-    dueDate: "2025-06-06",
+    startDate: "2026-06-02",
+    dueDate: "2026-06-06",
     subtasks: [
       { id: 1, text: "Google 연동", checked: true },
       { id: 2, text: "Kakao 연동", checked: true },
@@ -130,12 +138,13 @@ export const sprintTaskRows = [
   },
   {
     id: "SP1-7",
+    sprintId: 1,
     title: "에러 핸들링 정리",
     statusId: 1,
     assignees: [toAssignee("서연")],
     priority: "MEDIUM",
-    startDate: "2025-06-03",
-    dueDate: "2025-06-07",
+    startDate: "2026-06-03",
+    dueDate: "2026-06-07",
     subtasks: [
       { id: 1, text: "오류 목록 정리", checked: false },
       { id: 2, text: "문서화", checked: false },
@@ -145,12 +154,13 @@ export const sprintTaskRows = [
   },
   {
     id: "SP1-8",
+    sprintId: 1,
     title: "API 문서 작성",
     statusId: 2,
     assignees: [toAssignee("지민")],
     priority: "LOW",
-    startDate: "2025-06-04",
-    dueDate: "2025-06-06",
+    startDate: "2026-06-04",
+    dueDate: "2026-06-06",
     subtasks: [
       { id: 1, text: "엔드포인트 작성", checked: true },
       { id: 2, text: "예시 추가", checked: false },

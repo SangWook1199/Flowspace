@@ -1,47 +1,25 @@
 import { MessageSquare, CheckCircle2, ListTodo, Users } from "lucide-react";
 
+// 요약 카드는 모양(제목/단위/색/아이콘/보조 문구)만 여기 두고, 숫자는 목록 페이지가 retrospectiveList에서 계산해요.
+// (값을 직접 적어두면 회고가 추가/삭제돼도 "전체 회고 3개"가 그대로 남아서 목록과 어긋나요.)
 export const retrospectiveSummary = [
-  {
-    title: "전체 회고",
-    value: 3,
-    unit: "개",
-    color: "blue",
-    icon: MessageSquare,
-  },
-  {
-    title: "평균 완료율",
-    value: 84,
-    unit: "%",
-    color: "green",
-    icon: CheckCircle2,
-    desc: "지난 3개 Sprint 기준",
-  },
-  {
-    title: "Action Item",
-    value: 12,
-    unit: "개",
-    color: "orange",
-    icon: ListTodo,
-    desc: "다음 Sprint로 이관 전",
-  },
-  {
-    title: "참여자",
-    value: 4,
-    unit: "명",
-    color: "sky",
-    icon: Users,
-    desc: "활동 참여 인원",
-  },
+  { key: "count", title: "전체 회고", unit: "개", color: "blue", icon: MessageSquare },
+  { key: "avgCompletion", title: "평균 완료율", unit: "%", color: "green", icon: CheckCircle2, descTemplate: "지난 {count}개 Sprint 기준" },
+  { key: "actionItems", title: "Action Item", unit: "개", color: "orange", icon: ListTodo, desc: "다음 Sprint로 이관 전" },
+  { key: "participants", title: "참여자", unit: "명", color: "sky", icon: Users, desc: "활동 참여 인원" },
 ];
 
+// sprintId는 mock/sprints.js의 스프린트 id와 같아요(상세 화면 주소 /retrospectives/:sprintId에 쓰여요).
+// id는 회고 자체의 PK고, 기간은 mock/sprints.js의 스프린트 기간과 같은 값이에요.
 export const retrospectiveList = [
   {
     id: 3,
+    sprintId: 3,
     sprint: "Sprint 3",
     status: "latest", // latest | done | progress | planned
 
-    start: "2026.09.15",
-    end: "2026.09.28",
+    start: "2026.05.01",
+    end: "2026.05.14",
 
     members: 4,
 
@@ -58,11 +36,12 @@ export const retrospectiveList = [
 
   {
     id: 2,
+    sprintId: 2,
     sprint: "Sprint 2",
     status: "done",
 
-    start: "2026.09.01",
-    end: "2026.09.14",
+    start: "2026.06.12",
+    end: "2026.06.25",
 
     members: 4,
 
@@ -79,11 +58,12 @@ export const retrospectiveList = [
 
   {
     id: 1,
+    sprintId: 1,
     sprint: "Sprint 1",
     status: "done",
 
-    start: "2026.08.18",
-    end: "2026.08.31",
+    start: "2026.05.29",
+    end: "2026.06.11",
 
     members: 4,
 
@@ -99,11 +79,12 @@ export const retrospectiveList = [
 
   {
     id: 4,
+    sprintId: 4,
     sprint: "Sprint 4",
     status: "planned",
 
-    start: "2026.09.29",
-    end: "2026.10.12",
+    start: "2026.06.26",
+    end: "2026.07.09",
 
     members: 4,
 

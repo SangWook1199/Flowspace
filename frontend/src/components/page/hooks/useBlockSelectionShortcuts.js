@@ -12,7 +12,7 @@ import { getOwnedPageIds, createEmptyBlock } from "../lib/blockFactory.js";
 // - 선택된 블록 복사·잘라내기·붙여넣기
 // 이펙트들은 "가장 최근 렌더의 함수/상태"를 써야 해서 (의존성 배열이 없거나 blocks·선택을 넣은 채로)
 // BlockEditor 안에 있던 때와 똑같이 등록해요.
-export default function useBlockSelectionShortcuts({ blocks, editorRef, inputRefs, selection, actions }) {
+export default function useBlockSelectionShortcuts({ blocks, editorRef, inputRefs, selection, actions, isMenuOpen }) {
   const {
     selectedBlockIds,
     setSelectedBlockIds,
@@ -146,6 +146,10 @@ export default function useBlockSelectionShortcuts({ blocks, editorRef, inputRef
       const isTypingInBlock = Object.values(inputRefs.current).includes(active);
 
       if (e.key === "Escape") {
+        // 한글 등 조합 중의 Esc는 조합을 취소하는 키예요 — 블록 선택으로 넘기면 조합 중이던 글자가 꼬여요.
+        if (e.isComposing || e.keyCode === 229) return;
+        // 핸들 메뉴 같은 팝오버를 닫는 데 쓰인 Esc면(PopoverPortal이 표시) 선택은 그대로 둬요.
+        if (e.defaultPrevented) return;
         if (isTypingInBlock) {
           e.preventDefault();
           const entry = Object.entries(inputRefs.current).find(([, el]) => el === active);
@@ -165,6 +169,10 @@ export default function useBlockSelectionShortcuts({ blocks, editorRef, inputRef
       }
 
       if (isTypingInBlock) return;
+      // 메뉴가 열려 있는 동안엔(메뉴 안 검색창 입력 등) 블록 단축키가 끼어들지 않게 해요 — Esc로 닫은 뒤부터 동작해요.
+      if (isMenuOpen) return;
+      // 메뉴·팝오버 안의 입력창에서 친 키(Backspace 등)로 블록이 지워지면 안 돼요.
+      if (active && (/^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName) || active.isContentEditable)) return;
 
       // 요청: "복제를 한 후 ctrl z 를 누르면 복제된 블록 전체가 삭제되야
       // 하는데" — 텍스트를 편집 중일 때는 여기서 아무것도 안 하고 그대로
@@ -194,7 +202,10 @@ export default function useBlockSelectionShortcuts({ blocks, editorRef, inputRef
 
       // 버튼·입력창 등에 포커스가 있을 땐(메뉴 조작 등) 방향키/Enter를 가로채지 않아요.
       const activeTag = active?.tagName;
-      const focusOnControl = active && active !== document.body && /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(activeTag);
+      // 블록 왼쪽 핸들(⋮⋮, +)에 포커스가 남아 있는 건(핸들 메뉴를 Esc로 닫은 직후 등) "블록을 조작 중"인 거라 예외예요.
+      const onBlockHandle = !!active?.closest?.(".block-drag-handle, .block-add-btn");
+      const focusOnControl =
+        active && active !== document.body && !onBlockHandle && /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(activeTag);
 
       // 노션처럼 블록이 선택된 상태에서: ↑/↓는 선택을 한 블록씩 옮기고, Shift+↑/↓는 늘리고 줄이며,
       // Enter는 선택한 블록의 글자 편집을 시작해요.
@@ -276,7 +287,7 @@ export default function useBlockSelectionShortcuts({ blocks, editorRef, inputRef
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedBlockIds, blocks]);
+  }, [selectedBlockIds, blocks, isMenuOpen]);
 
   // 키보드(↑/↓)로 블록 사이를 옮기는 동안엔 마우스 포인터가 우연히 올라가 있는 행의 핸들(+ / 드래그)이
   // 튀어나오지 않게 숨겨요. 마우스가 실제로 움직이면(좌표가 바뀌면) 다시 평소처럼 호버로 보여요.

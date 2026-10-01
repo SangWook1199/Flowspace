@@ -1,9 +1,11 @@
-import { useState, Fragment } from "react";
+import { useMemo, useState, Fragment } from "react";
 import { Plus } from "lucide-react";
 import { useOutletContext } from "react-router-dom";
 
 import KanbanColumn from "../components/kanban/KanbanColumn";
 import StatusModal from "../components/kanban/StatusModal";
+
+import { nextNumericId } from "../utils/id";
 
 import { activeSprint, statuses as statusesMock } from "../mock/kanban";
 
@@ -94,8 +96,10 @@ export default function Kanban() {
     );
   };
 
-  const commitColumnDrop = () => {
-    if (dragStatusId !== null && statusDropTarget) {
+  // cancelled가 true면(Esc로 취소했거나 보드 밖에 놓아서 드롭이 안 일어난 경우) 순서는 건드리지 않고
+  // 드래그 상태만 정리해요 — 예전엔 dragend마다 무조건 커밋해서 취소해도 컬럼이 움직였어요.
+  const commitColumnDrop = (cancelled = false) => {
+    if (!cancelled && dragStatusId !== null && statusDropTarget) {
       setStatuses((prev) => {
         const next = [...prev];
         const fromIndex = next.findIndex((s) => s.id === dragStatusId);
@@ -139,7 +143,22 @@ export default function Kanban() {
   // 하는 순간 딱 한 번만 실제로 배열을 바꿔요(commitDrop). 드래그 중인
   // 카드는 원래 자리에 계속 남아있어서(반투명 표시만 됨) unmount 문제가
   // 없고, 목표 위치는 지라처럼 파란 줄(.dropIndicator)로 보여줘요.
-  const tasks = sprintTasks;
+  //
+  // 보드에는 "이 스프린트의 작업"만 보여줘요(sprintId가 아직 없는 예전 데이터는 그대로 보여줘요).
+  // 그리고 어떤 컬럼에도 안 맞는 statusId(상태가 지워졌거나 아직 없는 값)를 가진 작업이 보드에서
+  // 사라지지 않도록 첫 번째 컬럼에 모아서 보여줘요.
+  const tasks = useMemo(() => {
+    const statusIds = new Set(statuses.map((s) => s.id));
+    const fallbackStatusId = statuses[0]?.id;
+
+    return sprintTasks
+      .filter((task) => task.sprintId === undefined || task.sprintId === activeSprint.id)
+      .map((task) =>
+        statusIds.has(task.statusId) || fallbackStatusId === undefined
+          ? task
+          : { ...task, statusId: fallbackStatusId },
+      );
+  }, [sprintTasks, statuses]);
   const [dragTaskId, setDragTaskId] = useState(null);
   const [dropTarget, setDropTarget] = useState(null); // { statusId, beforeTaskId }
 
@@ -167,22 +186,20 @@ export default function Kanban() {
       return;
     }
 
-    // 같은 컬럼 안에서 드래그 중이면, 실제로 자리가 안 바뀌는 경우엔
-    // 줄을 숨겨요(컬럼과 같은 방식의 no-op 체크).
+    // 같은 컬럼 안에서 드래그 중이면, 실제로 자리가 안 바뀌는 경우엔 줄을 숨겨요(컬럼과 같은
+    // 방식의 no-op 체크). 위치는 전체 배열이 아니라 "그 컬럼 안에서의 순서"끼리 비교해야 해요 —
+    // 다른 컬럼 카드가 사이에 끼어 있으면 전체 배열 인덱스로는 바로 다음 칸인지 알 수 없어요.
     const draggedTask = tasks.find((t) => t.id === dragTaskId);
     if (draggedTask?.statusId === statusId) {
-      const fromIndex = tasks.findIndex((t) => t.id === dragTaskId);
+      const fromIndex = columnTasks.findIndex((t) => t.id === dragTaskId);
 
       if (beforeTaskId === null) {
-        const hasLaterSameStatus = tasks
-          .slice(fromIndex + 1)
-          .some((t) => t.statusId === statusId);
-        if (!hasLaterSameStatus) {
+        if (fromIndex === columnTasks.length - 1) {
           setDropTarget((prev) => (prev === null ? prev : null));
           return;
         }
       } else {
-        const targetIndex = tasks.findIndex((t) => t.id === beforeTaskId);
+        const targetIndex = columnTasks.findIndex((t) => t.id === beforeTaskId);
         if (targetIndex === fromIndex + 1) {
           setDropTarget((prev) => (prev === null ? prev : null));
           return;
@@ -204,15 +221,11 @@ export default function Kanban() {
   const handleColumnEndDragEnter = (statusId) => {
     if (dragTaskId === null) return;
 
-    const fromIndex = tasks.findIndex((t) => t.id === dragTaskId);
-    if (fromIndex !== -1 && tasks[fromIndex].statusId === statusId) {
-      const hasLaterSameStatus = tasks
-        .slice(fromIndex + 1)
-        .some((t) => t.statusId === statusId);
-      if (!hasLaterSameStatus) {
-        setDropTarget((prev) => (prev === null ? prev : null));
-        return;
-      }
+    const columnTasks = tasks.filter((t) => t.statusId === statusId);
+    const fromIndex = columnTasks.findIndex((t) => t.id === dragTaskId);
+    if (fromIndex !== -1 && fromIndex === columnTasks.length - 1) {
+      setDropTarget((prev) => (prev === null ? prev : null));
+      return;
     }
 
     setDropTarget((prev) =>
@@ -227,18 +240,17 @@ export default function Kanban() {
   // 컬럼으로 옮긴 거면 statusId도 같이 바뀌어요(칸반 상태 변경).
   // dragTaskId나 dropTarget이 비어있으면(드래그를 취소했거나 이미
   // 커밋된 뒤 중복 호출된 경우) 조용히 넘어가요.
-  const commitDrop = () => {
-    if (dragTaskId !== null && dropTarget) {
+  //
+  // cancelled가 true면(Esc 취소, 보드 밖 드롭) 아무것도 옮기지 않고 드래그 상태만 지워요.
+  const commitDrop = (cancelled = false) => {
+    if (!cancelled && dragTaskId !== null && dropTarget) {
       setSprintTasks((prev) => {
         const next = [...prev];
         const fromIndex = next.findIndex((t) => t.id === dragTaskId);
         if (fromIndex === -1) return prev;
 
         const [moved] = next.splice(fromIndex, 1);
-        const movedWithStatus =
-          moved.statusId === dropTarget.statusId
-            ? moved
-            : { ...moved, statusId: dropTarget.statusId };
+        const movedWithStatus = { ...moved, statusId: dropTarget.statusId };
 
         if (dropTarget.beforeTaskId === null) {
           next.push(movedWithStatus);
@@ -260,6 +272,47 @@ export default function Kanban() {
     setDropTarget(null);
   };
 
+  // 컬럼(상태) 만들기/고치기/지우기 — 아직 API 전이라 이 화면의 state만 바꿔요. API가 붙으면 각각
+  // POST / PATCH / DELETE /api/task-statuses 를 부른 뒤 이 자리에서 목록을 갱신하면 돼요.
+  // 새 상태는 맨 끝에 붙고, id는 지금 있는 id 중 가장 큰 값 + 1이에요(서버가 id를 주면 그 값으로 바꿔요).
+  const createStatus = ({ name, category, color }) => {
+    setStatuses((prev) => [
+      ...prev,
+      { id: nextNumericId(prev), name, category, color, position: prev.length, isDefault: false },
+    ]);
+    setCreateOpen(false);
+  };
+
+  // 이름/카테고리/색만 바꿔요. 작업은 statusId로 연결돼 있어서 이름이 바뀌어도 그대로 따라와요.
+  const saveStatus = (data) => {
+    setStatuses((prev) =>
+      prev.map((status) =>
+        status.id === data.id
+          ? { ...status, name: data.name, category: data.category, color: data.color }
+          : status,
+      ),
+    );
+  };
+
+  // 상태를 지울 땐 그 상태의 작업을 모달에서 고른 상태로 먼저 옮겨요 — 안 그러면 컬럼이 없어진 작업이
+  // 보드에서 사라져요. 옮길 곳이 없거나(자기 자신 포함) 이미 없는 상태면 아무것도 안 해요.
+  const deleteStatus = ({ deleteStatusId, moveToStatusId }) => {
+    const canMove =
+      moveToStatusId !== deleteStatusId && statuses.some((status) => status.id === moveToStatusId);
+    if (!canMove) return;
+
+    setSprintTasks((prev) =>
+      prev.map((task) =>
+        task.statusId === deleteStatusId ? { ...task, statusId: moveToStatusId } : task,
+      ),
+    );
+    setStatuses((prev) =>
+      prev
+        .filter((status) => status.id !== deleteStatusId)
+        .map((status, index) => ({ ...status, position: index })),
+    );
+  };
+
   return (
     <div className="kanbanPage">
       <header className="kanbanHeader">
@@ -268,7 +321,7 @@ export default function Kanban() {
           <p>{activeSprint.name} · 현재 활성 스프린트</p>
         </div>
 
-        <button className="addStatusBtn" onClick={() => setCreateOpen(true)}>
+        <button type="button" className="addStatusBtn" onClick={() => setCreateOpen(true)}>
           <Plus size={16} />새 상태 컬럼
         </button>
       </header>
@@ -283,8 +336,8 @@ export default function Kanban() {
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
-          commitDrop();
-          commitColumnDrop();
+          commitDrop(false);
+          commitColumnDrop(false);
         }}
       >
         {statuses.map((status) => (
@@ -295,6 +348,9 @@ export default function Kanban() {
 
             <KanbanColumn
               status={status}
+              statuses={statuses}
+              onStatusSave={saveStatus}
+              onStatusDelete={deleteStatus}
               tasks={tasks.filter((task) => task.statusId === status.id)}
               isDragging={status.id === dragStatusId}
               onColumnDragStart={() => setDragStatusId(status.id)}
@@ -328,7 +384,12 @@ export default function Kanban() {
       </section>
 
       {createOpen && (
-        <StatusModal mode="create" onClose={() => setCreateOpen(false)} />
+        <StatusModal
+          mode="create"
+          statuses={statuses}
+          onClose={() => setCreateOpen(false)}
+          onSave={createStatus}
+        />
       )}
     </div>
   );

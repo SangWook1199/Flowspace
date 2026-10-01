@@ -4,6 +4,7 @@ import CircleProgress from "./CircleProgress";
 
 export default function RetroCard({ retrospective }) {
   const {
+    sprintId,
     sprint,
     status,
     start,
@@ -14,8 +15,10 @@ export default function RetroCard({ retrospective }) {
     incomplete,
     actionItems,
     description,
-    tags,
   } = retrospective;
+
+  // tags가 null로 올 수도 있어서(기본값은 undefined만 막아줘요) 따로 빈 배열로 바꿔요.
+  const tags = retrospective.tags ?? [];
 
   const statusLabel =
     status === "latest"
@@ -71,32 +74,33 @@ export default function RetroCard({ retrospective }) {
             <CircleProgress value={completion} />
 
             <div className="stat-item">
-              <strong>{completed}</strong>
+              <strong>{completed ?? 0}</strong>
               <span>완료</span>
             </div>
 
             <div className="stat-item">
-              <strong>{incomplete}</strong>
+              <strong>{incomplete ?? 0}</strong>
               <span>미완료</span>
             </div>
 
             <div className="stat-item">
-              <strong>{actionItems}</strong>
+              <strong>{actionItems ?? 0}</strong>
               <span>Action Item</span>
             </div>
           </div>
         )}
 
         <div className="retro-card__actions">
+          {/* 상세 주소는 회고 id가 아니라 스프린트 id(:sprintId) 기준이에요. sprintId가 없으면 이동할 곳이 없어서 막아둬요. */}
           <button
             className="retro-open-btn"
-            onClick={() =>
-              navigate(`/retrospectives/${retrospective.sprintId}`)
-            }
+            disabled={sprintId == null}
+            aria-label={`${sprint} 회고 열기`}
+            onClick={() => navigate(`/retrospectives/${sprintId}`)}
           >
             열기
           </button>
-          <button className="retro-more-btn">
+          <button className="retro-more-btn" aria-label={`${sprint} 회고 메뉴`}>
             <MoreVertical size={18} />
           </button>
         </div>

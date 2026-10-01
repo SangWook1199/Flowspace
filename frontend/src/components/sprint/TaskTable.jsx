@@ -9,7 +9,7 @@ export default function TaskTable({
   onSelect,
   onAdd,
 }) {
-  const allChecked = tasks.length && checkedIds.length === tasks.length;
+  const allChecked = tasks.length > 0 && checkedIds.length === tasks.length;
   const toggleAll = () => onCheck("ALL");
   return (
     <section className={styles.tableWrap}>
@@ -20,6 +20,7 @@ export default function TaskTable({
               <input
                 type="checkbox"
                 checked={allChecked}
+                aria-label="전체 선택"
                 onChange={toggleAll}
               />
             </th>
@@ -46,11 +47,11 @@ export default function TaskTable({
           ))}
         </tbody>
       </table>
-      <button className={styles.addTask} onClick={onAdd}>
+      <button type="button" className={styles.addTask} onClick={onAdd}>
         <Plus size={18} /> 새 작업 추가
       </button>
       <footer>
-        전체 {tasks.length}개 작업 <button>20개씩⌄</button>
+        전체 {tasks.length}개 작업 <button type="button">20개씩⌄</button>
       </footer>
     </section>
   );

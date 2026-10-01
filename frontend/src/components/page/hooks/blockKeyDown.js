@@ -65,8 +65,10 @@ export default function createBlockKeyDownHandler(ctx) {
       const k = e.key.toLowerCase();
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        if (block.type === "TODO") updateBlock(block.id, { checked: !block.checked });
-        else if (block.type === "TOGGLE") updateBlock(block.id, { collapsed: !block.collapsed });
+        if (block.type === "TODO") {
+          pushUndoSnapshot();
+          updateBlock(block.id, { checked: !block.checked });
+        } else if (block.type === "TOGGLE") updateBlock(block.id, { collapsed: !block.collapsed });
         return;
       }
       if (k === "d" && !e.shiftKey) {
@@ -271,7 +273,10 @@ export default function createBlockKeyDownHandler(ctx) {
     // 블록을 들여쓰기/내어쓰기 해요. 슬래시 메뉴가 열려있을 땐 위에서
     // 이미 Tab을 "선택된 타입 적용"으로 쓰니, 메뉴가 닫혀있을 때만
     // 여기서 처리해요.
-    if (e.key === "Tab" && !isSlashOpen) {
+    // (슬래시 메뉴가 열려 있어도 후보가 없거나 Shift+Tab이면 위에서 처리되지 않고 여기까지 와요 — 그때도 Tab이
+    // 브라우저 기본 동작(포커스가 에디터 밖으로 나감)으로 새지 않게 막고, 메뉴는 닫아요.)
+    if (e.key === "Tab") {
+      if (isSlashOpen) setSlashMenu(null);
       e.preventDefault();
       if (e.shiftKey) outdentBlock(block.id);
       else indentBlock(block.id);
@@ -326,6 +331,8 @@ export default function createBlockKeyDownHandler(ctx) {
         const beforeEmpty = isBlockContentEmpty(split.before);
         const afterEmpty = isBlockContentEmpty(split.after);
         if (beforeEmpty && !afterEmpty) {
+          // 맨 앞부터 일부를 선택한 채 Enter면 선택한 글자는 지워지고 위에 빈 블록이 끼어요.
+          if (split.after !== block.content) updateBlock(block.id, { content: split.after });
           insertEmptyBlockBefore(block.id, LIST_TYPES.includes(block.type) ? block.type : "TEXT");
           return;
         }
@@ -402,7 +409,7 @@ export default function createBlockKeyDownHandler(ctx) {
 
       if (blocks.length > 1) {
         e.preventDefault();
-        deleteBlock(block.id);
+        deleteBlock(block.id, { keepChildren: true });
         return;
       }
     }

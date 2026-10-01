@@ -8,8 +8,13 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
-export default function SprintTaskTable({ tasks }) {
-  const [openTask, setOpenTask] = useState(1);
+import { formatDateDots, percentOf } from "../../utils/date";
+
+// tasks는 공용 작업 모델(assignees 객체 배열, startDate/dueDate, subtasks {text, checked})에
+// 상태 카테고리 status("TODO" | "IN_PROGRESS" | "DONE")를 얹은 모양이에요.
+export default function SprintTaskTable({ tasks = [] }) {
+  // 처음엔 첫 번째 작업을 펼쳐둬요(작업 id를 코드에 박아두지 않고 목록에서 꺼내요).
+  const [openTask, setOpenTask] = useState(() => tasks[0]?.id ?? null);
 
   return (
     <section className="detailTasks">
@@ -20,12 +25,12 @@ export default function SprintTaskTable({ tasks }) {
         </div>
 
         <div>
-          <button>
+          <button type="button">
             <Upload size={16} />
             가져오기
           </button>
 
-          <button>
+          <button type="button">
             <Plus size={18} />
             작업 추가
           </button>
@@ -56,7 +61,9 @@ export default function SprintTaskTable({ tasks }) {
 }
 
 function TaskGroup({ task, open, onToggle }) {
-  const assignees = task.assignees ?? [task.assignee];
+  const assignees = task.assignees ?? [];
+  const subtasks = task.subtasks ?? [];
+  const complete = subtasks.filter((subtask) => subtask?.checked).length;
 
   const priorityClass =
     task.priority === "HIGH" || task.priority === "높음"
@@ -85,7 +92,12 @@ function TaskGroup({ task, open, onToggle }) {
     <div className="taskGroup">
       <div className="taskRow">
         <div className="taskName">
-          <button onClick={onToggle}>
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-expanded={open}
+            aria-label={`${task.title} 하위 작업 ${open ? "접기" : "펼치기"}`}
+          >
             {open ? <ChevronDown size={17} /> : <ChevronRight size={17} />}
           </button>
 
@@ -95,59 +107,75 @@ function TaskGroup({ task, open, onToggle }) {
         </div>
 
         <div className="assigneeStack">
-          {assignees.map((name) => (
-            <span key={name} className="assigneeAvatar">
-              {name}
-            </span>
-          ))}
+          {assignees.map((assignee, index) => {
+            const name = typeof assignee === "string" ? assignee : assignee?.name;
+            return (
+              <span key={`${name}-${index}`} className="assigneeAvatar" title={name}>
+                {typeof assignee === "string" ? assignee[0] : (assignee?.initial ?? name?.[0])}
+              </span>
+            );
+          })}
         </div>
 
         <em className={priorityClass}>{priorityLabel}</em>
 
-        <time>{task.start}</time>
-        <time>{task.end}</time>
+        <time>{formatDateDots(task.startDate)}</time>
+        <time>{formatDateDots(task.dueDate)}</time>
 
         <span className="subtaskProgress">
-          {task.complete} / {task.total}
+          {complete} / {subtasks.length}
           <i>
-            <b style={{ width: `${(task.complete / task.total) * 100}%` }} />
+            <b style={{ width: `${percentOf(complete, subtasks.length)}%` }} />
           </i>
         </span>
 
         <mark>{status}</mark>
 
         <span className="taskActions">
-          <button>
+          <button type="button" aria-label={`${task.title} 편집`}>
             <Edit3 size={15} />
           </button>
 
-          <button>
+          <button type="button" aria-label={`${task.title} 더보기`}>
             <MoreHorizontal size={17} />
           </button>
         </span>
       </div>
 
       {open &&
-        (task.subtasks ?? []).map((subtask) => (
-          <div className="subtask" key={subtask}>
-            <span className="subtaskName">
-              <i>✓</i>
-              {subtask}
-            </span>
+        subtasks.map((subtask, index) => {
+          // 하위 작업은 문자열(옛 데이터)이거나 { id, text, checked } 객체예요. 완료 여부를 알 수 있을
+          // 때만 "완료/미완료"를 보여주고, 모르면 상태 칸을 비워둬요(무조건 완료라고 하지 않아요).
+          const text = typeof subtask === "string" ? subtask : subtask?.text;
+          const known = typeof subtask === "object" && typeof subtask?.checked === "boolean";
+          const done = known && subtask.checked;
 
-            <span />
-            <span />
+          return (
+            <div className="subtask" key={`${subtask?.id ?? text}-${index}`}>
+              <span className="subtaskName">
+                <i
+                  aria-hidden="true"
+                  style={known && !done ? { borderColor: "#cbd5e1", color: "transparent" } : undefined}
+                >
+                  ✓
+                </i>
+                {text}
+              </span>
 
-            <time>{task.start}</time>
-            <time>{task.end}</time>
+              <span />
+              <span />
 
-            <span />
+              <time>{formatDateDots(task.startDate)}</time>
+              <time>{formatDateDots(task.dueDate)}</time>
 
-            <mark>완료</mark>
+              <span />
 
-            <span />
-          </div>
-        ))}
+              <mark>{known ? (done ? "완료" : "미완료") : ""}</mark>
+
+              <span />
+            </div>
+          );
+        })}
     </div>
   );
 }

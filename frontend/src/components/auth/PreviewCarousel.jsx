@@ -42,17 +42,19 @@ export default function PreviewCarousel({ items, current, onChange }) {
               key={index}
               type="button"
               className={index === current ? "active" : ""}
+              aria-label={`${index + 1}번째 소개 보기`}
+              aria-current={index === current ? "true" : undefined}
               onClick={() => onChange(index)}
             />
           ))}
         </div>
 
         <div className="preview-controls">
-          <button type="button" onClick={prev}>
+          <button type="button" aria-label="이전 소개" onClick={prev}>
             <ChevronLeft size={18} />
           </button>
 
-          <button type="button" onClick={next}>
+          <button type="button" aria-label="다음 소개" onClick={next}>
             <ChevronRight size={18} />
           </button>
         </div>

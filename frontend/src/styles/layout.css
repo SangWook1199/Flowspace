@@ -551,3 +551,49 @@
   transform: rotate(180deg);
   transition: transform 0.2s;
 }
+
+/* =====================================================
+   Header Profile Menu (로그아웃 드롭다운)
+   - 드롭다운 모양은 .workspaceDropdown/.workspaceItem을 그대로 재사용하고,
+     아래는 오른쪽 정렬 + 프로필 버튼 기본 모양 지우기 + 프로필 사진 채우기만
+     따로 덧붙인 규칙이에요.
+===================================================== */
+
+.profileWrap {
+  position: relative;
+}
+
+.profileTrigger {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.profile .avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.profileMenu {
+  left: auto;
+  right: 0;
+  width: 220px;
+}
+
+.profileMenu strong {
+  display: block;
+  margin: 2px 8px 0;
+  font-size: 14px;
+  word-break: break-all;
+}
+
+.profileMenu p {
+  word-break: break-all;
+}
+
+.profileMenu .workspaceItem {
+  font-size: 13px;
+  color: #475569;
+}

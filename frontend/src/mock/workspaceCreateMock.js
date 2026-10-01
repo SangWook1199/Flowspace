@@ -1,25 +1,12 @@
+// 워크스페이스 생성 화면의 초기값이에요. 초대 목록(invitedMembers)은 반드시 빈 배열로
+// 시작해요 — 예전엔 가짜 팀원 3명이 미리 들어 있어서, 사용자가 아무도 추가하지
+// 않아도(심지어 "건너뛰기"를 눌러도) 그 사람들에게 초대가 나가는 구조였어요.
 const workspaceCreateMock = {
   name: "",
   initials: "H",
   color: "#4F46E5",
 
-  invitedMembers: [
-    {
-      id: 1,
-      email: "jiwon.kim@example.com",
-      name: "지원",
-    },
-    {
-      id: 2,
-      email: "minseo.lee@example.com",
-      name: "민서",
-    },
-    {
-      id: 3,
-      email: "dohyun.park@example.com",
-      name: "도현",
-    },
-  ],
+  invitedMembers: [],
 
   colorPalette: [
     "#4F46E5",

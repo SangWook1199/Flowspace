@@ -11,7 +11,9 @@ export default function SprintFilterBar({ value, query, onFilter, onQuery }) {
       <div>
         {filters.map(([key, label]) => (
           <button
+            type="button"
             className={value === key ? "active" : ""}
+            aria-pressed={value === key}
             onClick={() => onFilter(key)}
             key={key}
           >
@@ -22,12 +24,13 @@ export default function SprintFilterBar({ value, query, onFilter, onQuery }) {
       <label>
         <Search size={17} />
         <input
+          aria-label="스프린트 검색"
           value={query}
           placeholder="스프린트 검색..."
           onChange={(e) => onQuery(e.target.value)}
         />
       </label>
-      <button className="filterButton">
+      <button type="button" className="filterButton">
         <Filter size={16} /> 필터
       </button>
     </section>

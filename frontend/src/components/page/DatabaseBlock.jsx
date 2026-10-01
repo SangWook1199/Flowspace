@@ -186,7 +186,16 @@ export default function DatabaseBlock({
   // 그래서 반드시 한 번의 onChange로 columns/cells를 같이 갱신해요.
   const chooseSelectValue = (rowId, columnId, rawValue) => {
     const trimmed = rawValue.trim();
-    if (!trimmed) return;
+    if (!trimmed) {
+      // 빈 값을 고르면 "선택 해제"예요(노션처럼 셀을 비워요). 예전엔 아무 일도 안 일어났어요.
+      if (cells.some((c) => c.rowId === rowId && c.columnId === columnId && c.value !== "")) {
+        onChange({
+          ...database,
+          cells: cells.map((c) => (c.rowId === rowId && c.columnId === columnId ? { ...c, value: "" } : c)),
+        });
+      }
+      return;
+    }
 
     const column = columns.find((c) => c.id === columnId);
     const existingOptions = column?.options || [];
@@ -435,9 +444,16 @@ export default function DatabaseBlock({
     // 이 옵션을 이미 쓰고 있던 셀들도 이름을 따라가게 해요 — 안 그러면
     // 옵션 목록엔 새 이름, 셀엔 옛날 이름이 남아서 드롭다운에 없는
     // "미아 값"이 돼버려요.
-    const nextCells = cells.map((cell) =>
-      cell.columnId === columnId && cell.value === target.value ? { ...cell, value: trimmed } : cell,
-    );
+    // 다중 선택 셀은 값이 배열이라 그 안의 이름도 바꿔줘요.
+    const nextCells = cells.map((cell) => {
+      if (cell.columnId !== columnId) return cell;
+      if (Array.isArray(cell.value)) {
+        return cell.value.includes(target.value)
+          ? { ...cell, value: cell.value.map((v) => (v === target.value ? trimmed : v)) }
+          : cell;
+      }
+      return cell.value === target.value ? { ...cell, value: trimmed } : cell;
+    });
 
     onChange({ ...database, columns: nextColumns, cells: nextCells });
   };
@@ -460,11 +476,23 @@ export default function DatabaseBlock({
   };
 
   const removeOption = (columnId, optionId) => {
+    const removed = columns.find((c) => c.id === columnId)?.options?.find((o) => o.id === optionId);
+    // 지운 옵션을 쓰던 셀은 비워요(노션처럼). 안 비우면 옵션 목록엔 없는 "미아 값"이 회색 태그로 남아요.
+    const nextCells = removed
+      ? cells.map((cell) => {
+          if (cell.columnId !== columnId) return cell;
+          if (Array.isArray(cell.value)) {
+            return cell.value.includes(removed.value) ? { ...cell, value: cell.value.filter((v) => v !== removed.value) } : cell;
+          }
+          return cell.value === removed.value ? { ...cell, value: "" } : cell;
+        })
+      : cells;
     onChange({
       ...database,
       columns: columns.map((c) =>
         c.id === columnId ? { ...c, options: (c.options || []).filter((o) => o.id !== optionId) } : c,
       ),
+      cells: nextCells,
     });
   };
 

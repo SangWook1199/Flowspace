@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function CalendarToolbar({
-  sprintList,
+  sprintList = [],
   selectedSprint,
   onSprintChange,
   currentMonth,
@@ -14,13 +14,13 @@ export default function CalendarToolbar({
   return (
     <section className="calendarToolbar">
       <div className="toolbarLeft">
-        <button className="iconBtn" onClick={onPrevMonth}>
+        <button className="iconBtn" aria-label="이전 달" onClick={onPrevMonth}>
           <ChevronLeft size={18} />
         </button>
 
         <h2>{monthText}</h2>
 
-        <button className="iconBtn" onClick={onNextMonth}>
+        <button className="iconBtn" aria-label="다음 달" onClick={onNextMonth}>
           <ChevronRight size={18} />
         </button>
 
@@ -31,9 +31,10 @@ export default function CalendarToolbar({
 
       <div className="toolbarRight">
         <div className="sprintSelectWrap">
-          <label>스프린트</label>
+          <label htmlFor="calendarSprintSelect">스프린트</label>
 
           <select
+            id="calendarSprintSelect"
             className="sprintSelect"
             value={selectedSprint}
             onChange={(e) => onSprintChange(Number(e.target.value))}

@@ -1,17 +1,21 @@
 import { CalendarDays, Target } from "lucide-react";
 import styles from "../../styles/classes";
+import { clampPercent } from "../../utils/date";
 
+// sprint는 페이지가 날짜/작업 수로 계산해서 넘겨줘요(Day 수, 남은 일수, 진행률 모두 계산된 값).
 export default function SprintBanner({ sprint }) {
+  if (!sprint) return null;
+
   return (
     <section className={styles.hero}>
       <div className={styles.heroContent}>
         {/* 왼쪽 Sprint 영역 */}
         <div className={styles.heroLeft}>
-          <small>진행 중인 스프린트</small>
+          <small>{sprint.label ?? "진행 중인 스프린트"}</small>
 
           <div className={styles.heroTitle}>
             <h2>{sprint.name}</h2>
-            <span>{sprint.status}</span>
+            {sprint.status && <span>{sprint.status}</span>}
           </div>
 
           <div className={styles.heroDate}>
@@ -19,7 +23,7 @@ export default function SprintBanner({ sprint }) {
             <span>
               {sprint.start} ~ {sprint.end}
             </span>
-            <b>{sprint.remain}</b>
+            {sprint.remain && <b>{sprint.remain}</b>}
           </div>
 
           {/* 진행률은 왼쪽 영역 안에서만 */}
@@ -28,7 +32,7 @@ export default function SprintBanner({ sprint }) {
               <div className={styles.heroBar}>
                 <div
                   style={{
-                    width: `${sprint.progress}%`,
+                    width: `${clampPercent(sprint.progress)}%`,
                   }}
                 />
               </div>
@@ -54,7 +58,7 @@ export default function SprintBanner({ sprint }) {
             <h4>{sprint.goal}</h4>
           </div>
 
-          <p>{sprint.goalDesc}</p>
+          {sprint.goalDesc && <p>{sprint.goalDesc}</p>}
         </div>
       </div>
     </section>

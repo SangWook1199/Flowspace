@@ -12,7 +12,7 @@ export default function SprintHero({ summary, onCreate }) {
           <h1>스프린트 목록</h1>
           <p>모든 스프린트를 한눈에 보고 관리하세요.</p>
         </div>
-        <button onClick={onCreate}>
+        <button type="button" onClick={onCreate}>
           <Plus size={18} /> 새 스프린트
         </button>
       </section>

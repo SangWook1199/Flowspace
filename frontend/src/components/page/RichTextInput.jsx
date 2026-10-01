@@ -87,9 +87,13 @@ function sanitizeNode(node) {
 // 안의 태그만 만들어서, 평소 타이핑 중엔 이 함수가 실제로 뭔가를
 // 바꾸는 일이 거의 없어요(그래서 커서가 거의 안 튀어요).
 export function sanitizeInlineHtml(html) {
+  // <template>의 내용은 "비활성 문서"에서 파싱돼서 <img onerror=...> 같은 게 이 단계에서 실행되지 않아요.
+  // (화면에 붙은 div에 innerHTML을 넣으면 걸러내기 전에 이미 실행돼요.) 걸러낸 뒤에야 div로 옮겨 글자열로 읽어요.
+  const tpl = document.createElement("template");
+  tpl.innerHTML = html || "";
+  sanitizeNode(tpl.content);
   const container = document.createElement("div");
-  container.innerHTML = html;
-  sanitizeNode(container);
+  container.appendChild(tpl.content);
   // 인라인 마크다운 변환 직후 커서 자리를 잡아두는 보이지 않는 글자(\u200b)는 저장값에 남기지 않아요.
   let result = container.innerHTML.replace(/\u200b/g, "");
   // <br> 하나만 덜렁 남은 경우(다 지웠는데 브라우저가 빈 줄 유지용으로
@@ -105,9 +109,9 @@ export function sanitizeInlineHtml(html) {
 // 텍스트만 뽑아요.
 export function stripHtml(html) {
   if (!html) return "";
-  const div = document.createElement("div");
-  div.innerHTML = html;
-  return div.textContent || "";
+  const tpl = document.createElement("template");
+  tpl.innerHTML = html;
+  return tpl.content.textContent || "";
 }
 
 // 예전 데이터(이 기능이 생기기 전, <input>/<textarea>의 value로만
@@ -150,7 +154,7 @@ function clipboardHtmlToInline(html) {
     const isBoldStyle = weight === "bold" || weight === "bolder" || Number(weight) >= 600;
     if (tag === "B" || tag === "STRONG") {
       // 구글 문서가 통째로 감싸는 <b style="font-weight:normal">은 굵게가 아니에요.
-      if (weight === "normal" || Number(weight) < 600) {
+      if (weight === "normal" || (weight !== "" && Number(weight) < 600)) {
         while (el.firstChild) el.parentNode.insertBefore(el.firstChild, el);
         el.remove();
         return;
@@ -237,6 +241,36 @@ function cleanupSentinel(node) {
   return true;
 }
 
+// 커서가 블록 안 글자 몇 번째에 있는지(보이지 않는 \u200b는 빼고)와 그 자리로 되돌리기.
+function caretTextOffset(el) {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || !sel.isCollapsed || !el.contains(sel.anchorNode)) return null;
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  range.setEnd(sel.anchorNode, sel.anchorOffset);
+  return range.toString().replace(/\u200b/g, "").length;
+}
+
+function setCaretTextOffset(el, offset) {
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  let remaining = offset;
+  let node = walker.nextNode();
+  while (node) {
+    if (remaining <= node.nodeValue.length) {
+      const range = document.createRange();
+      range.setStart(node, remaining);
+      range.collapse(true);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      return;
+    }
+    remaining -= node.nodeValue.length;
+    node = walker.nextNode();
+  }
+  placeCaretAtEnd(el);
+}
+
 function placeCaretAtEnd(el) {
   const range = document.createRange();
   range.selectNodeContents(el);
@@ -270,7 +304,8 @@ export default function RichTextInput({
     const el = elRef.current;
     if (!el) return;
     if (value !== lastSyncedRef.current && el.innerHTML !== value) {
-      el.innerHTML = value || "";
+      // 어떤 경로로 들어온 값이든(붙여넣은 블록, 불러온 데이터) 화면에 쓰기 전에 한 번 더 걸러요.
+      el.innerHTML = sanitizeInlineHtml(value || "");
     }
     lastSyncedRef.current = value;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -293,8 +328,16 @@ export default function RichTextInput({
       // 다 지웠을 때 남은 <br> 등) DOM도 정리된 값으로 다시 맞춰요.
       // 커서는 어차피 그런 경우 대부분 "막 비웠을 때"라 끝으로 되돌려도
       // 체감상 어색하지 않아요.
-      e.currentTarget.innerHTML = clean;
-      placeCaretAtEnd(e.currentTarget);
+      // 한글 조합 중에는 DOM을 다시 쓰면 조합이 끊겨서, 조합이 끝난 뒤(compositionend 뒤 input)에 정리해요.
+      if (!composing) {
+        const el = e.currentTarget;
+        const offset = caretTextOffset(el);
+        el.innerHTML = clean;
+        // 링크를 막 만들었을 때처럼 내용은 그대로이고 태그 속성만 정리된 경우엔 커서를 그 자리에 두고,
+        // 내용이 줄어든 경우(다 지운 뒤 남은 <br> 등)엔 끝에 둬요.
+        if (offset !== null && offset <= (el.textContent || "").length) setCaretTextOffset(el, offset);
+        else placeCaretAtEnd(el);
+      }
     }
     lastSyncedRef.current = clean;
     onChange(clean);
@@ -570,6 +613,8 @@ function getLocalRanges(blocks) {
 // 여러 블록에 걸친 선택 전체가 이미 그 태그로 덮여 있는지 — 툴바
 // 버튼의 "지금 켜져 있음" 표시(is-active)에 써요.
 export function isMarkActiveAcrossBlocks(tagName, blocks) {
+  // 블록이 방금 지워져 DOM에서 떨어졌으면(툴바가 아직 옛 블록을 들고 있는 찰나) 계산하지 않아요.
+  if (blocks.some((b) => !b.rootEl?.isConnected)) return false;
   const localRanges = getLocalRanges(blocks);
   if (!localRanges || localRanges.length === 0) return false;
   return localRanges.every(

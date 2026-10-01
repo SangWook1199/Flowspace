@@ -1,11 +1,7 @@
 import { CalendarDays, Ellipsis, Flag, Archive } from "lucide-react";
 import SprintProgress from "./SprintProgress";
-
-const STATUS_LABEL = {
-  PLANNING: "계획됨",
-  ACTIVE: "진행 중",
-  COMPLETED: "완료",
-};
+import { formatDateDots } from "../../utils/date";
+import { SPRINT_STATUS_LABEL, sprintPercent, sprintRemainingLabel } from "../../utils/sprint";
 
 export default function SprintDetailHero({ sprint }) {
   const isBacklog = sprint.status === "BACKLOG";
@@ -19,7 +15,7 @@ export default function SprintDetailHero({ sprint }) {
       <div className="detailTitle">
         <h1>
           {sprint.name}
-          {!isBacklog && <span>{STATUS_LABEL[sprint.status]}</span>}
+          {!isBacklog && <span>{SPRINT_STATUS_LABEL[sprint.status] ?? sprint.status}</span>}
         </h1>
 
         <p>{sprint.goal}</p>
@@ -28,16 +24,18 @@ export default function SprintDetailHero({ sprint }) {
           <CalendarDays size={15} />
           {isBacklog
             ? "스프린트 미배정"
-            : `${sprint.startDate} ~ ${sprint.endDate} · ${sprint.remaining}`}
+            : `${formatDateDots(sprint.startDate)} ~ ${formatDateDots(sprint.endDate)}${
+                sprintRemainingLabel(sprint) ? ` · ${sprintRemainingLabel(sprint)}` : ""
+              }`}
         </small>
       </div>
 
       <div className="detailProgress">
         <div>
-          <button>
+          <button type="button" aria-label="더보기">
             <Ellipsis size={20} />
           </button>
-          <button>{isBacklog ? "백로그 편집" : "스프린트 편집"}</button>
+          <button type="button">{isBacklog ? "백로그 편집" : "스프린트 편집"}</button>
         </div>
 
         {isBacklog ? (
@@ -55,9 +53,9 @@ export default function SprintDetailHero({ sprint }) {
           </>
         ) : (
           <>
-            <SprintProgress progress={sprint.progress} color={sprint.color} />
+            <SprintProgress progress={sprintPercent(sprint)} color={sprint.color} />
             <b>
-              {sprint.completed} / {sprint.total} 완료
+              {sprint.completed ?? 0} / {sprint.total ?? 0} 완료
             </b>
           </>
         )}

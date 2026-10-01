@@ -358,7 +358,7 @@ function BlockRowImpl({
     <div
       ref={rowRef}
       data-block-id={block.id}
-      className={`block-row block-${block.type.toLowerCase()} ${isMoreOpen ? "menu-open" : ""} ${
+      className={`block-row block-${(block.type || "TEXT").toLowerCase()} ${isMoreOpen ? "menu-open" : ""} ${
         isEmbed ? "block-row--embed" : ""
       } ${isDragging ? "dragging" : ""}`}
       style={hasRowStyle ? rowStyle : undefined}
@@ -415,6 +415,13 @@ function BlockRowImpl({
           draggable
           onDragStart={(e) => {
             e.dataTransfer.effectAllowed = "move";
+            // Firefox는 데이터를 하나도 안 실으면 드래그를 시작하지 않아요. 글자 형식으로 실으면 글자 블록 위에
+            // 놓았을 때 그 글자가 붙여넣어지니, 우리만 아는 형식으로 실어요.
+            try {
+              e.dataTransfer.setData("application/x-flowspace-block-drag", "1");
+            } catch {
+              // 일부 환경에서는 setData가 막혀 있어도 드래그 자체는 되니 무시해요.
+            }
             if (rowRef.current) {
               const rect = rowRef.current.getBoundingClientRect();
               e.dataTransfer.setDragImage(
@@ -425,7 +432,7 @@ function BlockRowImpl({
             }
             onDragHandleStart?.();
           }}
-          onDragEnd={() => onDragHandleEnd?.()}
+          onDragEnd={(e) => onDragHandleEnd?.(e)}
           onClick={onToggleMore}
           title="클릭: 블록 옵션 · 드래그: 순서 변경"
         >
@@ -1027,7 +1034,7 @@ function BlockRowImpl({
               <RichTextInput
                 id={block.id}
                 innerRef={registerRef}
-                className={`block-input block-input--${block.type.toLowerCase()} ${checkedClass}${hasComments ? " block-input--commented" : ""}`}
+                className={`block-input block-input--${(block.type || "TEXT").toLowerCase()} ${checkedClass}${hasComments ? " block-input--commented" : ""}`}
                 style={textColorInfo ? { color: textColorInfo.color } : undefined}
                 value={block.content}
                 placeholder={placeholderFor(block.type)}

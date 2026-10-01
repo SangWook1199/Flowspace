@@ -1,3 +1,31 @@
+import { BLOCK_TYPES, RICH_TEXT_TYPES } from "./blockTypes.js";
+import { sanitizeInlineHtml, escapePlainTextToHtml } from "../RichTextInput";
+
+const VALID_BLOCK_TYPES = new Set(BLOCK_TYPES.map((t) => t.type));
+
+// 불러온 데이터나 붙여넣은 블록 JSON(바깥에서 온 값)을 믿고 쓰기 전에 모양을 바로잡아요:
+//  - 객체가 아니면 버리고(null), 모르는 type이거나 type이 없으면 일반 텍스트(TEXT)로 바꿔요
+//    (type이 없으면 화면을 그리다 에러가 나서 페이지가 하얗게 됐어요).
+//  - 글자 블록의 content는 항상 문자열이고, 서식 HTML은 한 번 걸러서(허용된 태그만) 스크립트가 못 들어오게 해요.
+//    예전 순수 글자 데이터(richText가 없는 것)는 이스케이프해서 HTML로 올려요.
+//  - 들여쓰기는 0 이상의 정수만 남겨요.
+export function normalizeBlockShape(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const type = VALID_BLOCK_TYPES.has(raw.type) ? raw.type : "TEXT";
+  const b = { ...raw, type };
+  const indent = Number(b.indent);
+  if (Number.isFinite(indent) && indent > 0) b.indent = Math.min(Math.floor(indent), 12);
+  else delete b.indent;
+  if (RICH_TEXT_TYPES.includes(type)) {
+    const text = typeof b.content === "string" ? b.content : b.content == null ? "" : String(b.content);
+    b.content = b.richText ? sanitizeInlineHtml(text) : escapePlainTextToHtml(text);
+    b.richText = true;
+  } else if (type === "CODE" && typeof b.content !== "string") {
+    b.content = b.content == null ? "" : String(b.content);
+  }
+  return b;
+}
+
 // "/하위 페이지"나 "/데이터베이스"를 고르는 순간 실제 페이지가 만들어져서
 // (CHILD_PAGE는 block.pageId, DATABASE는 그 안의 각 row.pageId) 이
 // 블록이 "소유한" 페이지가 돼요. 이 블록을 지우거나 다른 타입으로

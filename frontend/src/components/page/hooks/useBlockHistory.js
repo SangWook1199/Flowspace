@@ -18,13 +18,31 @@ export default function useBlockHistory({ blocks, setBlocksState, onRestore }) {
   // 같은 블록에서 1초 안에 이어진 입력은 스냅샷을 새로 안 쌓아요(마지막 입력 시각 기억).
   const lastTextUndoRef = useRef({ id: null, time: 0 });
 
+  // 가장 최근에 쌓은 스냅샷 기록 — 그 조작이 결국 아무것도 안 바꿨으면 스냅샷을 도로 거둬요(revertSnapshot).
+  const lastPushRef = useRef(null);
+
   const pushUndoSnapshot = () => {
+    const rec = { snapshot: blocks, redo: redoStackRef.current, trimmed: undefined, reverted: false };
     undoStackRef.current.push(blocks);
-    if (undoStackRef.current.length > MAX_HISTORY) undoStackRef.current.shift();
+    if (undoStackRef.current.length > MAX_HISTORY) rec.trimmed = undoStackRef.current.shift();
+    lastPushRef.current = rec;
     // 새 변경이 생기면 "다시 실행" 기록은 의미가 없어져요.
     redoStackRef.current = [];
     // 구조 변경이 끼어들면 그 앞뒤의 글자 입력은 다른 덩어리예요.
     lastTextUndoRef.current = { id: null, time: 0 };
+  };
+
+  // 첫 블록에서 Tab, 맨 위 블록에서 Shift+Tab처럼 눌러도 아무것도 안 바뀐 조작은 "되돌릴 게 없는" 기록이에요.
+  // 그런 기록이 쌓이면 Ctrl+Z가 아무 변화 없이 한 번 소모되고 다시 실행(Ctrl+Y) 기록까지 지워져요 —
+  // 그래서 변경이 없었다고 확인되면 방금 쌓은 스냅샷을 빼고 지워졌던 다시 실행 기록도 되돌려요.
+  const revertSnapshot = (rec) => {
+    if (!rec || rec.reverted) return;
+    const stack = undoStackRef.current;
+    if (stack[stack.length - 1] !== rec.snapshot) return;
+    rec.reverted = true;
+    stack.pop();
+    if (rec.trimmed !== undefined) stack.unshift(rec.trimmed);
+    redoStackRef.current = rec.redo;
   };
 
   const pushTextUndoSnapshot = (blockId, force = false) => {
@@ -61,5 +79,5 @@ export default function useBlockHistory({ blocks, setBlocksState, onRestore }) {
     restoreBlocksSnapshot(nextBlocks, focusId);
   };
 
-  return { pushUndoSnapshot, pushTextUndoSnapshot, handleUndo, handleRedo };
+  return { pushUndoSnapshot, pushTextUndoSnapshot, handleUndo, handleRedo, lastPushRef, revertSnapshot };
 }

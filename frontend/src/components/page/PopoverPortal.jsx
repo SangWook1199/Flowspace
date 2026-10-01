@@ -111,7 +111,11 @@ export default function PopoverPortal({ anchorEl, onClose, children, align = "st
       onClose();
     };
     const handleKeyDown = (e) => {
-      if (e.key === "Escape") onClose();
+      if (e.key !== "Escape") return;
+      // 이 Esc는 "팝오버 닫기"에 쓰였다고 표시해요 — 에디터의 Esc 처리(블록 선택 해제 등)가 같은 키로 한 번 더
+      // 반응하지 않게요(노션처럼 핸들 메뉴를 Esc로 닫아도 블록은 선택된 채로 남아요).
+      e.preventDefault();
+      onClose();
     };
 
     document.addEventListener("mousedown", handlePointerDown, true);

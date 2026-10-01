@@ -17,6 +17,8 @@ import { Bold, Italic, Underline, Strikethrough, Code2, Link2, ChevronDown } fro
    같이 타요(따로 처리를 안 추가해도 돼요). */
 export default function SelectionToolbar({
   rect,
+  // 2줄 이상 선택일 때 에디터 오른쪽 가장자리 x좌표 — 있으면 툴바를 선택 위가 아니라 선택 오른쪽(이 값을 넘지 않는 선)으로 빼요.
+  sideRight = null,
   marks,
   onToggle,
   onLink,
@@ -27,16 +29,28 @@ export default function SelectionToolbar({
   const [open, setOpen] = useState(null); // null | "turn" | "color"
   const barRef = useRef(null);
   const [dx, setDx] = useState(0);
+  const [sidePos, setSidePos] = useState(null);
+  const isSide = sideRight != null;
 
   // 화면 왼쪽/오른쪽 가장자리 근처에서 선택하면 툴바가 화면 밖으로 잘려서 일부 버튼을 못 눌러요 — 화면 안으로 밀어 넣어요.
+  // 옆으로 뺄 땐(2줄 이상) 에디터 오른쪽 바깥에, 선택의 맨 윗줄 높이에 맞춰 놓고 화면 안으로 가둬요.
   useLayoutEffect(() => {
     const el = barRef.current;
     if (!el || !rect) return;
     const w = el.offsetWidth;
+    if (isSide) {
+      const h = el.offsetHeight;
+      // 선택한 글자 바로 오른쪽(약간 띄워서)에 두되, 에디터 오른쪽 가장자리보다 더 멀리 가진 않아요.
+      const wanted = Math.min(rect.left + rect.width + 16, sideRight + 12);
+      const left = Math.max(8, Math.min(wanted, window.innerWidth - w - 8));
+      const top = Math.max(8, Math.min(rect.top, window.innerHeight - h - 8));
+      setSidePos({ left, top });
+      return;
+    }
     const center = rect.left + rect.width / 2;
     const clamped = Math.min(Math.max(center, w / 2 + 8), window.innerWidth - w / 2 - 8);
     setDx(clamped - center);
-  }, [rect, turnInto?.currentLabel, !!colors]);
+  }, [rect, sideRight, turnInto?.currentLabel, !!colors]);
 
   if (!rect) return null;
 
@@ -67,12 +81,16 @@ export default function SelectionToolbar({
       ref={barRef}
       className="selection-toolbar"
       data-popover-portal="true"
-      style={{
-        position: "fixed",
-        top,
-        left: left + dx,
-        transform: `translate(-50%, ${flip ? "0" : "-100%"})`,
-      }}
+      style={
+        isSide
+          ? { position: "fixed", top: sidePos?.top ?? rect.top, left: sidePos?.left ?? Math.min(rect.left + rect.width + 16, sideRight + 12) }
+          : {
+              position: "fixed",
+              top,
+              left: left + dx,
+              transform: `translate(-50%, ${flip ? "0" : "-100%"})`,
+            }
+      }
     >
       {turnInto && (
         <>

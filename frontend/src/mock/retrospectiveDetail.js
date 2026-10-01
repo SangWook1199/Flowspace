@@ -1,9 +1,12 @@
-const retrospectiveDetail = {
+import { retrospectiveList } from "./retrospectiveMock";
+
+// Sprint 1 회고 상세(원래 있던 내용). 기간은 mock/sprints.js와 같은 값이에요.
+const sprint1Detail = {
   sprintId: 1,
   sprintName: "Sprint 1",
 
-  startDate: "2026.08.18",
-  endDate: "2026.08.31",
+  startDate: "2026.05.29",
+  endDate: "2026.06.11",
 
   // 아바타 색은 id를 utils/avatarColor.js의 getAvatarTone()에 넘겨서
   // 계산해요(더 이상 tone을 직접 넣지 않아요).
@@ -14,10 +17,12 @@ const retrospectiveDetail = {
     { id: 4, name: "지연", initial: "지" },
   ],
 
+  // 목록 카드(mock/retrospectiveMock.js의 Sprint 1)와 같은 수치예요 — 카드에는 78%인데 상세에는 82%로
+  // 보이면 같은 회고가 두 값을 가지는 셈이라 맞춰뒀어요.
   summary: {
-    completionRate: 82,
-    completed: 18,
-    total: 22,
+    completionRate: 78,
+    completed: 14,
+    total: 18,
     incomplete: 4,
   },
 
@@ -148,4 +153,41 @@ const retrospectiveDetail = {
   ],
 };
 
-export default retrospectiveDetail;
+// 상세 데이터가 따로 없는 스프린트를 위한 최소 회고예요. 목록(retrospectiveList)의 값에서 그대로 뽑아서
+// 목록 카드와 상세 화면의 숫자/기간이 항상 같게 해요. 칸반 스냅샷과 노트는 비어 있는 상태로 시작해요.
+// (API를 붙이면 /retrospectives/:sprintId 응답이 이 모양을 대신해요.)
+const createMinimalDetail = (retro) => {
+  const completed = retro.completed ?? 0;
+  const incomplete = retro.incomplete ?? 0;
+
+  return {
+    sprintId: retro.sprintId,
+    sprintName: retro.sprint,
+    startDate: retro.start,
+    endDate: retro.end,
+    participants: sprint1Detail.participants.slice(0, retro.members ?? 0),
+    summary: {
+      completionRate: retro.completion ?? 0,
+      completed,
+      total: completed + incomplete,
+      incomplete,
+    },
+    kanban: { todo: [], doing: [], done: [] },
+    blocks: [
+      { id: 1, type: "H1", content: `${retro.sprint} 회고 메모` },
+      ...(retro.description ? [{ id: 2, type: "TEXT", content: retro.description }] : []),
+    ],
+  };
+};
+
+// 스프린트 id → 회고 상세. 페이지가 :sprintId로 한 번에 찾을 수 있게 map으로 둬요.
+/** @type {Record<number, any>} */
+const retrospectiveDetails = Object.fromEntries(
+  retrospectiveList
+    .filter((retro) => retro.sprintId != null)
+    .map((retro) => [retro.sprintId, createMinimalDetail(retro)]),
+);
+
+retrospectiveDetails[sprint1Detail.sprintId] = sprint1Detail;
+
+export default retrospectiveDetails;

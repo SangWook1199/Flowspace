@@ -3,11 +3,30 @@ import { Check, Copy } from "lucide-react";
 import { CODE_LANGUAGES, detectLanguage, highlightCode } from "./codeHighlight";
 
 // textarea의 [start, end) 구간을 text로 바꾸고 React가 변경을 알아채도록 input 이벤트를 보내요.
-// (브라우저의 insertText 명령은 줄바꿈이 섞인 글자의 공백을 잃을 수 있어서 쓰지 않아요.)
-function replaceRange(ta, start, end, text, caret = start + text.length) {
-  ta.setRangeText(text, start, end, "end");
-  ta.setSelectionRange(caret, caret);
-  ta.dispatchEvent(new Event("input", { bubbles: true }));
+// 가능하면 브라우저의 insertText 명령을 써서 Ctrl+Z(네이티브 되돌리기)에 기록되게 해요 — setRangeText는
+// 되돌리기 기록에 안 남아서, Tab으로 여러 줄을 들여쓰거나 Enter로 자동 들여쓰기를 한 뒤 Ctrl+Z가 어긋났어요.
+// 결과가 기대와 다르면(브라우저가 공백을 줄이는 경우 등) 값을 직접 넣는 방식으로 되돌려요.
+function replaceRange(ta, start, end, text, caret = start + text.length, caretEnd = caret) {
+  const before = ta.value;
+  const expected = before.slice(0, start) + text + before.slice(end);
+  let ok = false;
+  try {
+    ta.focus();
+    ta.setSelectionRange(start, end);
+    ok = document.execCommand("insertText", false, text) && ta.value === expected;
+  } catch {
+    ok = false;
+  }
+  if (!ok) {
+    ta.value = expected;
+    ta.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+  ta.setSelectionRange(caret, caretEnd);
+}
+
+// pos가 속한 줄의 시작 위치(pos가 0이면 0이에요 — lastIndexOf에 -1을 주면 0번째 글자를 찾는 문제가 있어서 따로 처리).
+function lineStartOf(value, pos) {
+  return pos <= 0 ? 0 : value.lastIndexOf("\n", pos - 1) + 1;
 }
 
 // 코드 블록 편집기 — 노션처럼 언어를 고르면 글자마다 색이 달라져요.
@@ -60,23 +79,42 @@ export default function CodeEditor({
       // Tab은 블록 들여쓰기가 아니라 코드 들여쓰기(공백 2칸)예요. Shift+Tab은 현재 줄 앞 공백을 걷어내요.
       if (e.key === "Tab") {
         e.preventDefault();
-        if (!e.shiftKey) {
-          replaceRange(ta, ta.selectionStart, ta.selectionEnd, "  ");
-        } else {
-          const pos = ta.selectionStart;
-          const lineStart = ta.value.lastIndexOf("\n", pos - 1) + 1;
-          const lead = /^( {1,2}|\t)/.exec(ta.value.slice(lineStart));
-          if (lead) {
-            replaceRange(ta, lineStart, lineStart + lead[0].length, "", Math.max(lineStart, pos - lead[0].length));
-          }
+        const { selectionStart: selS, selectionEnd: selE, value: v } = ta;
+        const spansLines = selS !== selE && v.slice(selS, selE).includes("\n");
+        if (!e.shiftKey && !spansLines) {
+          replaceRange(ta, selS, selE, "  ");
+          return;
         }
+        // 여러 줄을 선택했거나 Shift+Tab이면 줄 단위로 들여쓰기/내어쓰기해요(선택한 코드를 지우지 않아요).
+        const ls = lineStartOf(v, selS);
+        const endAdj = selE > selS && v[selE - 1] === "\n" ? selE - 1 : selE; // 줄 맨 앞까지 선택된 마지막 줄은 제외
+        const lines = v.slice(ls, endAdj).split("\n");
+        let firstDelta = 0;
+        let totalDelta = 0;
+        const next = lines.map((line, i) => {
+          let out = line;
+          if (!e.shiftKey) {
+            if (line.trim() !== "") out = `  ${line}`;
+          } else {
+            const lead = /^( {1,2}|\t)/.exec(line);
+            if (lead) out = line.slice(lead[0].length);
+          }
+          const d = out.length - line.length;
+          if (i === 0) firstDelta = d;
+          totalDelta += d;
+          return out;
+        });
+        if (totalDelta === 0) return;
+        const newS = Math.max(ls, selS + firstDelta);
+        const newE = Math.max(newS, selE + totalDelta);
+        replaceRange(ta, ls, endAdj, next.join("\n"), newS, newE);
         return;
       }
 
       // Enter는 지금 줄의 들여쓰기를 그대로 이어받아요(코드 편집기의 기본 동작).
       if (e.key === "Enter" && !e.shiftKey) {
         const pos = ta.selectionStart;
-        const lineStart = ta.value.lastIndexOf("\n", pos - 1) + 1;
+        const lineStart = lineStartOf(ta.value, pos);
         const indent = /^[ \t]*/.exec(ta.value.slice(lineStart, pos))[0];
         // 줄이 여는 괄호({ ( [) 나 파이썬 콜론(:)으로 끝나면 한 단 더 들여써요.
         const extra = /[{([:]\s*$/.test(ta.value.slice(lineStart, pos)) ? "  " : "";

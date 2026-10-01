@@ -23,11 +23,13 @@ import { matchMarkdownShortcut, parseMarkdownLine, BLOCKS_CLIPBOARD_TYPE } from 
 import BlockRow from "./BlockRow";
 import { CURRENT_USER_NAME } from "./lib/comments.js";
 import { formatFileSize } from "./blocks/MediaBlocks";
-import { getOwnedPageIds, createEmptyBlock, createDefaultDatabase, createSimpleTable } from "./lib/blockFactory.js";
+import { getOwnedPageIds, createEmptyBlock, createDefaultDatabase, createSimpleTable, normalizeBlockShape } from "./lib/blockFactory.js";
 import useBlockHistory from "./hooks/useBlockHistory.js";
 import useBlockSelectionState from "./hooks/useBlockSelectionState.js";
 import useBlockSelectionShortcuts from "./hooks/useBlockSelectionShortcuts.js";
 import createBlockKeyDownHandler from "./hooks/blockKeyDown.js";
+import useMultiBlockTextSelection from "./hooks/useMultiBlockTextSelection.js";
+import { selectionTextBounds } from "./lib/selectionMove.js";
 import { sprintTaskRows } from "../../mock/sprintTasks";
 
 // 기본값으로 매 렌더마다 새 배열([])을 만들면 memo된 BlockRow의 props가 항상 "달라져" 보여요.
@@ -40,6 +42,7 @@ export default function BlockEditor({
   onCreateChildPage,
   onRenameRowPage,
   onDeleteRowPage,
+  onDuplicatePage,
   // sprintTasks가 안 넘어오면(다른 화면에서 아직 안 챙겨줬다면) 정적
   // import를 그대로 써서 예전처럼은 동작하게 해요 — 다만 그러면 체크박스로
   // 토글해도 화면엔 안 남아요(상태를 들고 있는 쪽이 없으니까). 진짜로
@@ -63,10 +66,8 @@ export default function BlockEditor({
   // 새로 마운트되니, 이 초기화는 페이지를 열 때마다 정확히 한 번씩만
   // 실행돼요.
   const [blocks, setBlocksState] = useState(() =>
-    initialBlocks.map((b) => {
-      if (b.richText || !RICH_TEXT_TYPES.includes(b.type)) return b;
-      return { ...b, content: escapePlainTextToHtml(b.content || ""), richText: true };
-    }),
+    // 바깥에서 온 값이라 모양(type 없음 등)을 바로잡고 서식 HTML도 한 번 걸러서 시작해요(normalizeBlockShape).
+    initialBlocks.map(normalizeBlockShape).filter(Boolean),
   );
   const [slashMenu, setSlashMenu] = useState(null); // { blockId, query }
   const [slashIndex, setSlashIndex] = useState(0); // 슬래시 메뉴에서 키보드로 고른 항목
@@ -124,10 +125,6 @@ export default function BlockEditor({
   // 범위로 툴바를 계산해서 띄워요 — 원래 요청대로 "드래그를 끝내야"
   // 뜨게 되는 거예요.
   const textSelectionDraggingRef = useRef(false);
-  // 여러 블록에 걸친 텍스트 선택 중에만 에디터 전체(.block-editor)를
-  // 하나의 편집 호스트(contenteditable)로 바꿔둬요 — 자세한 이유는
-  // handleSelectionMouseDown 주석 참고. 지금 그 상태인지를 들고 있어요.
-  const multiBlockHostRef = useRef(false);
   // 요청: "여러 블록 선택하고 핸들 버튼 이용이 가능하게" — 선택된 블록이
   // 2개 이상일 때, 그중 하나의 핸들(⋯)을 누르면 이 일괄 메뉴가 열려요
   // ({ anchorBlockId: 눌린 블록, mode: "main" | "color" | "textColor" }).
@@ -199,7 +196,12 @@ export default function BlockEditor({
     return out;
   };
 
+  // (아래 useBlockHistory가 돌려주는 lastPushRef/revertSnapshot을 쓰는데, 훅이 이 함수보다 뒤에 선언돼서
+  // ref로 한 번 건너 불러요.)
+  const historyApiRef = useRef(null);
   const setBlocks = (updater) => {
+    // 이 호출 직전에 쌓은 Undo 스냅샷(있다면) — 결과가 아무 변화 없으면 그 스냅샷을 거둬요.
+    const pushRec = historyApiRef.current?.lastPushRef.current;
     setBlocksState((prev) => {
       const next = typeof updater === "function" ? updater(prev) : updater;
       // 요청: "블록 중첩/들여쓰기" — 드래그로 순서 바꾸기·삭제·복제·
@@ -209,7 +211,9 @@ export default function BlockEditor({
       // 지우거나, 드래그로 순서를 옮겨서 바로 앞 블록보다 2단 이상
       // 깊어지는 경우)가 되지 않아요 — 매번 개별 함수마다 따로 정리해줄
       // 필요가 없어요.
-      return normalizeIndents(next);
+      const normalized = normalizeIndents(next);
+      if (pushRec && pushRec.snapshot === prev && normalized === prev) historyApiRef.current.revertSnapshot(pushRec);
+      return normalized;
     });
   };
 
@@ -229,7 +233,7 @@ export default function BlockEditor({
 
   // 실행 취소/다시 실행 기록 — 자세한 설명은 hooks/useBlockHistory.js 참고.
   // 스냅샷을 되돌린 뒤 선택·메뉴 상태를 비우고, 커서를 살아남은 블록(없으면 바로 위 블록)으로 보내요.
-  const { pushUndoSnapshot, pushTextUndoSnapshot, handleUndo, handleRedo } = useBlockHistory({
+  const history = useBlockHistory({
     blocks,
     setBlocksState,
     onRestore: (target, focusId, oldIndex) => {
@@ -244,6 +248,9 @@ export default function BlockEditor({
       }
     },
   });
+
+  const { pushUndoSnapshot, pushTextUndoSnapshot, handleUndo, handleRedo } = history;
+  historyApiRef.current = history;
 
   const nextId = () => idCounter.current++;
 
@@ -481,11 +488,13 @@ export default function BlockEditor({
   // 남겨두면, 방금까지 "하위 블록"이었던 것들이 갑자기 부모 없이 위로
   // 붙어버려서 사용자가 기대한 "이 덩어리를 통째로 지운다"와 어긋나요
   // — 그래서 대상 블록 + 그 자식 전체(getSubtreeIds)를 한 번에 지워요.
-  const deleteBlock = (id) => {
+  // keepChildren(빈 블록에서 Backspace): 노션처럼 이 블록만 지우고 자식은 남겨서 한 단 내어써요(자식 내용이
+  // 확인도 없이 사라지지 않게). 핸들 메뉴의 "삭제"는 예전처럼 하위 블록까지 통째로 지워요.
+  const deleteBlock = (id, { keepChildren = false } = {}) => {
     const index = blocks.findIndex((b) => b.id === id);
     if (index === -1) return;
 
-    const subtreeIds = getSubtreeIds(blocks, index);
+    const subtreeIds = keepChildren ? [id] : getSubtreeIds(blocks, index);
     const subtreeBlocks = blocks.filter((b) => subtreeIds.includes(b.id));
     const confirmMessage =
       subtreeIds.length > 1
@@ -498,8 +507,11 @@ export default function BlockEditor({
       const removeIndex = prev.findIndex((b) => b.id === id);
       if (removeIndex === -1) return prev;
 
-      const removeIds = new Set(getSubtreeIds(prev, removeIndex));
-      const next = prev.filter((b) => !removeIds.has(b.id));
+      const removeIds = new Set(keepChildren ? [id] : getSubtreeIds(prev, removeIndex));
+      const childIds = keepChildren ? new Set(getSubtreeIds(prev, removeIndex).filter((cid) => cid !== id)) : null;
+      const next = prev
+        .filter((b) => !removeIds.has(b.id))
+        .map((b) => (childIds && childIds.has(b.id) ? { ...b, indent: Math.max(0, (b.indent || 0) - 1) } : b));
 
       // 에디터가 완전히 비면 안 돼요(bulkDeleteSelected의 빈 텍스트
       // 블록 대체와 같은 이유) — 자식까지 지우고 나니 블록이 하나도
@@ -510,8 +522,14 @@ export default function BlockEditor({
         return [fallback];
       }
 
-      const nextFocus = next[Math.max(0, removeIndex - 1)];
-      if (nextFocus) focusBlock(nextFocus.id);
+      // 커서는 바로 위의 "글자를 쓸 수 있는" 블록 끝으로 보내요. 바로 위가 이미지·구분선이거나 접힌 토글
+      // 안에 숨은 블록이면 그 위의 쓸 수 있는 블록으로, 위에 없으면 아래쪽 첫 블록으로 가요.
+      const hiddenNow = computeHiddenBlockIds(next);
+      const canFocus = (b) => !hiddenNow.has(b.id) && (RICH_TEXT_TYPES.includes(b.type) || b.type === "CODE");
+      let target = null;
+      for (let i = Math.min(removeIndex, next.length) - 1; i >= 0 && !target; i -= 1) if (canFocus(next[i])) target = next[i];
+      for (let i = removeIndex; i < next.length && !target; i += 1) if (canFocus(next[i])) target = next[i];
+      if (target) focusBlock(target.id);
 
       return next;
     });
@@ -522,7 +540,30 @@ export default function BlockEditor({
   // 생기게" — 단일 블록 핸들 메뉴용 복제예요. bulkDuplicateSelected와 같은
   // 방식(새 id를 받은 복사본을 원본 바로 뒤에 끼워 넣기)이지만 블록 하나만
   // 대상으로 해요.
+  // 복제/붙여넣기로 만든 복사본이 원본과 같은 하위 페이지를 가리키면, 한쪽을 지울 때 다른 쪽 페이지까지
+  // 휴지통으로 가요. 노션처럼 하위 페이지(와 그 아래 페이지들)도 새로 복제해서 복사본이 자기 페이지를 가리키게 해요.
+  // onDuplicatePage가 없는 화면에서는 예전처럼 그대로 둬요. 상태 업데이트 함수 "밖"에서 불러야 해요(페이지가 두 번 생기지 않게).
+  const clonePageLinks = (b) => {
+    if (!onDuplicatePage) return b;
+    let out = b;
+    if (b.pageId != null) out = { ...out, pageId: onDuplicatePage(b.pageId)?.id ?? null };
+    if (b.database?.rows?.some((r) => r.pageId != null)) {
+      out = {
+        ...out,
+        database: {
+          ...b.database,
+          rows: b.database.rows.map((r) => (r.pageId != null ? { ...r, pageId: onDuplicatePage(r.pageId)?.id ?? null } : r)),
+        },
+      };
+    }
+    return out;
+  };
+
   const duplicateBlock = (id) => {
+    const srcIndex = blocks.findIndex((b) => b.id === id);
+    if (srcIndex === -1) return;
+    // 복사본(블록 + 자식 전체)을 먼저 만들어요 — 하위 페이지 복제가 섞여 있어서 업데이트 함수 안에서 하면 안 돼요.
+    const subtreeCopy = blocks.slice(srcIndex, getSubtreeRange(blocks, srcIndex)).map((b) => clonePageLinks({ ...b, id: nextId() }));
     pushUndoSnapshot();
     setBlocks((prev) => {
       const index = prev.findIndex((b) => b.id === id);
@@ -536,7 +577,6 @@ export default function BlockEditor({
       // 전체 범위(getSubtreeRange)를 그대로 복사해서 그 범위가 끝나는
       // 지점(자식들 뒤)에 통째로 붙여요.
       const end = getSubtreeRange(prev, index);
-      const subtreeCopy = prev.slice(index, end).map((b) => ({ ...b, id: nextId() }));
 
       const next = [...prev];
       next.splice(end, 0, ...subtreeCopy);
@@ -895,8 +935,10 @@ export default function BlockEditor({
 
   // 문장 중간 슬래시("hello /todo")로 고른 블록은 현재 블록의 "/명령" 글자만 지우고 바로 아래에 만들어요.
   const stripTrailingSlashQuery = (html, query) => {
-    const box = document.createElement("div");
-    box.innerHTML = html || "";
+    // 화면과 분리된 <template>에서 파싱해요(걸러내기 전에 이미지 onerror 같은 게 실행되지 않게).
+    const tpl = document.createElement("template");
+    tpl.innerHTML = html || "";
+    const box = tpl.content;
     const walker = document.createTreeWalker(box, NodeFilter.SHOW_TEXT);
     let last = null;
     for (let n = walker.nextNode(); n; n = walker.nextNode()) last = n;
@@ -907,7 +949,9 @@ export default function BlockEditor({
         last.data = last.data.slice(0, last.data.length - token.length).replace(/[ \u00a0]+$/, "");
       }
     }
-    return sanitizeInlineHtml(box.innerHTML);
+    const out = document.createElement("div");
+    out.appendChild(box);
+    return sanitizeInlineHtml(out.innerHTML);
   };
 
   const convertBlock = (id, type) => {
@@ -1022,6 +1066,7 @@ export default function BlockEditor({
   // 수가 없어요. 최상위(indent 0) 블록은 형제 그룹이 없으니(부모가
   // 없음) 예전처럼 자기 자신 + 자식들만 바뀌어요.
   const setBlockColor = (id, color) => {
+    pushUndoSnapshot();
     setBlocks((prev) => {
       const index = prev.findIndex((b) => b.id === id);
       if (index === -1) return prev;
@@ -1037,6 +1082,7 @@ export default function BlockEditor({
   // 바뀌고(blockCanHaveTextColor로 걸러서), "같은 부모의 형제 블록은
   // 색 통일" 요청에 맞춰 형제들도 같이 바뀌어요(setBlockColor와 동일).
   const setBlockTextColor = (id, textColor) => {
+    pushUndoSnapshot();
     setBlocks((prev) => {
       const index = prev.findIndex((b) => b.id === id);
       if (index === -1) return prev;
@@ -1055,6 +1101,7 @@ export default function BlockEditor({
   // 안 되고 등, 위 blockCanHaveBackground/blockCanHaveTextColor 참고)
   // 선택된 블록 중 그 색을 실제로 쓸 수 있는 것만 걸러서 적용해요.
   const bulkSetColor = (color) => {
+    pushUndoSnapshot();
     setBlocks((prev) =>
       prev.map((b) => (selectedBlockIds.has(b.id) && blockCanHaveBackground(b) ? { ...b, color } : b)),
     );
@@ -1123,7 +1170,7 @@ export default function BlockEditor({
       .map((b) => {
         const newId = nextId();
         newIds.push(newId);
-        return { ...b, id: newId };
+        return clonePageLinks({ ...b, id: newId });
       });
     if (duplicates.length === 0) return;
 
@@ -1395,6 +1442,7 @@ export default function BlockEditor({
   const handleImageSelect = (block, file) => {
     if (!file) return;
 
+    pushUndoSnapshot();
     const reader = new FileReader();
     reader.onload = () => {
       updateBlock(block.id, {
@@ -1415,7 +1463,14 @@ export default function BlockEditor({
   const handleImageUrlEmbed = (block, url) => {
     const trimmed = url.trim();
     if (!trimmed) return;
-    const fileName = decodeURIComponent(trimmed.split("/").pop()?.split("?")[0] || "파일");
+    let fileName = "파일";
+    try {
+      fileName = decodeURIComponent(trimmed.split("/").pop()?.split("?")[0] || "파일");
+    } catch {
+      // %가 들어간 주소처럼 해석할 수 없는 이름이면 원문 그대로 써요.
+      fileName = trimmed.split("/").pop()?.split("?")[0] || "파일";
+    }
+    pushUndoSnapshot();
     updateBlock(block.id, { image: { fileName, fileSize: "", url: trimmed } });
   };
 
@@ -1428,6 +1483,7 @@ export default function BlockEditor({
     if (!file) return;
     const newId = nextId();
 
+    pushUndoSnapshot();
     setBlocks((prev) => {
       const index = prev.findIndex((b) => b.id === id);
       const next = [...prev];
@@ -1456,7 +1512,9 @@ export default function BlockEditor({
       if (!raw) return null;
       const parsed = JSON.parse(raw);
       if (!parsed || !Array.isArray(parsed.blocks) || parsed.blocks.length === 0) return null;
-      return parsed.blocks;
+      // 붙여넣은 JSON은 믿을 수 없는 값이라 모양을 바로잡고 서식 HTML을 걸러요(normalizeBlockShape).
+      const safe = parsed.blocks.map(normalizeBlockShape).filter(Boolean);
+      return safe.length > 0 ? safe : null;
     } catch {
       return null;
     }
@@ -1466,7 +1524,7 @@ export default function BlockEditor({
   // 그 자리를 대체해요. 붙여넣은 묶음의 첫 줄 들여쓰기는 앵커의 들여쓰기에 맞춰요.
   const insertPastedBlocks = (items, anchorBlockId) => {
     if (!items || items.length === 0) return;
-    const created = items.map((b) => ({ ...b, id: nextId() }));
+    const created = items.map((b) => clonePageLinks({ ...b, id: nextId() }));
     const lastEditable = [...created].reverse().find((b) => RICH_TEXT_TYPES.includes(b.type) || b.type === "CODE");
     pushUndoSnapshot();
     setBlocks((prev) => {
@@ -1669,54 +1727,17 @@ export default function BlockEditor({
   // 리턴해서 기본 텍스트 선택 동작을 그대로 둬요. 그 외(블록 사이 여백,
   // .block-row의 왼쪽 여백, 표/카드의 테두리·여백, 맨 아래 빈 영역 등)
   // 에서 시작하면 사각형 드래그 선택을 시작해요.
-  // 에디터 전체를 하나의 편집 호스트로 켜고/끄기. 리액트가 이 속성을
-  // 관리하지 않도록(렌더링 결과에 contentEditable prop을 안 넣음) DOM
-  // 속성을 직접 바꿔요 — 그래서 리렌더가 일어나도 덮어써지지 않아요.
-  const setEditorSingleHost = (on) => {
-    const el = editorRef.current;
-    multiBlockHostRef.current = on;
-    if (!el) return;
-    if (on) {
-      el.setAttribute("contenteditable", "true");
-      el.setAttribute("spellcheck", "false");
-    } else {
-      el.removeAttribute("contenteditable");
-      el.removeAttribute("spellcheck");
-    }
-  };
-
-  // 지금 선택 범위가 걸쳐 있는 리치 텍스트 블록 개수.
-  const countRichBlocksInSelection = () => {
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return 0;
-    const range = sel.getRangeAt(0);
-    const els = editorRef.current?.querySelectorAll("[data-rich-block-id]") || [];
-    return Array.from(els).filter((el) => range.intersectsNode(el)).length;
-  };
-
-  // 하나의 편집 호스트 상태를 풀고 원래대로(블록마다 따로 편집) 되돌려요.
-  // 호스트였던 동안엔 포커스가 에디터 전체에 가 있어서, 그냥 속성만 떼면
-  // 커서가 블록 안에 보여도 타이핑이 안 돼요 — 그래서 지금 선택(커서)이
-  // 들어 있는 블록에 포커스를 다시 주고 선택 범위도 그대로 복원해요.
-  const releaseEditorSingleHost = useCallback(() => {
-    if (!multiBlockHostRef.current) return;
-    const sel = window.getSelection();
-    const range = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null;
-    multiBlockHostRef.current = false;
-    const editorEl = editorRef.current;
-    if (editorEl) {
-      editorEl.removeAttribute("contenteditable");
-      editorEl.removeAttribute("spellcheck");
-    }
-    if (!range || !editorEl) return;
-    const node = range.startContainer.nodeType === Node.ELEMENT_NODE ? range.startContainer : range.startContainer.parentElement;
-    const richEl = node?.closest?.("[data-rich-block-id]");
-    if (richEl && editorEl.contains(richEl)) {
-      richEl.focus({ preventScroll: true });
-      sel.removeAllRanges();
-      sel.addRange(range);
-    }
-  }, []);
+  // 여러 블록에 걸친 텍스트 선택(편집 호스트 전환, 범위 삭제, Shift+방향키 확장)은
+  // hooks/useMultiBlockTextSelection.js에 모여 있어요.
+  const { multiBlockHostRef, setEditorSingleHost, releaseEditorSingleHost, countRichBlocksInSelection } =
+    useMultiBlockTextSelection({ editorRef, inputRefs, blocks, setBlocks, pushUndoSnapshot, deleteOwnedPages, setSelectionToolbar,
+      // 여러 블록 글자 선택 중 Esc → 그 블록들을 블록 다중 선택으로
+      onEscapeToBlockSelection: (ids, anchorId, focusId) => {
+        setSelectedBlockIds(new Set(ids));
+        selectionAnchorIdRef.current = anchorId;
+        selectionCursorRef.current = { anchor: anchorId, focus: focusId };
+      },
+    });
 
   const handleSelectionMouseDown = (e) => {
     if (e.button !== 0) return; // 왼쪽 버튼만.
@@ -1949,9 +1970,15 @@ export default function BlockEditor({
       setSelectionToolbar(null);
       return;
     }
+    // 2줄 이상 걸친 선택(여러 블록이거나 줄바꿈된 긴 글)이면 툴바가 선택 글자를 가리지 않게 에디터 오른쪽으로 빼요.
+    // 위치는 통째로 선택된 블록 상자가 아니라 "선택된 글자"의 경계로 잡아요(툴바가 글자 바로 옆에 오게).
+    const text = selectionTextBounds(range, editorRef.current) || rect;
+    const lineHeight = parseFloat(window.getComputedStyle(blocks[0].rootEl).lineHeight) || 24;
+    const multiLine = blocks.length > 1 || text.height > lineHeight * 1.5;
     setSelectionToolbar({
-      rect: { top: rect.top, bottom: rect.bottom, left: rect.left, width: rect.width },
+      rect: { top: text.top, bottom: text.bottom, left: text.left, width: text.width },
       blocks,
+      sideRight: multiLine ? editorRef.current?.getBoundingClientRect().right ?? null : null,
     });
   }, []);
 
@@ -1984,31 +2011,10 @@ export default function BlockEditor({
     return () => document.removeEventListener("selectionchange", handleSelectionChange);
   }, [updateSelectionToolbar, releaseEditorSingleHost]);
 
-  // 여러 블록이 선택돼 에디터 전체가 하나의 편집 호스트인 동안에는
-  // 타이핑·삭제·붙여넣기·엔터(모두 beforeinput으로 들어와요)와 "선택한
-  // 글자 끌어서 옮기기"(dragstart/drop)를 막아요. 이걸 허용하면 브라우저가
-  // 여러 블록 DOM을 직접 합치거나 쪼개버리는데, 그건 리액트가 관리하는
-  // 블록 구조와 어긋나서 내용이 깨져요. 복사(Ctrl+C)는 입력이 아니라서
-  // 그대로 돼요. 서식(굵게 등)은 툴바가 블록마다 따로 안전하게 적용해요.
-  useEffect(() => {
-    const el = editorRef.current;
-    if (!el) return;
-    const blockWhileSingleHost = (e) => {
-      if (multiBlockHostRef.current) e.preventDefault();
-    };
-    el.addEventListener("beforeinput", blockWhileSingleHost);
-    el.addEventListener("dragstart", blockWhileSingleHost);
-    el.addEventListener("drop", blockWhileSingleHost);
-    return () => {
-      el.removeEventListener("beforeinput", blockWhileSingleHost);
-      el.removeEventListener("dragstart", blockWhileSingleHost);
-      el.removeEventListener("drop", blockWhileSingleHost);
-    };
-  }, []);
-
   // 블록 선택 관련 키보드·복붙·사각형 드래그 이펙트는 hooks/useBlockSelectionShortcuts.js에 모여 있어요.
   useBlockSelectionShortcuts({
     blocks,
+    isMenuOpen: !!(blockMenu || bulkMenu),
     editorRef,
     inputRefs,
     selection: {
@@ -2114,7 +2120,8 @@ export default function BlockEditor({
               containerOwners[index] === containerOwners[index + 1]
             }
             pageLink={block.pageId ? pagesById[block.pageId] : null}
-            pages={pages}
+            // pages는 키 입력마다 새 배열이 돼서 모든 줄이 다시 그려지게 만들어요 — 데이터베이스 블록만 필요로 해요.
+            pages={block.type === "DATABASE" ? pages : NO_PAGES}
             onCreateChildPage={onCreateChildPage}
             blockTypeOptions={blockTypeOptions}
             isSlashOpen={slashMenu?.blockId === block.id}
@@ -2128,10 +2135,19 @@ export default function BlockEditor({
             onPasteImage={(e) => handlePasteImage(block, e)}
             onFocus={() => handleFocus(block)}
             onBlur={() => handleBlur(block)}
-            onToggleCheck={() => updateBlock(block.id, { checked: !block.checked })}
+            onToggleCheck={() => {
+              pushUndoSnapshot();
+              updateBlock(block.id, { checked: !block.checked });
+            }}
             onToggleCollapse={() => updateBlock(block.id, { collapsed: !block.collapsed })}
-            onSetCalloutIcon={(icon) => updateBlock(block.id, { calloutIcon: icon })}
-            onSetLanguage={(language) => updateBlock(block.id, { language })}
+            onSetCalloutIcon={(icon) => {
+              pushUndoSnapshot();
+              updateBlock(block.id, { calloutIcon: icon });
+            }}
+            onSetLanguage={(language) => {
+              pushUndoSnapshot();
+              updateBlock(block.id, { language });
+            }}
             onImageSelect={(file) => handleImageSelect(block, file)}
             onImageUrlEmbed={(url) => handleImageUrlEmbed(block, url)}
             onImageResize={(width) => updateBlock(block.id, { image: { ...block.image, width } })}
@@ -2178,7 +2194,11 @@ export default function BlockEditor({
                 );
                 return;
               }
-              if (selectedBlockIds.size > 0) setSelectedBlockIds(new Set());
+              // 노션처럼 핸들을 누르면 그 블록이 "선택"돼요 — 메뉴를 Esc로 닫아도 선택은 남아서, 이어서
+              // Shift+↑/↓로 블록 여러 개를 고르거나 Backspace로 지울 수 있어요.
+              setSelectedBlockIds(new Set([block.id]));
+              selectionAnchorIdRef.current = block.id;
+              selectionCursorRef.current = { anchor: block.id, focus: block.id };
               setBlockMenu((prev) =>
                 prev?.blockId === block.id ? null : { blockId: block.id, mode: "main" },
               );
@@ -2226,14 +2246,24 @@ export default function BlockEditor({
               // 옮기니, 여기서 집합만 채우면 부모+자식이 같이 이동해요.
               setDraggedGroupIds(
                 selectedBlockIds.size > 1 && selectedBlockIds.has(block.id)
-                  ? new Set(selectedBlockIds)
+                  ? expandSelectionWithSubtrees(blocks, selectedBlockIds) // 접힌 토글의 숨은 자식도 같이 움직여야 해요
                   : new Set(getSubtreeIds(blocks, blocks.findIndex((b) => b.id === block.id))),
               );
             }}
             onRowDragOver={(isAfter, wantsNested) =>
               handleBlockDragOver(block.id, isAfter, wantsNested)
             }
-            onDragHandleEnd={commitBlockDrop}
+            // 드래그가 Esc로 취소됐거나 에디터 밖(사이드바 등)에 놓였으면(dropEffect === "none") 블록을
+            // 옮기지 않고 표시선만 치워요. 에디터 위에서 놓였으면 onDrop이 이미 옮겼거나 여기서 옮겨요.
+            onDragHandleEnd={(e) => {
+              if (e?.dataTransfer?.dropEffect === "none") {
+                setDragBlockId(null);
+                setDraggedGroupIds(new Set());
+                setBlockDropTarget(null);
+                return;
+              }
+              commitBlockDrop();
+            }}
             registerRef={(el) => {
               inputRefs.current[block.id] = el;
             }}
@@ -2381,6 +2411,7 @@ export default function BlockEditor({
       {selectionToolbar && (
         <SelectionToolbar
           rect={selectionToolbar.rect}
+            sideRight={selectionToolbar.sideRight}
           marks={
             // 요청: "노션처럼 텍스트만 다중 선택 + 인라인 편집기" —
             // 블록 하나짜리 선택(지금까지와 같은, 훨씬 흔한 경우)은

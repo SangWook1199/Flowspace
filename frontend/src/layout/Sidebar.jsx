@@ -3,14 +3,31 @@ import * as Icons from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import styles from "../styles/classes.js";
-import { sprints } from "../mock/sprints";
-import workspaceMock from "../mock/workspaceMock";
 import FlowSpaceLogo from "../components/common/FlowSpaceLogo";
 import WorkspaceSwitcher from "./WorkspaceSwitcher";
+
+// 페이지 줄을 드래그할 때 dataTransfer에 심는 커스텀 MIME이에요. Firefox는
+// dragstart에서 setData를 한 번도 안 부르면 드래그 자체를 시작하지 않아요.
+const PAGE_DRAG_MIME = "application/x-flowspace-page";
+
+// 컴포넌트 안에서 Icon을 정의하면 Sidebar가 렌더될 때마다 "새로운 컴포넌트"가 돼서
+// 아이콘 DOM이 매번 지워졌다 다시 만들어져요 — 그러면 휴지통 화살표(chevron)의
+// 회전 transition도 처음 상태에서 다시 시작해서 안 보였어요. 밖으로 빼서 같은
+// 컴포넌트로 유지해요. 이름이 잘못되면(오타·아이콘 버전 차이) 앱이 죽지 않게
+// 기본 아이콘으로 대신 그려요.
+function Icon({ name, ...props }) {
+  const C = Icons[name] ?? Icons.FileText;
+  if (!C) return null;
+  return <C strokeWidth={1.9} {...props} />;
+}
 
 export default function Sidebar({
   navigation,
   pages,
+  workspaces,
+  currentWorkspace,
+  sprints = [],
+  onSwitchWorkspace,
   onCreatePage,
   onDeletePage,
   onRestorePage,
@@ -19,29 +36,18 @@ export default function Sidebar({
   onReorderTopLevelPages,
   onOpenSettings,
 }) {
-  const Icon = ({ name, ...props }) => {
-    const C = Icons[name];
-    return <C strokeWidth={1.9} {...props} />;
-  };
-
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
   /* ---------- Workspace ---------- */
 
-  const [currentWorkspaceId, setCurrentWorkspaceId] = useState(
-    workspaceMock.currentWorkspaceId,
-  );
-
-  const currentWorkspace = workspaceMock.workspaces.find(
-    (w) => w.id === currentWorkspaceId,
-  );
-
+  // 현재 워크스페이스와 목록은 WorkspaceProvider가 들고 있고(MainLayout이 props로
+  // 내려줘요), 여기선 고르는 UI만 맡아요. 다른 워크스페이스로 바꾸면 홈으로 보내요 —
+  // 안 그러면 이전 워크스페이스의 페이지(/pages/:id)가 화면에 그대로 남아요.
   const changeWorkspace = (id) => {
-    setCurrentWorkspaceId(id);
-
-    // TODO : Spring API
-    // workspaceApi.changeWorkspace(id);
+    if (id === currentWorkspace?.id) return;
+    onSwitchWorkspace?.(id);
+    navigate("/");
   };
 
   /* ---------- Navigation ---------- */
@@ -142,6 +148,15 @@ export default function Sidebar({
     setPageDropTarget(null);
   };
 
+  // 드래그가 끝났을 때는 표시선·흐려진 줄만 걷어내는 정리만 해요. 순서는 줄(또는
+  // 표시선) 위에서 drop이 일어났을 때만 commitPageDrop에서 바꾸니까, Esc로 취소했거나
+  // 놓을 수 없는 곳에 놓아서 dropEffect가 "none"인 dragend는 아무것도 반영하지 않고
+  // 정리만 하고 끝나요(dragend에서 순서를 확정하지 않는 게 핵심이에요).
+  const handlePageDragEnd = () => {
+    setDragPageId(null);
+    setPageDropTarget(null);
+  };
+
   const handleCreatePage = () => {
     const newPage = onCreatePage?.();
     if (newPage) navigate(`/pages/${newPage.id}`);
@@ -213,7 +228,7 @@ export default function Sidebar({
 
       <WorkspaceSwitcher
         currentWorkspace={currentWorkspace}
-        workspaces={workspaceMock.workspaces}
+        workspaces={workspaces}
         onChange={changeWorkspace}
       />
 
@@ -244,7 +259,14 @@ export default function Sidebar({
         {topLevelPages.map((page) => (
           <Fragment key={page.id}>
             {pageDropTarget?.beforePageId === page.id && (
-              <div className="page-drop-indicator" />
+              <div
+                className="page-drop-indicator"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  commitPageDrop();
+                }}
+              />
             )}
 
             <div
@@ -269,13 +291,12 @@ export default function Sidebar({
                 draggable
                 onDragStart={(e) => {
                   e.dataTransfer.effectAllowed = "move";
+                  e.dataTransfer.setData(PAGE_DRAG_MIME, String(page.id));
                   setDragPageId(page.id);
                 }}
-                onDragEnd={() => {
-                  setDragPageId(null);
-                  setPageDropTarget(null);
-                }}
+                onDragEnd={handlePageDragEnd}
                 title="드래그해서 순서 변경"
+                aria-label={`${page.title || "제목 없음"} 순서 변경`}
               >
                 <Icon name="GripVertical" size={14} />
               </button>
@@ -300,6 +321,7 @@ export default function Sidebar({
                 className="pageNavRow__delete"
                 onClick={(e) => handleDeletePage(e, page)}
                 title="페이지 삭제"
+                aria-label={`${page.title || "제목 없음"} 삭제`}
               >
                 <Icon name="Trash2" size={14} />
               </button>
@@ -307,7 +329,16 @@ export default function Sidebar({
           </Fragment>
         ))}
 
-        {pageDropTarget?.beforePageId === null && <div className="page-drop-indicator" />}
+        {pageDropTarget?.beforePageId === null && (
+          <div
+            className="page-drop-indicator"
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              commitPageDrop();
+            }}
+          />
+        )}
 
         <button
           className={`${styles.navItem} ${styles.newPage}`}
@@ -327,6 +358,8 @@ export default function Sidebar({
               type="button"
               className="trashSection__toggle"
               onClick={() => setTrashOpen((prev) => !prev)}
+              aria-expanded={trashOpen}
+              aria-label={`휴지통, 페이지 ${trashedPages.length}개`}
             >
               <Icon name="Trash2" size={15} />
               <span>휴지통</span>
@@ -358,6 +391,7 @@ export default function Sidebar({
                       className="trashRow__action"
                       onClick={() => handleRestorePage(page.id)}
                       title="복원"
+                      aria-label={`${page.title || "제목 없음"} 복원`}
                     >
                       <Icon name="RotateCcw" size={13} />
                     </button>
@@ -367,6 +401,7 @@ export default function Sidebar({
                       className="trashRow__action trashRow__action--danger"
                       onClick={() => handlePermanentlyDeletePage(page)}
                       title="완전히 삭제"
+                      aria-label={`${page.title || "제목 없음"} 완전히 삭제`}
                     >
                       <Icon name="X" size={13} />
                     </button>

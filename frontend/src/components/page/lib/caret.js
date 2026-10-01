@@ -77,32 +77,56 @@ export function normalizeRangeIntoText(range, el) {
 // 치면 선택한 글자가 사라지고 줄이 나뉘는 것과 같아요). Range.cloneContents는 잘린
 // 서식 태그(<b> 등)를 양쪽에 똑같이 복제해줘서, 굵은 글씨 한가운데서 나눠도 양쪽 다
 // 굵게 유지돼요.
+// Range가 가리키는 조각을 (블록에 저장하는 것과 같은 형태의) 안전한 인라인 HTML로 바꿔요.
+// 나누면서 내용이 비어버린 서식 태그(<b></b> 등)는 걷어내요.
+export function serializeRangeHtml(r) {
+  const box = document.createElement("div");
+  box.appendChild(r.cloneContents());
+  let html = box.innerHTML;
+  let prevHtml;
+  do {
+    prevHtml = html;
+    html = html.replace(/<(b|i|u|s|strong|em|strike|code|a|span)(\s[^>]*)?><\/\1>/gi, "");
+  } while (html !== prevHtml);
+  return sanitizeInlineHtml(html);
+}
+
 export function splitContentAtCaret(el) {
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0 || !el.contains(sel.anchorNode)) return null;
-  const range = sel.getRangeAt(0).cloneRange();
-  if (!range.collapsed) {
-    range.deleteContents();
-  }
-  const serialize = (r) => {
-    const box = document.createElement("div");
-    box.appendChild(r.cloneContents());
-    // 나누면서 내용이 비어버린 서식 태그(<b></b> 등)는 걷어내요.
-    let html = box.innerHTML;
-    let prevHtml;
-    do {
-      prevHtml = html;
-      html = html.replace(/<(b|i|u|s|strong|em|strike|code|a|span)(\s[^>]*)?><\/\1>/gi, "");
-    } while (html !== prevHtml);
-    return sanitizeInlineHtml(html);
-  };
+  const range = sel.getRangeAt(0);
+  // 선택 영역이 있으면 "선택 앞부분"과 "선택 뒷부분"만 남겨요(=선택을 지운 것과 같아요). 화면(DOM)은 건드리지
+  // 않아요 — 예전엔 range.deleteContents()로 실제 DOM을 지웠는데 저장된 값(state)은 그대로라 화면과 어긋났어요.
   const beforeRange = document.createRange();
   beforeRange.selectNodeContents(el);
-  beforeRange.setEnd(range.endContainer, range.endOffset);
+  beforeRange.setEnd(range.startContainer, range.startOffset);
   const afterRange = document.createRange();
   afterRange.selectNodeContents(el);
   afterRange.setStart(range.endContainer, range.endOffset);
-  return { before: serialize(beforeRange), after: serialize(afterRange) };
+  return { before: serializeRangeHtml(beforeRange), after: serializeRangeHtml(afterRange) };
+}
+
+// 여러 블록에 걸친 선택(range)을 지울 때 남는 조각: 선택이 시작된 블록(startEl)의 선택 앞부분(head)과
+// 끝난 블록(endEl)의 선택 뒷부분(tail). 선택 경계가 해당 블록 밖(사이 여백 등)이면 그쪽은 빈 문자열이에요.
+// headLength는 head의 글자 수(합친 뒤 커서를 놓을 자리)예요.
+export function sliceBlocksAroundRange(startEl, endEl, range) {
+  let head = "";
+  let headLength = 0;
+  if (startEl.contains(range.startContainer)) {
+    const r = document.createRange();
+    r.selectNodeContents(startEl);
+    r.setEnd(range.startContainer, range.startOffset);
+    head = serializeRangeHtml(r);
+    headLength = r.toString().length;
+  }
+  let tail = "";
+  if (endEl.contains(range.endContainer)) {
+    const r = document.createRange();
+    r.selectNodeContents(endEl);
+    r.setStart(range.endContainer, range.endOffset);
+    tail = serializeRangeHtml(r);
+  }
+  return { head, tail, headLength };
 }
 
 // 커서가 (선택 없이) 블록 맨 앞/맨 뒤에 있는지.

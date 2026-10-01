@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
-import { useNavigate, useOutletContext, useParams } from "react-router-dom";
+import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { Camera, ChevronRight, ImagePlus, Smile, X } from "lucide-react";
 
 import BlockEditor from "../components/page/BlockEditor";
 import PopoverPortal from "../components/page/PopoverPortal";
+import { useWorkspace } from "../context/WorkspaceContext";
 import "../styles/page-detail.css";
 
 // 검색이 되려면 이모지마다 찾아볼 키워드가 있어야 해서, 이모지 문자열만
@@ -266,13 +267,14 @@ const COVER_GROUPS = [
 
 export default function PageDetailPage() {
   // 실제로는 pages/{pageId} + pages/{pageId}/blocks API로 교체.
-  // 지금은 MainLayout에서 끌어올린 세션 상태(pages/setPages)를
-  // Outlet context로 받아서 씁니다 — 여러 페이지를 오가도, 새 페이지를
+  // 지금은 WorkspaceProvider가 들고 있는 세션 상태(pages/setPages)를
+  // MainLayout의 Outlet context로 받아서 씁니다 — 여러 페이지를 오가도, 새 페이지를
   // 만들어도 사이드바와 바로 동기화돼요.
   const { pageId } = useParams();
   const navigate = useNavigate();
-  const { pages, setPages, createPage, deletePage, renamePage, sprintTasks, toggleSubtask } =
+  const { pages, setPages, createPage, duplicatePage, deletePage, restorePage, renamePage, sprintTasks, toggleSubtask } =
     useOutletContext();
+  const { currentWorkspaceId } = useWorkspace();
 
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const [iconQuery, setIconQuery] = useState("");
@@ -280,12 +282,43 @@ export default function PageDetailPage() {
   const [coverAnchor, setCoverAnchor] = useState(null);
   const coverInputRef = useRef(null);
 
-  const page = pages.find((p) => String(p.id) === pageId);
+  // :pageId는 URL에서 온 문자열이라 숫자가 아닐 수도 있어요("abc", "NaN", "1.5" 등).
+  // 정수로 딱 떨어지는 값만 페이지 id로 보고, 아니면 찾지 못한 걸로 처리해요.
+  // 지금 워크스페이스에 속한 페이지만 보여줘요 — 주소창에 다른 워크스페이스의 페이지
+  // id가 남아 있어도(뒤로가기 등) 이전 워크스페이스의 내용이 그대로 뜨지 않게요.
+  const numericId = Number(pageId);
+  const page = Number.isInteger(numericId)
+    ? pages.find(
+        (p) =>
+          p.id === numericId && (p.workspaceId ?? 1) === currentWorkspaceId,
+      )
+    : undefined;
 
   if (!page) {
     return (
       <div className="page-detail-page">
-        <p className="page-detail__missing">페이지를 찾을 수 없어요.</p>
+        <p className="page-detail__missing">
+          페이지를 찾을 수 없어요. <Link to="/">홈으로 돌아가기</Link>
+        </p>
+      </div>
+    );
+  }
+
+  // 휴지통에 있는 페이지는 편집할 수 없게 해요. 주소로 직접 들어오거나 열어둔 채로
+  // 삭제했을 때 에디터가 그대로 떠서 "삭제된 페이지"를 계속 고칠 수 있었어요.
+  // 복원하면 trashedAt이 지워지면서 바로 에디터가 나타나요.
+  if (page.trashedAt) {
+    return (
+      <div className="page-detail-page">
+        <p className="page-detail__missing">이 페이지는 휴지통에 있어요</p>
+        <button
+          type="button"
+          className="page-detail__cover-btn"
+          style={{ margin: "0 auto" }}
+          onClick={() => restorePage(page.id)}
+        >
+          복원
+        </button>
       </div>
     );
   }
@@ -311,7 +344,7 @@ export default function PageDetailPage() {
 
   // 페이지 삭제 버튼은 일단 화면에서 뺐어요(요청으로 임시 제거) —
   // deletePage(page.id)를 부르는 handleDeletePage 같은 함수만 없앴을
-  // 뿐, deletePage 자체(휴지통 이동 로직)는 MainLayout에 그대로 있어서
+  // 뿐, deletePage 자체(휴지통 이동 로직)는 WorkspaceProvider에 그대로 있어서
   // 나중에 버튼을 다시 붙이기만 하면 바로 복원돼요.
 
   const closeIconPicker = () => {
@@ -544,6 +577,7 @@ export default function PageDetailPage() {
           onChange={(blocks) => updatePage({ blocks })}
           pages={pages}
           onCreateChildPage={() => createPage(page.id)}
+          onDuplicatePage={(pageId) => duplicatePage(pageId, page.id)}
           onRenameRowPage={renamePage}
           onDeleteRowPage={deletePage}
           sprintTasks={sprintTasks}
