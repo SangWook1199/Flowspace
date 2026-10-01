@@ -21,6 +21,7 @@ export default function TaskDetailPanel({
   onClose,
   onAddSubtask,
   onToggleSubtask,
+  onDeleteSubtask,
   onBatchChange,
   onDelete,
 }) {
@@ -76,7 +77,7 @@ export default function TaskDetailPanel({
     <aside className={styles.detailPanel}>
       <header>
         <div>
-          <small>{task.id}</small>
+          <small>{task.code ?? task.id}</small>
           <h2>
             <TitleInput key={task.id} value={task.title} onChange={(value) => onChange("title", value)} />
           </h2>
@@ -155,7 +156,16 @@ export default function TaskDetailPanel({
               onChange={() => onToggleSubtask(index)}
             />
             <span>{subtask.text}</span>
-            <Trash2 size={14} />
+            <Trash2
+              size={14}
+              style={{ cursor: "pointer" }}
+              aria-label="하위 작업 삭제"
+              onClick={(e) => {
+                // label 안이라 그냥 두면 체크박스도 같이 토글돼요.
+                e.preventDefault();
+                onDeleteSubtask?.(index);
+              }}
+            />
           </label>
         ))}
         <div>

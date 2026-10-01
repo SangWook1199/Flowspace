@@ -1,12 +1,7 @@
-const colors = [
-  "#4f5cf6",
-  "#91d8bc",
-  "#f8b544",
-  "#f16469",
-  "#a691e9",
-  "#59b9d0",
-  "#d7dde8",
-];
+import { SPRINT_COLORS } from "../../utils/color";
+
+// 서버가 받는 스프린트 색(WorkspaceColor 7종)과 1:1로 맞춰져 있어요.
+const colors = SPRINT_COLORS.map((color) => color.hex);
 
 export default function ColorPicker({ value, onChange }) {
   return (

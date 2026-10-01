@@ -12,7 +12,9 @@ public record TaskStatusResponse(
     String name,
     TaskStatusCategory category,
     WorkspaceColor color,
-    Integer position
+    Integer position,
+
+    Boolean isDefault
 
 ) {
 
@@ -22,7 +24,8 @@ public record TaskStatusResponse(
             mapping.getTaskStatus().getName(),
             mapping.getTaskStatus().getCategory(),
             mapping.getTaskStatus().getColor(),
-            mapping.getPosition()
+            mapping.getPosition(),
+            mapping.getIsDefault()
         );
     }
 

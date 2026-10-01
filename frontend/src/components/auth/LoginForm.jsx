@@ -5,6 +5,7 @@ import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import SocialLogin from "./SocialLogin";
 import { useAuth } from "../../context/useAuth";
 import { getSafeRedirect } from "../../utils/authRedirect";
+import { getErrorMessage } from "../../utils/apiError";
 
 export default function LoginForm() {
   const navigate = useNavigate();
@@ -49,12 +50,7 @@ export default function LoginForm() {
       // 외부/위험한 주소면 홈으로 보내요.
       navigate(getSafeRedirect(location.state?.from) ?? "/", { replace: true });
     } catch (err) {
-      setError(
-        err.response
-          ? (err.response.data?.message ??
-              "로그인에 실패했어요. 다시 시도해주세요.")
-          : "서버에 연결할 수 없어요. 잠시 후 다시 시도해주세요.",
-      );
+      setError(getErrorMessage(err, "로그인에 실패했어요. 다시 시도해주세요."));
     } finally {
       submittingRef.current = false;
       setSubmitting(false);

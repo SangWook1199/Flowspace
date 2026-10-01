@@ -1,5 +1,6 @@
 import axios from "axios";
 import { refresh } from "./auth";
+import { getErrorMessage } from "../utils/apiError";
 import {
   getAccessToken,
   getRefreshToken,
@@ -68,20 +69,31 @@ const refreshAccessToken = () => {
   return refreshPromise;
 };
 
-// refresh 토큰 자체가 거절된 경우(없음/400/401/403)만 "세션이 끝났다"고
-// 봐요. 네트워크가 잠깐 끊겼거나 서버가 5xx인 경우엔 토큰이 멀쩡할 수
-// 있으니, 로그아웃시키지 않고 원래 오류만 그대로 돌려줘요.
+// 서버가 "이 refresh 토큰은 쓸 수 없다"고 분명히 답한 경우에만 "세션이 끝났다"고 봐요.
+//  - 저장된 refresh 토큰이 아예 없음
+//  - 서버가 INVALID_REFRESH_TOKEN(만료·폐기·변조)이나 400/403으로 거절
+// 그 밖의 실패(네트워크 끊김, 서버 5xx, 서버가 아직 재발급 API를 모르는 옛 버전이라
+// 일반 401만 주는 경우 등)는 토큰이 멀쩡할 수 있어서, 로그아웃시키지 않고 원래 오류만
+// 그대로 돌려줘요. 이렇게 해야 서버 배포·재시작 같은 일시적 문제로 로그인이 풀리지 않아요.
 const isSessionExpired = (refreshError) => {
   if (!refreshError.response) {
     return refreshError.message === NO_REFRESH_TOKEN;
   }
 
-  return [400, 401, 403].includes(refreshError.response.status);
+  const { status, data } = refreshError.response;
+
+  if (status === 401) return data?.code === "INVALID_REFRESH_TOKEN";
+
+  return status === 400 || status === 403;
 };
 
 client.interceptors.response.use(
   (response) => response,
   async (error) => {
+    // 어떤 경로로 reject되든 화면이 바로 쓸 수 있게 한 문장을 붙여둬요.
+    // (서버의 { status, code, message } → error.userMessage, 네트워크 오류는 안내 문구)
+    error.userMessage = getErrorMessage(error);
+
     const original = error.config;
 
     if (

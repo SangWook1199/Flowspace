@@ -25,6 +25,7 @@ export default function KanbanColumn({
   onTaskDragOver,
   onColumnEndDragEnter,
   onTaskDragEnd,
+  onAddTask,
 }) {
   const [menu, setMenu] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -105,32 +106,33 @@ export default function KanbanColumn({
             <span>{tasks.length}</span>
           </div>
 
-          <div className="columnMenuWrap" ref={menuRef}>
-            <button
-              type="button"
-              className="columnMenu"
-              ref={menuButtonRef}
-              aria-label={`${status.name} 컬럼 메뉴`}
-              aria-haspopup="true"
-              aria-expanded={menu}
-              onClick={() => setMenu((prev) => !prev)}
-            >
-              <MoreHorizontal size={18} />
-            </button>
+          {/* 기본 상태(할 일·진행 중·완료)는 모든 워크스페이스가 같이 쓰는 값이라 고치거나 지울 수 없어요. */}
+          {!status.isDefault && (
+            <div className="columnMenuWrap" ref={menuRef}>
+              <button
+                type="button"
+                className="columnMenu"
+                ref={menuButtonRef}
+                aria-label={`${status.name} 컬럼 메뉴`}
+                aria-haspopup="true"
+                aria-expanded={menu}
+                onClick={() => setMenu((prev) => !prev)}
+              >
+                <MoreHorizontal size={18} />
+              </button>
 
-            {menu && (
-              <div className="columnDropdown">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditOpen(true);
-                    setMenu(false);
-                  }}
-                >
-                  상태 수정
-                </button>
+              {menu && (
+                <div className="columnDropdown">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditOpen(true);
+                      setMenu(false);
+                    }}
+                  >
+                    상태 수정
+                  </button>
 
-                {!status.isDefault && (
                   <button
                     type="button"
                     className="danger"
@@ -141,10 +143,10 @@ export default function KanbanColumn({
                   >
                     상태 삭제
                   </button>
-                )}
-              </div>
-            )}
-          </div>
+                </div>
+              )}
+            </div>
+          )}
         </header>
 
         {/* 카드도 컬럼과 같은 방식이에요 — 카드 위에서 dragover가 계속
@@ -195,7 +197,7 @@ export default function KanbanColumn({
           />
         </div>
 
-        <button className="columnAddTask">
+        <button type="button" className="columnAddTask" onClick={onAddTask}>
           <Plus size={15} />
           작업 추가
         </button>

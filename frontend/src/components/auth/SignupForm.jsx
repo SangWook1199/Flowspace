@@ -6,6 +6,7 @@ import SocialLogin from "./SocialLogin";
 import { useAuth } from "../../context/useAuth";
 import * as authApi from "../../api/auth";
 import { getInitial } from "../../utils/initial";
+import { getErrorMessage, getErrorCode } from "../../utils/apiError";
 
 // 입력 규칙. 닉네임 30자는 users.nickname 컬럼(length 30)에 맞춘 값이라,
 // 이보다 길게 보내면 서버에서 저장하다 실패해요.
@@ -159,19 +160,14 @@ export default function SignupForm() {
 
       navigate("/");
     } catch (err) {
-      const data = err.response?.data;
-      const message =
-        data?.message ??
-        (err.response
-          ? "회원가입에 실패했어요. 다시 시도해주세요."
-          : "서버에 연결할 수 없어요. 잠시 후 다시 시도해주세요.");
+      const message = getErrorMessage(err, "회원가입에 실패했어요. 다시 시도해주세요.");
 
       // 409는 이메일 중복과 닉네임 중복 둘 다 쓰는 상태 코드라서, 응답의
       // 코드/메시지로 이메일 문제일 때만 1단계로 돌려보내요. 닉네임 중복은
       // 사용자가 지금 있는 2단계에서 바로 고치면 되니까요.
       const isEmailConflict =
         err.response?.status === 409 &&
-        /EMAIL|이메일/i.test(`${data?.code ?? ""} ${message}`);
+        /EMAIL|이메일/i.test(`${getErrorCode(err) ?? ""} ${message}`);
 
       if (isEmailConflict) {
         setStep(1);

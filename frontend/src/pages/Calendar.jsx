@@ -1,19 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
+import { useOutletContext } from "react-router-dom";
 
 import CalendarToolbar from "../components/calendar/CalendarToolbar";
 import CalendarSprintBanner from "../components/calendar/CalendarSprintBanner";
 import CalendarGrid from "../components/calendar/CalendarGrid";
 import DaySidebar from "../components/calendar/DaySidebar";
 
-import {
-  calendarSprints,
-  calendarTasks,
-  calendarEvents,
-} from "../mock/calendar";
-
+import * as eventApi from "../api/events";
+import { useRequest } from "../hooks/useRequest";
+import { getErrorMessage } from "../utils/apiError";
 import { toDateKey, todayKey, parseDateKey } from "../utils/date";
-import { nextNumericId } from "../utils/id";
 import { pickCurrentSprint } from "../utils/sprintRange";
 import { isEventOnDate, sortEventsByStart } from "../utils/calendarRange";
 
@@ -60,9 +57,60 @@ const createEmptyEvent = (dateKey) => ({
   color: "PURPLE",
 });
 
+// 공용 작업 → 캘린더가 쓰는 작업 모양. 날짜가 없는 작업은 달력에 올릴 수 없어서 빼요.
+const toCalendarTask = (task, statusById) => {
+  const status = statusById[task.statusId];
+  const subtasks = task.subtasks ?? [];
+
+  return {
+    id: task.id,
+    sprintId: task.sprintId,
+    code: task.code ?? task.id,
+    title: task.title,
+    assignee: (task.assignees ?? []).map((a) => a.name).join(", "),
+    start: task.startDate,
+    // 마감일이 없거나 시작일보다 앞서면 하루짜리로 보여요.
+    end: task.dueDate && task.dueDate >= task.startDate ? task.dueDate : task.startDate,
+    status: { id: task.statusId, name: status?.name ?? task.statusName, color: status?.color ?? "GRAY" },
+    priority: task.priority,
+    complete: subtasks.filter((s) => s.checked).length,
+    total: subtasks.length,
+  };
+};
+
+// 스프린트·작업은 서버에서 불러와 MainLayout이 내려줘요. 다 불러온 뒤에 본문(CalendarBody)을 그려서
+// "기본으로 보여줄 스프린트"를 처음부터 올바르게 고를 수 있어요.
 export default function Calendar() {
+  const { sprintDataLoading, sprintDataError, reloadSprintData } = useOutletContext();
+
+  if (sprintDataLoading || sprintDataError) {
+    return (
+      <div className="calendarPage">
+        {sprintDataLoading ? (
+          <p className="emptyText" role="status">캘린더를 불러오는 중이에요…</p>
+        ) : (
+          <div role="alert">
+            <p className="emptyText">{sprintDataError}</p>
+            <button type="button" className="toolbarBtn" onClick={reloadSprintData}>
+              다시 시도
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return <CalendarBody />;
+}
+
+function CalendarBody() {
+  const { workspaceId, sprints, sprintTasks, taskStatuses } = useOutletContext();
+
   // "오늘"은 처음 렌더링할 때 한 번만 정해요. 렌더링마다 새로 구하면 자정을 넘기는 순간 선택 날짜와 어긋나요.
   const [today] = useState(todayKey);
+
+  // 배너의 색은 서버 색 이름(BLUE 등)을 읽어서, 스프린트의 colorCode를 color로 넘겨줘요.
+  const calendarSprints = useMemo(() => sprints.map((s) => ({ ...s, color: s.colorCode })), [sprints]);
 
   // 기본으로 보여줄 스프린트: 오늘이 기간에 들어가는 스프린트 → 없으면 가장 가까운 예정/최근 스프린트 → 없으면 첫 번째.
   const [selectedSprint, setSelectedSprint] = useState(
@@ -74,29 +122,43 @@ export default function Calendar() {
     return firstOfMonth(base.getFullYear(), base.getMonth());
   });
 
-  const [events, setEvents] = useState(calendarEvents);
+  // 일정은 보고 있는 달(앞뒤 한 달 포함)을 서버에서 받아요. 달을 옮기면 다시 받아요.
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth() + 1;
+  const {
+    data: events,
+    error: eventsError,
+    setData: setEvents,
+  } = useRequest(() => eventApi.getEventsAround(workspaceId, year, month), [workspaceId, year, month], {
+    initialData: [],
+  });
   const [openModal, setOpenModal] = useState(false);
   const [formError, setFormError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const [newEvent, setNewEvent] = useState(() => createEmptyEvent(today));
 
   // 스프린트를 못 찾으면 undefined예요. 아래 배너/사이드바가 undefined를 받아도 안 깨지게 처리해뒀어요.
   const sprint = useMemo(
     () => calendarSprints.find((s) => s.id === selectedSprint),
-    [selectedSprint],
+    [calendarSprints, selectedSprint],
   );
 
-  const sprintTasks = useMemo(
-    () => calendarTasks.filter((t) => t.sprintId === selectedSprint),
-    [selectedSprint],
-  );
+  // 선택한 스프린트의 작업만 달력에 올려요(작업 자체는 칸반·작업 목록과 같은 데이터예요).
+  const calendarTasks = useMemo(() => {
+    const statusById = Object.fromEntries(taskStatuses.map((s) => [s.id, s]));
+
+    return sprintTasks
+      .filter((task) => task.sprintId === selectedSprint && task.startDate)
+      .map((task) => toCalendarTask(task, statusById));
+  }, [sprintTasks, taskStatuses, selectedSprint]);
 
   const todayTasks = useMemo(
     () =>
-      sprintTasks.filter(
+      calendarTasks.filter(
         (task) => selectedDate >= task.start && selectedDate <= task.end,
       ),
-    [sprintTasks, selectedDate],
+    [calendarTasks, selectedDate],
   );
 
   const todayEvents = useMemo(
@@ -146,7 +208,9 @@ export default function Calendar() {
     setFormError("");
   };
 
-  const createEvent = () => {
+  const createEvent = async () => {
+    if (saving) return;
+
     const title = newEvent.title.trim();
 
     // 저장을 막는 이유를 alert 대신 모달 안에 보여줘요(alert는 화면 흐름을 끊고 접근성도 나빠요).
@@ -169,26 +233,21 @@ export default function Calendar() {
       return;
     }
 
-    setEvents((prev) => [
-      ...prev,
-      {
-        // Date.now()는 같은 밀리초에 두 번 저장하면 겹칠 수 있어서 현재 id 중 최댓값 + 1로 만들어요.
-        // (서버를 붙이면 응답으로 받은 id로 바꾸면 돼요.)
-        event_id: nextNumericId(prev, "event_id"),
-        workspace_id: 1,
-        created_by: 1,
-        title,
-        description: newEvent.description,
-        color: newEvent.color,
-        start_datetime: newEvent.start_datetime,
-        // datetime-local을 지우면 ""가 와서 ?? 로는 못 걸러요. ||로 빈 값을 null로 바꿔요.
-        end_datetime: newEvent.end_datetime || null,
-      },
-    ]);
+    // datetime-local을 지우면 ""가 와서 ?? 로는 못 걸러요. 서버 요청을 만들 때 ||로 빈 값을 null로 바꿔요.
+    setSaving(true);
 
-    setOpenModal(false);
-    setFormError("");
-    setNewEvent(createEmptyEvent(selectedDate));
+    try {
+      const created = await eventApi.createEvent(workspaceId, { ...newEvent, title });
+      setEvents((prev) => [...(prev ?? []), created]);
+
+      setOpenModal(false);
+      setFormError("");
+      setNewEvent(createEmptyEvent(selectedDate));
+    } catch (err) {
+      setFormError(getErrorMessage(err, "일정을 만들지 못했어요."));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -207,7 +266,7 @@ export default function Calendar() {
 
       <CalendarToolbar
         sprintList={calendarSprints}
-        selectedSprint={selectedSprint}
+        selectedSprint={selectedSprint ?? ""}
         onSprintChange={setSelectedSprint}
         currentMonth={currentMonth}
         onPrevMonth={() => moveMonth(-1)}
@@ -217,11 +276,17 @@ export default function Calendar() {
 
       <CalendarSprintBanner sprint={sprint} today={today} />
 
+      {eventsError && (
+        <p className="emptyText" role="alert" style={{ color: "#ef4444" }}>
+          일정을 불러오지 못했어요. {eventsError}
+        </p>
+      )}
+
       <div className="calendarContent">
         <CalendarGrid
           currentMonth={currentMonth}
-          tasks={sprintTasks}
-          events={events}
+          tasks={calendarTasks}
+          events={events ?? []}
           selectedDate={selectedDate}
           onSelectDate={setSelectedDate}
           onMonthChange={setCurrentMonth}
@@ -348,8 +413,8 @@ export default function Calendar() {
                 취소
               </button>
 
-              <button className="saveBtn" onClick={createEvent}>
-                생성
+              <button className="saveBtn" onClick={createEvent} disabled={saving}>
+                {saving ? "저장 중…" : "생성"}
               </button>
             </div>
           </div>

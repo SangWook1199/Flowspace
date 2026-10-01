@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import workspaceCreateMock from "../mock/workspaceCreateMock";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { nextNumericId } from "../utils/id";
+import { getErrorMessage } from "../utils/apiError";
 
 import ProgressHeader from "../components/workspace/ProgressHeader";
 import WorkspaceNameStep from "../components/workspace/WorkspaceNameStep";
@@ -39,6 +40,7 @@ export default function WorkspaceCreatePage() {
   // 빠른 연속 클릭을 못 막으니, 즉시 바뀌는 ref를 같이 써요(state는 버튼 비활성화용).
   const submittingRef = useRef(false);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   const navigate = useNavigate();
   const { createWorkspace } = useWorkspace();
@@ -99,7 +101,7 @@ export default function WorkspaceCreatePage() {
   // "워크스페이스 생성"과 "건너뛰기"가 같이 쓰는 생성 로직이에요. 초대할 사람을
   // 인자로 받아서 건너뛰기는 항상 빈 배열을 넘겨요(예전엔 둘 다 같은 핸들러라
   // 건너뛰어도 목록에 있던 사람이 초대됐어요).
-  const submit = (invitedMembers) => {
+  const submit = async (invitedMembers) => {
     if (submittingRef.current) return;
 
     const name = workspace.name.trim();
@@ -111,24 +113,39 @@ export default function WorkspaceCreatePage() {
 
     submittingRef.current = true;
     setSubmitting(true);
+    setError("");
 
-    // API를 붙이면 이 호출이 비동기가 되고, 실패 시 submittingRef/submitting을 풀어줘야 해요.
-    // TODO : Spring API
-    const created = createWorkspace({
-      name,
-      initials: workspace.initials,
-      color: workspace.color,
-      invitedMembers,
-    });
+    try {
+      // 워크스페이스 만들기 → 첫 페이지 만들기 → 이메일별 초대 순서로 서버에 보내요.
+      const created = await createWorkspace({
+        name,
+        initials: workspace.initials,
+        color: workspace.color,
+        invitedMembers,
+      });
 
-    if (!created) {
+      if (!created) {
+        submittingRef.current = false;
+        setSubmitting(false);
+        return;
+      }
+
+      // 워크스페이스는 이미 만들어진 뒤라서, 초대가 실패한 이메일만 알려주고 계속 진행해요.
+      if (created.failedInvites.length > 0) {
+        window.alert(
+          `워크스페이스는 만들었지만 아래 이메일은 초대하지 못했어요.\n\n${created.failedInvites
+            .map((item) => `· ${item.email} — ${item.message}`)
+            .join("\n")}`,
+        );
+      }
+
+      // 만들어진 워크스페이스의 첫 페이지로 이동해요(첫 페이지를 못 만들었으면 홈으로).
+      navigate(created.page ? `/pages/${created.page.id}` : "/");
+    } catch (err) {
+      setError(getErrorMessage(err, "워크스페이스를 만들지 못했어요. 다시 시도해주세요."));
       submittingRef.current = false;
       setSubmitting(false);
-      return;
     }
-
-    // 만들어진 워크스페이스의 첫 페이지로 이동해요.
-    navigate(`/pages/${created.page.id}`);
   };
 
   // 직접 주소로 들어와서 돌아갈 기록이 없으면 navigate(-1)이 아무 일도 안 해서
@@ -173,6 +190,15 @@ export default function WorkspaceCreatePage() {
             onPrev={() => setStep(1)}
             onNext={() => setStep(3)}
           />
+        )}
+
+        {error && (
+          <p
+            role="alert"
+            style={{ margin: "0 0 12px", color: "#ef4444", fontSize: 14, textAlign: "center" }}
+          >
+            {error}
+          </p>
         )}
 
         {step === 3 && (

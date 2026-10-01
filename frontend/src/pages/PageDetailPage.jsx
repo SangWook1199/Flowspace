@@ -272,8 +272,20 @@ export default function PageDetailPage() {
   // 만들어도 사이드바와 바로 동기화돼요.
   const { pageId } = useParams();
   const navigate = useNavigate();
-  const { pages, setPages, createPage, duplicatePage, deletePage, restorePage, renamePage, sprintTasks, toggleSubtask } =
-    useOutletContext();
+  const {
+    pages,
+    pagesLoading,
+    pagesError,
+    reloadPages,
+    createLocalPage,
+    duplicatePage,
+    updatePage: updatePageById,
+    deletePage,
+    restorePage,
+    renamePage,
+    sprintTasks,
+    toggleSubtask,
+  } = useOutletContext();
   const { currentWorkspaceId } = useWorkspace();
 
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
@@ -293,6 +305,35 @@ export default function PageDetailPage() {
           p.id === numericId && (p.workspaceId ?? 1) === currentWorkspaceId,
       )
     : undefined;
+
+  // 페이지 목록을 서버에서 받는 중이거나 실패했을 때는 "찾을 수 없어요"를 보여주지 않아요.
+  if (!page && pagesLoading) {
+    return (
+      <div className="page-detail-page">
+        <p className="page-detail__missing" role="status">
+          페이지를 불러오는 중이에요…
+        </p>
+      </div>
+    );
+  }
+
+  if (!page && pagesError) {
+    return (
+      <div className="page-detail-page">
+        <p className="page-detail__missing" role="alert">
+          {pagesError}
+        </p>
+        <button
+          type="button"
+          className="page-detail__cover-btn"
+          style={{ margin: "0 auto" }}
+          onClick={reloadPages}
+        >
+          다시 시도
+        </button>
+      </div>
+    );
+  }
 
   if (!page) {
     return (
@@ -323,9 +364,8 @@ export default function PageDetailPage() {
     );
   }
 
-  const updatePage = (patch) => {
-    setPages((prev) => prev.map((p) => (p.id === page.id ? { ...p, ...patch } : p)));
-  };
+  // 제목·아이콘은 서버에도 저장되고(잠깐 기다렸다가 한 번), 블록·커버는 서버 저장 연결(M5) 전까지 화면에만 있어요.
+  const updatePage = (patch) => updatePageById(page.id, patch);
 
   // breadcrumb: 바로 위 부모만이 아니라 최상위까지 전체 경로를 보여줘요.
   const ancestors = [];
@@ -576,7 +616,7 @@ export default function PageDetailPage() {
           blocks={page.blocks}
           onChange={(blocks) => updatePage({ blocks })}
           pages={pages}
-          onCreateChildPage={() => createPage(page.id)}
+          onCreateChildPage={() => createLocalPage(page.id)}
           onDuplicatePage={(pageId) => duplicatePage(pageId, page.id)}
           onRenameRowPage={renamePage}
           onDeleteRowPage={deletePage}

@@ -21,11 +21,11 @@ export default function TaskRow({
         <input
           type="checkbox"
           checked={checked}
-          aria-label={`${task.id} 선택`}
+          aria-label={`${task.code ?? task.id} 선택`}
           onChange={() => onCheck(task.id)}
         />
       </td>
-      <td>{task.id}</td>
+      <td>{task.code ?? task.id}</td>
       <td className={styles.taskTitle}>{task.title}</td>
       <td>
         <span className={styles.avatar}>{task.assignee?.[0]}</span>

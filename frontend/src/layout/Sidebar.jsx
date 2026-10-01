@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import * as Icons from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -157,9 +157,20 @@ export default function Sidebar({
     setPageDropTarget(null);
   };
 
-  const handleCreatePage = () => {
-    const newPage = onCreatePage?.();
-    if (newPage) navigate(`/pages/${newPage.id}`);
+  // 페이지를 서버에 만들기 때문에 응답을 기다린 뒤 이동해요. 연타로 여러 개가 만들어지지
+  // 않게 만드는 동안은 다시 누르지 못하게 막아요.
+  const creatingPageRef = useRef(false);
+
+  const handleCreatePage = async () => {
+    if (creatingPageRef.current) return;
+    creatingPageRef.current = true;
+
+    try {
+      const newPage = await onCreatePage?.();
+      if (newPage) navigate(`/pages/${newPage.id}`);
+    } finally {
+      creatingPageRef.current = false;
+    }
   };
 
   const handleDeletePage = (e, page) => {

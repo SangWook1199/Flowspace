@@ -124,6 +124,14 @@ public class TaskController {
         return taskService.updateTaskStatus(taskId, request, userDetails.getUsername());
     }
 
+    @Operation(summary = "Backlog Task 생성")
+    @PostMapping("/workspaces/{workspaceId}/backlog/tasks")
+    public TaskResponse createBacklogTask(@PathVariable Long workspaceId,
+        @Valid @RequestBody TaskCreateRequest request, @AuthenticationPrincipal UserDetails userDetails) {
+
+        return taskService.createBacklogTask(workspaceId, request, userDetails.getUsername());
+    }
+
     @Operation(summary = "Backlog Task 목록 조회")
     @GetMapping("/workspaces/{workspaceId}/backlog/tasks")
     public List<TaskResponse> getBacklogTasks(@PathVariable Long workspaceId,

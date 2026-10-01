@@ -14,6 +14,8 @@ import { useWorkspace } from "../context/WorkspaceContext";
 // 이 파일은 안 건드리고 WorkspaceProvider만 바꾸면 돼요.
 //
 // useWorkspace는 Provider가 없으면 어디를 놓쳤는지 알려주는 에러를 던져요.
+const SPRINT_ORDER = { ACTIVE: 0, PLANNING: 1, COMPLETED: 2 };
+
 export default function MainLayout() {
   const {
     navigation,
@@ -21,15 +23,39 @@ export default function MainLayout() {
     workspaces,
     currentWorkspace,
     switchWorkspace,
+    workspaceError,
+    reloadWorkspaces,
+    pagesLoading,
+    pagesError,
+    reloadPages,
     pages,
     setPages,
     pagesInWorkspace,
     sprintsInWorkspace,
+    backlog,
+    taskStatuses,
     sprintTasks,
-    setSprintTasks,
+    sprintDataLoading,
+    sprintDataError,
+    reloadSprintData,
+    createSprint,
+    changeSprintStatus,
+    deleteSprint,
+    createTask,
+    updateTask,
+    deleteTasks,
+    moveTaskOnBoard,
     toggleSubtask,
+    addSubtasks,
+    deleteSubtask,
+    createStatus,
+    saveStatus,
+    deleteStatus,
+    reorderStatuses,
     createPage,
+    createLocalPage,
     duplicatePage,
+    updatePage,
     deletePage,
     restorePage,
     permanentlyDeletePage,
@@ -43,6 +69,30 @@ export default function MainLayout() {
   // UI 상태라 Provider로 올리지 않았어요.
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  // 워크스페이스 목록을 아직 못 받았거나 실패했을 때는 사이드바·헤더를 그릴 수 없어요
+  // (현재 워크스페이스가 있어야 이름·페이지를 보여줘요).
+  if (!currentWorkspace) {
+    return (
+      <div style={{ margin: "auto", padding: 40, textAlign: "center" }} role="status">
+        {workspaceError ? (
+          <>
+            <p role="alert">{workspaceError}</p>
+            <button type="button" onClick={reloadWorkspaces} style={{ marginTop: 12 }}>
+              다시 시도
+            </button>
+          </>
+        ) : (
+          <p>워크스페이스를 불러오는 중이에요…</p>
+        )}
+      </div>
+    );
+  }
+
+  // 사이드바의 "현재 스프린트"는 진행 중 → 계획됨 → 완료 순으로 위에서 세 개만 보여줘요.
+  const sidebarSprints = [...sprintsInWorkspace].sort(
+    (a, b) => (SPRINT_ORDER[a.status] ?? 3) - (SPRINT_ORDER[b.status] ?? 3),
+  );
+
   return (
     <>
       <Sidebar
@@ -50,7 +100,7 @@ export default function MainLayout() {
         pages={pagesInWorkspace}
         workspaces={workspaces}
         currentWorkspace={currentWorkspace}
-        sprints={sprintsInWorkspace}
+        sprints={sidebarSprints}
         onSwitchWorkspace={switchWorkspace}
         onCreatePage={createPage}
         onDeletePage={deletePage}
@@ -64,17 +114,41 @@ export default function MainLayout() {
         <Header members={members} />
         <Outlet
           context={{
+            workspaceId: currentWorkspace.id,
             pages,
             setPages,
-            createPage,
+            pagesLoading,
+            pagesError,
+            reloadPages,
+            createLocalPage,
             duplicatePage,
+            updatePage,
             deletePage,
             restorePage,
             permanentlyDeletePage,
             renamePage,
+            members,
+            sprints: sprintsInWorkspace,
+            backlog,
+            taskStatuses,
             sprintTasks,
-            setSprintTasks,
+            sprintDataLoading,
+            sprintDataError,
+            reloadSprintData,
+            createSprint,
+            changeSprintStatus,
+            deleteSprint,
+            createTask,
+            updateTask,
+            deleteTasks,
+            moveTaskOnBoard,
             toggleSubtask,
+            addSubtasks,
+            deleteSubtask,
+            createStatus,
+            saveStatus,
+            deleteStatus,
+            reorderStatuses,
           }}
         />
       </main>

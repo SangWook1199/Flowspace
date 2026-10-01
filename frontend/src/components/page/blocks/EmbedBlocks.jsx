@@ -72,7 +72,7 @@ export function TaskEmbed({ taskId, tasks, onChange, onToggleSubtask }) {
         </span>
         <span className="embed-task-card__title">{task.title}</span>
         <span className="embed-task-card__meta">
-          <span className="embed-task-card__code">{task.id}</span>
+          <span className="embed-task-card__code">{task.code ?? task.id}</span>
           <span className="embed-task-card__assignee">{task.assignees?.[0]?.name}</span>
           {task.dueDate && <span className="embed-task-card__due">~{task.dueDate}</span>}
           {subtasks.length > 0 && (

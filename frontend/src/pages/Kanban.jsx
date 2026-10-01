@@ -1,22 +1,99 @@
 import { useMemo, useState, Fragment } from "react";
 import { Plus } from "lucide-react";
-import { useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 
 import KanbanColumn from "../components/kanban/KanbanColumn";
 import StatusModal from "../components/kanban/StatusModal";
 
-import { nextNumericId } from "../utils/id";
+import { useAuth } from "../context/useAuth";
+import { todayKey } from "../utils/date";
+import { getSprintPhase } from "../utils/sprintRange";
 
-import { activeSprint, statuses as statusesMock } from "../mock/kanban";
+// 칸반 보드는 "진행 중인 스프린트" 하나의 작업을 보여줘요. 진행 중인 스프린트가 여러 개면 오늘이 기간에
+// 들어 있는 것을 먼저, 없으면 목록에서 가장 앞의 것을 써요.
+const pickActiveSprint = (sprints) => {
+  const active = sprints.filter((sprint) => sprint.status === "ACTIVE");
+  const today = todayKey();
+  return active.find((sprint) => getSprintPhase(sprint, today).phase === "during") ?? active[0] ?? null;
+};
 
 export default function Kanban() {
-  // 태스크 자체(sprintTasks)는 이제 MainLayout에서 끌어올린 세션
-  // 상태예요 — 스프린트 작업 목록(SprintTasks.jsx)·페이지 TASK 블록
-  // (BlockEditor.jsx)과 이 배열을 그대로 같이 써서, 어느 화면에서
-  // 바꾸든 나머지에도 반영돼요. 컬럼(statuses) 순서/카드 위치는 아직
-  // 이 화면(칸반 보드)만의 관심사라 로컬 상태로 남겨뒀어요.
-  const { sprintTasks, setSprintTasks } = useOutletContext();
+  const navigate = useNavigate();
+  const { sprints = [], sprintDataLoading, sprintDataError, reloadSprintData } = useOutletContext();
+
+  if (sprintDataLoading || sprintDataError) {
+    return (
+      <div className="kanbanPage">
+        {sprintDataLoading ? (
+          <p className="emptySprints" role="status">칸반 보드를 불러오는 중이에요…</p>
+        ) : (
+          <div className="emptySprints" role="alert">
+            <p>{sprintDataError}</p>
+            <button type="button" className="sprintDetail" onClick={reloadSprintData}>
+              다시 시도
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const activeSprint = pickActiveSprint(sprints);
+
+  if (!activeSprint) {
+    return (
+      <div className="kanbanPage">
+        <header className="kanbanHeader">
+          <div>
+            <h1>칸반 보드</h1>
+            <p>진행 중인 스프린트가 없어요</p>
+          </div>
+        </header>
+        <div className="emptySprints">
+          <p>스프린트를 시작하면 이곳에서 작업을 칸반으로 관리할 수 있어요.</p>
+          <button type="button" className="sprintDetail" onClick={() => navigate("/sprints")}>
+            스프린트 목록으로 ›
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return <KanbanBoard key={activeSprint.id} activeSprint={activeSprint} />;
+}
+
+function KanbanBoard({ activeSprint }) {
+  // 작업·상태(컬럼)는 서버에서 불러온 공용 데이터예요 — 스프린트 작업 목록(SprintTasks.jsx)·페이지 TASK 블록
+  // (BlockEditor.jsx)과 같은 배열을 써서, 어느 화면에서 바꾸든 나머지에도 반영돼요.
+  // 드래그 중인 위치 표시는 이 화면만의 관심사라 로컬 상태로 들고 있고, 드롭할 때 한 번만 서버에 저장해요.
+  const {
+    sprintTasks,
+    members = [],
+    taskStatuses: statuses,
+    createTask,
+    moveTaskOnBoard,
+    createStatus: createStatusOnServer,
+    saveStatus: saveStatusOnServer,
+    deleteStatus: deleteStatusOnServer,
+    reorderStatuses,
+  } = useOutletContext();
+  const auth = useAuth();
   const [createOpen, setCreateOpen] = useState(false);
+
+  // 컬럼 아래의 "작업 추가": 그 컬럼에 새 작업을 만들어요(담당자는 나, 기간은 스프린트 기간).
+  const addTask = (statusId) => {
+    const me = members.find((member) => member.id === auth?.user?.id);
+
+    createTask(activeSprint.id, {
+      title: "새 작업",
+      statusId,
+      assignees: me ? [me] : [],
+      priority: "MEDIUM",
+      startDate: activeSprint.startDate ?? "",
+      dueDate: activeSprint.endDate ?? "",
+      description: "",
+    });
+  };
 
   // 컬럼(상태) 순서도 카드랑 똑같은 방식이에요 — 드래그 중엔 배열을 안
   // 건드리고 "여기 놓으면 이 컬럼 앞으로/뒤로 들어간다"는 목표 위치만
@@ -28,9 +105,6 @@ export default function Kanban() {
   // /api/task-statuses/reorder 에 { workspaceId, statuses: [{statusId,
   // position}] } 를 지금 순서 그대로(0,1,2...) 보내면 돼요 — status의
   // position은 백엔드에서도 그냥 정수라 배열 인덱스를 그대로 쓰면 됩니다.
-  const [statuses, setStatuses] = useState(() =>
-    [...statusesMock].sort((a, b) => a.position - b.position),
-  );
   const [dragStatusId, setDragStatusId] = useState(null);
   const [statusDropTarget, setStatusDropTarget] = useState(null); // { beforeStatusId }
 
@@ -100,19 +174,16 @@ export default function Kanban() {
   // 드래그 상태만 정리해요 — 예전엔 dragend마다 무조건 커밋해서 취소해도 컬럼이 움직였어요.
   const commitColumnDrop = (cancelled = false) => {
     if (!cancelled && dragStatusId !== null && statusDropTarget) {
-      setStatuses((prev) => {
-        const next = [...prev];
-        const fromIndex = next.findIndex((s) => s.id === dragStatusId);
-        if (fromIndex === -1) return prev;
+      const next = [...statuses];
+      const fromIndex = next.findIndex((s) => s.id === dragStatusId);
 
+      if (fromIndex !== -1) {
         const [moved] = next.splice(fromIndex, 1);
 
         if (statusDropTarget.beforeStatusId === null) {
           next.push(moved);
         } else {
-          const toIndex = next.findIndex(
-            (s) => s.id === statusDropTarget.beforeStatusId,
-          );
+          const toIndex = next.findIndex((s) => s.id === statusDropTarget.beforeStatusId);
           if (toIndex === -1) {
             next.push(moved);
           } else {
@@ -120,8 +191,8 @@ export default function Kanban() {
           }
         }
 
-        return next.map((status, index) => ({ ...status, position: index }));
-      });
+        reorderStatuses(next);
+      }
     }
 
     setDragStatusId(null);
@@ -152,13 +223,13 @@ export default function Kanban() {
     const fallbackStatusId = statuses[0]?.id;
 
     return sprintTasks
-      .filter((task) => task.sprintId === undefined || task.sprintId === activeSprint.id)
+      .filter((task) => task.sprintId === activeSprint.id)
       .map((task) =>
         statusIds.has(task.statusId) || fallbackStatusId === undefined
           ? task
           : { ...task, statusId: fallbackStatusId },
       );
-  }, [sprintTasks, statuses]);
+  }, [sprintTasks, statuses, activeSprint.id]);
   const [dragTaskId, setDragTaskId] = useState(null);
   const [dropTarget, setDropTarget] = useState(null); // { statusId, beforeTaskId }
 
@@ -244,27 +315,11 @@ export default function Kanban() {
   // cancelled가 true면(Esc 취소, 보드 밖 드롭) 아무것도 옮기지 않고 드래그 상태만 지워요.
   const commitDrop = (cancelled = false) => {
     if (!cancelled && dragTaskId !== null && dropTarget) {
-      setSprintTasks((prev) => {
-        const next = [...prev];
-        const fromIndex = next.findIndex((t) => t.id === dragTaskId);
-        if (fromIndex === -1) return prev;
-
-        const [moved] = next.splice(fromIndex, 1);
-        const movedWithStatus = { ...moved, statusId: dropTarget.statusId };
-
-        if (dropTarget.beforeTaskId === null) {
-          next.push(movedWithStatus);
-          return next;
-        }
-
-        const toIndex = next.findIndex((t) => t.id === dropTarget.beforeTaskId);
-        if (toIndex === -1) {
-          next.push(movedWithStatus);
-        } else {
-          next.splice(toIndex, 0, movedWithStatus);
-        }
-
-        return next;
+      // 화면 배열을 바꾸고 서버에 저장하는 건 moveTaskOnBoard가 해요.
+      moveTaskOnBoard({
+        taskId: dragTaskId,
+        statusId: dropTarget.statusId,
+        beforeTaskId: dropTarget.beforeTaskId,
       });
     }
 
@@ -272,46 +327,19 @@ export default function Kanban() {
     setDropTarget(null);
   };
 
-  // 컬럼(상태) 만들기/고치기/지우기 — 아직 API 전이라 이 화면의 state만 바꿔요. API가 붙으면 각각
-  // POST / PATCH / DELETE /api/task-statuses 를 부른 뒤 이 자리에서 목록을 갱신하면 돼요.
-  // 새 상태는 맨 끝에 붙고, id는 지금 있는 id 중 가장 큰 값 + 1이에요(서버가 id를 주면 그 값으로 바꿔요).
-  const createStatus = ({ name, category, color }) => {
-    setStatuses((prev) => [
-      ...prev,
-      { id: nextNumericId(prev), name, category, color, position: prev.length, isDefault: false },
-    ]);
-    setCreateOpen(false);
+  // 컬럼(상태) 만들기/고치기/지우기 — 서버에 저장하고 목록을 갱신하는 건 WorkspaceProvider의 함수가 해요.
+  // 새 상태는 맨 끝에 붙어요. 만들기에 성공하면 모달을 닫고, 실패하면 안내만 뜨고 모달은 그대로예요.
+  const createStatus = async ({ name, category, color }) => {
+    const ok = await createStatusOnServer({ name, category, color });
+    if (ok) setCreateOpen(false);
   };
 
   // 이름/카테고리/색만 바꿔요. 작업은 statusId로 연결돼 있어서 이름이 바뀌어도 그대로 따라와요.
-  const saveStatus = (data) => {
-    setStatuses((prev) =>
-      prev.map((status) =>
-        status.id === data.id
-          ? { ...status, name: data.name, category: data.category, color: data.color }
-          : status,
-      ),
-    );
-  };
+  const saveStatus = (data) => saveStatusOnServer(data);
 
-  // 상태를 지울 땐 그 상태의 작업을 모달에서 고른 상태로 먼저 옮겨요 — 안 그러면 컬럼이 없어진 작업이
-  // 보드에서 사라져요. 옮길 곳이 없거나(자기 자신 포함) 이미 없는 상태면 아무것도 안 해요.
-  const deleteStatus = ({ deleteStatusId, moveToStatusId }) => {
-    const canMove =
-      moveToStatusId !== deleteStatusId && statuses.some((status) => status.id === moveToStatusId);
-    if (!canMove) return;
-
-    setSprintTasks((prev) =>
-      prev.map((task) =>
-        task.statusId === deleteStatusId ? { ...task, statusId: moveToStatusId } : task,
-      ),
-    );
-    setStatuses((prev) =>
-      prev
-        .filter((status) => status.id !== deleteStatusId)
-        .map((status, index) => ({ ...status, position: index })),
-    );
-  };
+  // 상태를 지울 땐 그 상태의 작업을 모달에서 고른 상태로 먼저 옮겨요(서버가 옮겨줘요) — 안 그러면 컬럼이
+  // 없어진 작업이 보드에서 사라져요.
+  const deleteStatus = (data) => deleteStatusOnServer(data);
 
   return (
     <div className="kanbanPage">
@@ -362,6 +390,7 @@ export default function Kanban() {
               onTaskDragOver={(taskId, isAfter) => handleTaskDragOver(taskId, isAfter, status.id)}
               onColumnEndDragEnter={() => handleColumnEndDragEnter(status.id)}
               onTaskDragEnd={commitDrop}
+              onAddTask={() => addTask(status.id)}
             />
           </Fragment>
         ))}

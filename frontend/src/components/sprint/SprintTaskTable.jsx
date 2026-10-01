@@ -12,7 +12,7 @@ import { formatDateDots, percentOf } from "../../utils/date";
 
 // tasks는 공용 작업 모델(assignees 객체 배열, startDate/dueDate, subtasks {text, checked})에
 // 상태 카테고리 status("TODO" | "IN_PROGRESS" | "DONE")를 얹은 모양이에요.
-export default function SprintTaskTable({ tasks = [] }) {
+export default function SprintTaskTable({ tasks = [], onAdd }) {
   // 처음엔 첫 번째 작업을 펼쳐둬요(작업 id를 코드에 박아두지 않고 목록에서 꺼내요).
   const [openTask, setOpenTask] = useState(() => tasks[0]?.id ?? null);
 
@@ -30,7 +30,7 @@ export default function SprintTaskTable({ tasks = [] }) {
             가져오기
           </button>
 
-          <button type="button">
+          <button type="button" onClick={onAdd}>
             <Plus size={18} />
             작업 추가
           </button>

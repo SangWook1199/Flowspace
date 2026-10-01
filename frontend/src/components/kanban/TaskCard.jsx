@@ -67,9 +67,9 @@ export default function TaskCard({
       onDragEnd={(e) => onDragEnd?.(e.dataTransfer.dropEffect === "none")}
     >
       <div className="cardTop">
-        <small className="cardKey">{task.id}</small>
+        <small className="cardKey">{task.code ?? task.id}</small>
 
-        <button type="button" className="cardMenu" aria-label={`${task.id} 작업 메뉴`}>
+        <button type="button" className="cardMenu" aria-label={`${task.code ?? task.id} 작업 메뉴`}>
           <MoreHorizontal size={16} />
         </button>
       </div>

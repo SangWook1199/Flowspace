@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AuthContext from "./AuthContext";
 import * as authApi from "../api/auth";
+import { toUser } from "../api/mappers";
 import { AUTH_LOGOUT_EVENT } from "../api/client";
 import { saveTokens, clearTokens, getAccessToken } from "../utils/token";
 
@@ -40,7 +41,7 @@ export function AuthProvider({ children }) {
     authApi
       .getMe()
       .then(({ data }) => {
-        if (isLatest()) setUser(data);
+        if (isLatest()) setUser(toUser(data));
       })
       .catch((err) => {
         if (!isLatest()) return;
@@ -84,7 +85,7 @@ export function AuthProvider({ children }) {
     const { data } = await authApi.login({ email, password });
     bootId.current++;
     saveTokens(data);
-    setUser(data.user);
+    setUser(toUser(data.user));
     setAuthError(false);
     return data;
   }, []);
@@ -93,7 +94,7 @@ export function AuthProvider({ children }) {
     const { data } = await authApi.signup(payload);
     bootId.current++;
     saveTokens(data);
-    setUser(data.user);
+    setUser(toUser(data.user));
     setAuthError(false);
     return data;
   }, []);
@@ -108,6 +109,9 @@ export function AuthProvider({ children }) {
     setAuthError(false);
   }, []);
 
+  // 프로필 수정 응답처럼 서버 user를 그대로 넘겨도 화면 모양으로 바꿔서 저장해요.
+  const updateUser = useCallback((dto) => setUser(toUser(dto)), []);
+
   const value = useMemo(
     () => ({
       user,
@@ -116,10 +120,10 @@ export function AuthProvider({ children }) {
       login,
       signup,
       logout,
-      setUser,
+      setUser: updateUser,
       retryAuth: loadMe,
     }),
-    [user, loading, authError, login, signup, logout, loadMe],
+    [user, loading, authError, login, signup, logout, updateUser, loadMe],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

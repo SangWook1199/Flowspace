@@ -5,6 +5,9 @@ const STATUS_COLOR = {
   BLUE: "#3B82F6",
   PURPLE: "#9333EA",
   GREEN: "#22C55E",
+  RED: "#EF4444",
+  ORANGE: "#F59E0B",
+  PINK: "#EC4899",
 };
 
 const EVENT_COLOR = {

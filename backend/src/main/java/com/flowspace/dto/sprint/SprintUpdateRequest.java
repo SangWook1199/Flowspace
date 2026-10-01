@@ -20,7 +20,7 @@ public record SprintUpdateRequest(
   @Size(max = 500, message = "목표는 500자 이하입니다.")
   String goal,
 
-  @Size(max = 1000, message = "설명은 1000자 이하입니다.")
+  @Size(max = 20000, message = "설명이 너무 깁니다.")
   String description,
 
   @NotNull(message = "색상은 필수입니다.")

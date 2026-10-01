@@ -51,7 +51,7 @@ export default function TodayWorkCard({ tasks = [] }) {
             <th>작업 제목</th>
             <th>상태</th>
             <th>담당</th>
-            <th>시간</th>
+            <th>마감</th>
             <th width="40"></th>
           </tr>
         </thead>

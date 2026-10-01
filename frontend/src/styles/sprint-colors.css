@@ -1,0 +1,188 @@
+/* 스프린트 색(서버 WorkspaceColor 7종)별 스타일이에요. 기존 css에 없던 색(빨강·보라·분홍·회색)과
+   진행률/상세 아이콘 같은 빠진 자리를 채워요. 이름은 utils/color.js의 SPRINT_COLORS.css와 같아요. */
+
+.sprintCard.indigo {
+  border-left-color: #4f5cf6;
+}
+.indigo .sprintIcon {
+  background: #f0efff;
+  color: #4f5cf6;
+}
+.sprintProgress strong.indigo {
+  color: #4f5cf6;
+}
+.sprintProgress i.indigo {
+  background: #4f5cf6;
+}
+.sidebarSprints > button > i.indigo,
+.currentSprint i.indigo {
+  background: #4f5cf6;
+}
+.detailIcon.indigo {
+  background: #f0efff;
+  color: #4f5cf6;
+}
+.embed-sprint-card--indigo .embed-sprint-card__bar {
+  background: #4f5cf6;
+}
+
+.sprintCard.green {
+  border-left-color: #34ba79;
+}
+.green .sprintIcon {
+  background: #e7f8ef;
+  color: #31b878;
+}
+.sprintProgress strong.green {
+  color: #31b878;
+}
+.sprintProgress i.green {
+  background: #34ba79;
+}
+.sidebarSprints > button > i.green,
+.currentSprint i.green {
+  background: #34ba79;
+}
+.detailIcon.green {
+  background: #e7f8ef;
+  color: #31b878;
+}
+.embed-sprint-card--green .embed-sprint-card__bar {
+  background: #34ba79;
+}
+
+.sprintCard.amber {
+  border-left-color: #f4a623;
+}
+.amber .sprintIcon {
+  background: #fff5e3;
+  color: #f2a321;
+}
+.sprintProgress strong.amber {
+  color: #f2a321;
+}
+.sprintProgress i.amber {
+  background: #f4a623;
+}
+.sidebarSprints > button > i.amber,
+.currentSprint i.amber {
+  background: #f4a623;
+}
+.detailIcon.amber {
+  background: #fff5e3;
+  color: #f2a321;
+}
+.embed-sprint-card--amber .embed-sprint-card__bar {
+  background: #f4a623;
+}
+
+.sprintCard.red {
+  border-left-color: #ef5350;
+}
+.red .sprintIcon {
+  background: #fdecec;
+  color: #e5484d;
+}
+.sprintProgress strong.red {
+  color: #e5484d;
+}
+.sprintProgress i.red {
+  background: #ef5350;
+}
+.sidebarSprints > button > i.red,
+.currentSprint i.red {
+  background: #ef5350;
+}
+.detailIcon.red {
+  background: #fdecec;
+  color: #e5484d;
+}
+.embed-sprint-card--red .embed-sprint-card__bar {
+  background: #ef5350;
+}
+
+.sprintCard.purple {
+  border-left-color: #8f7be0;
+}
+.purple .sprintIcon {
+  background: #f3efff;
+  color: #7c66d9;
+}
+.sprintProgress strong.purple {
+  color: #7c66d9;
+}
+.sprintProgress i.purple {
+  background: #8f7be0;
+}
+.sidebarSprints > button > i.purple,
+.currentSprint i.purple {
+  background: #8f7be0;
+}
+.detailIcon.purple {
+  background: #f3efff;
+  color: #7c66d9;
+}
+.embed-sprint-card--purple .embed-sprint-card__bar {
+  background: #8f7be0;
+}
+
+.sprintCard.pink {
+  border-left-color: #ec6fa9;
+}
+.pink .sprintIcon {
+  background: #fdeef6;
+  color: #e0559a;
+}
+.sprintProgress strong.pink {
+  color: #e0559a;
+}
+.sprintProgress i.pink {
+  background: #ec6fa9;
+}
+.sidebarSprints > button > i.pink,
+.currentSprint i.pink {
+  background: #ec6fa9;
+}
+.detailIcon.pink {
+  background: #fdeef6;
+  color: #e0559a;
+}
+.embed-sprint-card--pink .embed-sprint-card__bar {
+  background: #ec6fa9;
+}
+
+.sprintCard.slate {
+  border-left-color: #8b97a8;
+}
+.slate .sprintIcon {
+  background: #eef1f5;
+  color: #6b7a90;
+}
+.sprintProgress strong.slate {
+  color: #6b7a90;
+}
+.sprintProgress i.slate {
+  background: #8b97a8;
+}
+.sidebarSprints > button > i.slate,
+.currentSprint i.slate {
+  background: #8b97a8;
+}
+.detailIcon.slate {
+  background: #eef1f5;
+  color: #6b7a90;
+}
+.embed-sprint-card--slate .embed-sprint-card__bar {
+  background: #8b97a8;
+}
+
+/* 대시보드 "오늘의 일정" 타임라인 막대 — 일정 색(WorkspaceColor) 중 기존 css에 없던 색이에요. */
+.timelineBar.red {
+  background: #ef4444;
+}
+.timelineBar.pink {
+  background: #ec4899;
+}
+.timelineBar.gray {
+  background: #64748b;
+}

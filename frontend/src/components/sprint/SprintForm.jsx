@@ -6,6 +6,7 @@ import RichTextEditor from "./RichTextEditor";
 
 import { isRangeReversed, parseDateKey, todayKey, toDateKey } from "../../utils/date";
 import { htmlToText } from "../../utils/sanitizeHtml";
+import { getErrorMessage } from "../../utils/apiError";
 
 // 상세 설명 글자 수 한도(에디터의 "n / 2000" 표시와 같은 값이에요).
 const DESCRIPTION_MAX = 2000;
@@ -40,20 +41,31 @@ const validate = (form) => {
   return "";
 };
 
-// onSubmit(값)을 넘기면 API 연결 지점으로 쓸 수 있어요(안 넘기면 아직 목(Mock)이라 메시지만 보여줘요).
+// onSubmit(값)은 스프린트를 만드는 함수예요(Promise를 돌려줘요). 실패해서 예외를 던지면 그 메시지를 폼 아래에 보여줘요.
 export default function SprintForm({ onSubmit }) {
   const [form, setForm] = useState(makeInitialForm);
   const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const update = (key, value) =>
     setForm((current) => ({ ...current, [key]: value }));
-  const submit = (event) => {
+  const submit = async (event) => {
     event.preventDefault();
+    if (submitting) return;
+
     const problem = validate(form);
     if (problem) return setMessage(problem);
 
     const payload = { ...form, name: form.name.trim(), goal: form.goal.trim() };
-    onSubmit?.(payload);
-    setMessage(`“${payload.name}” 스프린트를 생성했습니다. (Mock)`);
+    setSubmitting(true);
+    setMessage("");
+
+    try {
+      await onSubmit?.(payload);
+    } catch (err) {
+      setMessage(getErrorMessage(err, "스프린트를 만들지 못했어요."));
+    } finally {
+      setSubmitting(false);
+    }
   };
   const cancel = () => {
     setForm(makeInitialForm());
@@ -112,7 +124,7 @@ export default function SprintForm({ onSubmit }) {
       {message && <p className="formMessage">{message}</p>}
       <FormActions
         onCancel={cancel}
-        disabled={Boolean(validate(form))}
+        disabled={Boolean(validate(form)) || submitting}
       />
     </form>
   );
