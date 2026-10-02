@@ -172,6 +172,17 @@ export function WorkspaceProvider({ children }) {
     [userId],
   );
 
+  // 실시간으로 받은 접속 상태(PRESENCE)를 팀원 목록에 반영해요. 목록에 없는 사람이면 아무 일도 안 해요.
+  const setMemberPresence = useCallback((memberId, online, lastActiveAt = null) => {
+    setMembers((prev) =>
+      prev.some((m) => m.id === memberId && (m.online !== online || (lastActiveAt && m.lastActiveAt !== lastActiveAt)))
+        ? prev.map((m) =>
+            m.id === memberId ? { ...m, online, lastActiveAt: lastActiveAt ?? m.lastActiveAt } : m,
+          )
+        : prev,
+    );
+  }, []);
+
   const refreshPages = useCallback(
     () => (currentWorkspaceId == null ? Promise.resolve() : loadPages(currentWorkspaceId, { silent: true })),
     [currentWorkspaceId, loadPages],
@@ -635,6 +646,7 @@ export function WorkspaceProvider({ children }) {
     leaveCurrentWorkspace,
     deleteCurrentWorkspace,
     reloadMembers,
+    setMemberPresence,
     // 페이지
     pages,
     setPages,

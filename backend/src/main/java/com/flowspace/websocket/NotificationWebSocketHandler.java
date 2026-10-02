@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -13,6 +14,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 // 로그인한 사용자의 WebSocket 연결을 들고 있다가, 서버가 보낼 알림을 그 사용자에게 밀어줘요.
@@ -20,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 // 나중에 실시간 커서처럼 다른 실시간 기능도 이 연결을 같이 쓸 수 있어요.
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class NotificationWebSocketHandler extends TextWebSocketHandler {
 
     // 핸드셰이크(JwtHandshakeInterceptor)가 토큰을 검증해서 넣어둔 사용자 id의 속성 이름
@@ -28,6 +31,9 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final Map<Long, Set<WebSocketSession>> sessions = new ConcurrentHashMap<>();
+
+    // 접속 상태(온라인/오프라인)가 바뀌면 알려요(PresenceService가 같은 워크스페이스 멤버에게 전달해요).
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
@@ -39,7 +45,13 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        sessions.computeIfAbsent(id, key -> ConcurrentHashMap.newKeySet()).add(session);
+        Set<WebSocketSession> set = sessions.computeIfAbsent(id, key -> ConcurrentHashMap.newKeySet());
+        set.add(session);
+
+        // 탭을 여러 개 열어도 처음 연결될 때만 "온라인이 됐다"고 알려요.
+        if (set.size() == 1) {
+            eventPublisher.publishEvent(new UserConnectionEvent(id, true));
+        }
     }
 
     @Override
@@ -55,6 +67,7 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
 
                 if (set.isEmpty()) {
                     sessions.remove(id, set);
+                    eventPublisher.publishEvent(new UserConnectionEvent(id, false));
                 }
             }
         }

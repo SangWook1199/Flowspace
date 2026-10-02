@@ -23,6 +23,7 @@ export function NotificationProvider({ children }) {
     switchWorkspace,
     reloadWorkspaces,
     reloadMembers,
+    setMemberPresence,
     acceptInvite: acceptWorkspaceInvite,
   } = useWorkspace();
 
@@ -41,6 +42,8 @@ export function NotificationProvider({ children }) {
 
   // 소켓 콜백은 한 번만 만들어서 계속 쓰니까, 최신 값이 필요한 동작은 ref로 넘겨요.
   const pushEffectRef = useRef(() => {});
+  // 접속 상태 반영과 "소켓이 (다시) 열렸을 때 팀원 목록 맞추기"도 같은 이유로 ref로 넘겨요.
+  const presenceRef = useRef({ apply: () => {}, resync: () => {} });
 
   /* ---------- 불러오기 ---------- */
 
@@ -124,8 +127,14 @@ export function NotificationProvider({ children }) {
       onOpen: () => {
         refresh();
         loadInvites();
+        // 끊겨 있던 동안 놓친 접속 상태 변화를 팀원 목록을 다시 받아서 맞춰요.
+        presenceRef.current.resync();
       },
       onMessage: (message) => {
+        if (message?.type === "PRESENCE" && message.data) {
+          presenceRef.current.apply(message.data.userId, Boolean(message.data.online), message.data.lastActiveAt);
+          return;
+        }
         if (message?.type !== "NOTIFICATION" || !message.data) return;
         const notification = toNotification(message.data);
 
@@ -141,6 +150,8 @@ export function NotificationProvider({ children }) {
 
   // 알림이 일으키는 화면 쪽 변화: 초대가 오면 초대 목록을, 소유권·멤버가 바뀌면 워크스페이스와 멤버를 다시 받아요.
   useEffect(() => {
+    presenceRef.current = { apply: setMemberPresence, resync: reloadMembers };
+
     pushEffectRef.current = (notification) => {
       const inCurrent = notification.workspaceId != null && notification.workspaceId === currentWorkspaceId;
 

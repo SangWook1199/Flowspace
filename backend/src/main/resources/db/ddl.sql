@@ -11,7 +11,6 @@ CREATE TABLE users (
     nickname VARCHAR(30) NOT NULL,
     provider ENUM('LOCAL','GOOGLE','MICROSOFT', 'APPLE') DEFAULT 'LOCAL',
     provider_id VARCHAR(255),
-    status ENUM('ONLINE','OFFLINE') DEFAULT 'OFFLINE',
     last_active_at DATETIME,
     profile_file_id BIGINT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

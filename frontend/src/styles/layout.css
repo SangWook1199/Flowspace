@@ -469,6 +469,36 @@
 .headerMembers .avatar:first-child {
   margin-left: 0;
 }
+/* 팀원 아이콘에 마우스를 올리면 바로 뜨는 안내(이름 + 온라인 / 마지막 접속 n시간 전) */
+.headerMembers .avatar[data-tip] {
+  position: relative;
+  cursor: default;
+}
+.headerMembers .avatar[data-tip]:hover {
+  z-index: 5;
+}
+.headerMembers .avatar[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #1f2a44;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+  text-align: center;
+  white-space: pre;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s;
+}
+.headerMembers .avatar[data-tip]:hover::after {
+  opacity: 1;
+}
 /* 헤더로 옮긴 온라인 팀원 — 검색창과 벨/프로필 사이에 비던 여백을
    채워요. 세로로 쌓던 사이드바 버전과 달리 가로 한 줄로 배치해요. */
 .headerMembers {

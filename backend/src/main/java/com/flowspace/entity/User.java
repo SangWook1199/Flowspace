@@ -1,7 +1,6 @@
 package com.flowspace.entity;
 
 import com.flowspace.entity.enums.Provider;
-import com.flowspace.entity.enums.UserStatus;
 import java.time.LocalDateTime;
 import jakarta.persistence.*;
 import lombok.*;
@@ -36,11 +35,7 @@ public class User extends BaseEntity {
     @Column(name = "provider_id", length = 255)
     private String providerId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 10)
-    @Builder.Default
-    private UserStatus status = UserStatus.OFFLINE;
-
+    // 마지막으로 접속해 있던 시각 (WebSocket 연결이 열리거나 마지막 연결이 닫힐 때 PresenceService가 갱신해요)
     @Column(name = "last_active_at")
     private LocalDateTime lastActiveAt;
 

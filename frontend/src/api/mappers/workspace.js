@@ -23,12 +23,14 @@ export const toWorkspaceRequest = ({ name, initials, color, icon }) => ({
 });
 
 // 서버 WorkspaceMemberResponse → 헤더/담당자 목록의 팀원.
-// 서버에는 접속 상태가 없어서 online은 "지금 로그인한 나"만 true예요.
+// online은 서버가 알려주는 접속 상태(WebSocket 연결 여부)예요. 지금 이 화면을 보는 나는 항상 온라인이에요.
 export const toMember = (dto, currentUserId) => ({
   id: dto.userId,
   name: dto.nickname ?? dto.name,
   initial: getInitial(dto.nickname ?? dto.name),
   role: dto.role,
   profileImageUrl: fileUrl(dto.profileImageUrl),
-  online: dto.userId === currentUserId,
+  online: dto.userId === currentUserId || Boolean(dto.online),
+  // 마지막으로 접속해 있던 시각(서버가 시간대 없는 LocalDateTime으로 줘요). 접속 기록이 없으면 null.
+  lastActiveAt: dto.lastActiveAt ?? null,
 });

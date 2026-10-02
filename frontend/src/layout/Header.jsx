@@ -4,6 +4,7 @@ import * as Icons from "lucide-react";
 import styles from "../styles/classes.js";
 import { getAvatarTone } from "../utils/avatarColor.js";
 import { getInitial } from "../utils/initial.js";
+import { toRelativeTime } from "../api/mappers";
 import { useAuth } from "../context/useAuth";
 import NotificationBell from "./NotificationBell";
 
@@ -17,6 +18,23 @@ import NotificationBell from "./NotificationBell";
 // 대신 들어감). 순서는 벨 다음, 프로필 앞이에요.
 export default function Header({ members = [] }) {
   const onlineCount = members.filter((member) => member.online).length;
+
+  // "마지막 접속 3시간 전"이 시간이 지나면서 낡아 보이지 않게 1분마다 현재 시각을 갱신해요.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // 아이콘에 마우스를 올리면 보이는 안내: 이름 + (온라인 | 마지막 접속 n시간 전 | 접속 기록 없음)
+  const presenceTip = (member) => {
+    const status = member.online
+      ? "온라인"
+      : member.lastActiveAt
+        ? `마지막 접속 ${toRelativeTime(member.lastActiveAt, now)}`
+        : "접속 기록 없음";
+    return `${member.name ?? ""}\n${status}`;
+  };
 
   // 온라인인 팀원이 먼저, 오프라인은 그 뒤에 보여줘요(같은 상태끼리는 원래 순서 그대로).
   const sortedMembers = useMemo(
@@ -95,7 +113,7 @@ export default function Header({ members = [] }) {
               <span
                 key={member.id}
                 className={`${styles.avatar} ${member.online ? styles[getAvatarTone(member.id)] : styles.offline}`}
-                title={`${member.name ?? ""} · ${member.online ? "온라인" : "오프라인"}`}
+                data-tip={presenceTip(member)}
               >
                 {member.initial}
               </span>

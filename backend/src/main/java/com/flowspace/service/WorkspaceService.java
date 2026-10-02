@@ -26,6 +26,7 @@ public class WorkspaceService {
         private final TaskStatusRepository taskStatusRepository;
         private final WorkspaceTaskStatusRepository workspaceTaskStatusRepository;
         private final NotificationService notificationService;
+        private final PresenceService presenceService;
 
         // 워크스페이스 생성
         public WorkspaceResponse createWorkspace(WorkspaceCreateRequest request, String email) {
@@ -268,7 +269,9 @@ public class WorkspaceService {
                 workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-                return workspaceMemberRepository.findByWorkspace(workspace).stream().map(WorkspaceMemberResponse::from)
+                return workspaceMemberRepository.findByWorkspace(workspace).stream()
+                        .map(member -> WorkspaceMemberResponse.from(member,
+                                presenceService.isOnline(member.getUser().getUserId())))
                         .toList();
         }
 
