@@ -27,6 +27,9 @@ public enum ErrorCode {
     OWNER_CANNOT_LEAVE(HttpStatus.BAD_REQUEST, "OWNER는 워크스페이스를 나갈 수 없습니다."),
     LAST_WORKSPACE(HttpStatus.BAD_REQUEST, "마지막 남은 워크스페이스는 삭제하거나 나갈 수 없습니다."),
 
+    // Notification
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "알림을 찾을 수 없습니다."),
+
     // Sprint
     SPRINT_NOT_FOUND(HttpStatus.NOT_FOUND, "스프린트를 찾을 수 없습니다."),
     INVALID_SPRINT_DATE(HttpStatus.BAD_REQUEST, "종료일은 시작일보다 빠를 수 없습니다."),

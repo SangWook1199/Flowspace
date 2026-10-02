@@ -25,6 +25,7 @@ public class WorkspaceService {
         private final WorkspaceInviteRepository workspaceInviteRepository;
         private final TaskStatusRepository taskStatusRepository;
         private final WorkspaceTaskStatusRepository workspaceTaskStatusRepository;
+        private final NotificationService notificationService;
 
         // 워크스페이스 생성
         public WorkspaceResponse createWorkspace(WorkspaceCreateRequest request, String email) {
@@ -176,6 +177,11 @@ public class WorkspaceService {
 
                 workspaceInviteRepository.save(invite);
 
+                // 초대받은 사람에게 알림 (알림창에서 바로 수락/거절할 수 있어요)
+                notificationService.send(invitee, inviter, workspace, NotificationType.WORKSPACE_INVITE,
+                        inviter.getNickname() + "님이 '" + workspace.getName() + "' 워크스페이스에 초대했어요.",
+                        invite.getInviteId(), null);
+
                 return WorkspaceInviteResponse.from(invite);
         }
 
@@ -214,6 +220,13 @@ public class WorkspaceService {
 
                 invite.accept();
                 user.updateLastWorkspace(invite.getWorkspace());
+
+                // 받은 초대 알림은 읽음 처리하고, 초대한 사람에게 수락했다고 알려요.
+                notificationService.markReadByRef(user, NotificationType.WORKSPACE_INVITE, invite.getInviteId());
+                notificationService.send(invite.getInviter(), user, invite.getWorkspace(),
+                        NotificationType.INVITE_ACCEPTED,
+                        user.getNickname() + "님이 '" + invite.getWorkspace().getName() + "' 초대를 수락했어요.",
+                        invite.getInviteId(), null);
         }
 
         // 워크스페이스 초대 거절
@@ -234,6 +247,12 @@ public class WorkspaceService {
                 }
 
                 invite.decline();
+
+                notificationService.markReadByRef(user, NotificationType.WORKSPACE_INVITE, invite.getInviteId());
+                notificationService.send(invite.getInviter(), user, invite.getWorkspace(),
+                        NotificationType.INVITE_DECLINED,
+                        user.getNickname() + "님이 '" + invite.getWorkspace().getName() + "' 초대를 거절했어요.",
+                        invite.getInviteId(), null);
         }
 
         // 워크스페이스 멤버 목록 조회
@@ -279,6 +298,10 @@ public class WorkspaceService {
                 targetMember.changeRole(WorkspaceRole.OWNER);
 
                 workspace.changeOwner(targetUser);
+
+                notificationService.send(targetUser, user, workspace, NotificationType.OWNERSHIP_TRANSFERRED,
+                        user.getNickname() + "님이 '" + workspace.getName() + "'의 소유권을 넘겼어요. 이제 내가 소유자예요.", null,
+                        null);
         }
 
         // 워크스페이스 삭제
@@ -332,6 +355,9 @@ public class WorkspaceService {
                 }
 
                 workspaceMemberRepository.delete(targetMember);
+
+                notificationService.send(targetUser, loginUser, workspace, NotificationType.MEMBER_REMOVED,
+                        "'" + workspace.getName() + "' 워크스페이스에서 내보내졌어요.", null, null);
         }
 
         // 워크스페이스 나가기
@@ -356,6 +382,10 @@ public class WorkspaceService {
                 }
 
                 workspaceMemberRepository.delete(member);
+
+                // 소유자에게 멤버가 나갔다고 알려요.
+                notificationService.send(workspace.getOwner(), user, workspace, NotificationType.MEMBER_LEFT,
+                        user.getNickname() + "님이 '" + workspace.getName() + "' 워크스페이스를 나갔어요.", null, null);
 
                 if (user.getLastWorkspace() != null && user.getLastWorkspace().getWorkspaceId().equals(workspaceId)) {
                         user.updateLastWorkspace(null);

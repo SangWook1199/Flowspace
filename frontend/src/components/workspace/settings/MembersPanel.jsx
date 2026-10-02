@@ -12,7 +12,7 @@ function MemberAvatar({ member }) {
   const showImage = member.profileImageUrl && !failed;
 
   return (
-    <span className={`${styles.avatar} ${styles[getAvatarTone(member.id)]} wsSettings__avatar`}>
+    <span className={`${styles.avatar} ${member.online ? styles[getAvatarTone(member.id)] : styles.offline} wsSettings__avatar`}>
       {showImage ? (
         <img src={member.profileImageUrl} alt="" onError={() => setFailed(true)} />
       ) : (

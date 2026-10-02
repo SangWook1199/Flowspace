@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import * as Icons from "lucide-react";
 import styles from "../styles/classes.js";
 import { getAvatarTone } from "../utils/avatarColor.js";
 import { getInitial } from "../utils/initial.js";
 import { useAuth } from "../context/useAuth";
+import NotificationBell from "./NotificationBell";
 
 // 검색창은 아직 실제로 입력이 안 되는 장식용이에요(진짜 검색은 API
 // 연결 때). 예전엔 오른쪽에 단축키 힌트("⌘K" → "Ctrl K" → "검색")가
@@ -16,6 +17,12 @@ import { useAuth } from "../context/useAuth";
 // 대신 들어감). 순서는 벨 다음, 프로필 앞이에요.
 export default function Header({ members = [] }) {
   const onlineCount = members.filter((member) => member.online).length;
+
+  // 온라인인 팀원이 먼저, 오프라인은 그 뒤에 보여줘요(같은 상태끼리는 원래 순서 그대로).
+  const sortedMembers = useMemo(
+    () => [...members.filter((m) => m.online), ...members.filter((m) => !m.online)],
+    [members],
+  );
 
   // 오른쪽 프로필은 "지금 로그인한 사람"이라서 members(워크스페이스 팀원
   // 목록)에서 찾지 않고 AuthContext의 user를 그대로 써요. members는 위의
@@ -76,10 +83,7 @@ export default function Header({ members = [] }) {
       </div>
 
       <div className={styles.headerRight}>
-        <button type="button" className={styles.bell} aria-label="알림">
-          <Icons.Bell />
-          <i />
-        </button>
+        <NotificationBell />
 
         <div className={styles.headerMembers}>
           <small>
@@ -87,10 +91,11 @@ export default function Header({ members = [] }) {
           </small>
 
           <div>
-            {members.map((member) => (
+            {sortedMembers.map((member) => (
               <span
                 key={member.id}
-                className={`${styles.avatar} ${styles[getAvatarTone(member.id)]}`}
+                className={`${styles.avatar} ${member.online ? styles[getAvatarTone(member.id)] : styles.offline}`}
+                title={`${member.name ?? ""} · ${member.online ? "온라인" : "오프라인"}`}
               >
                 {member.initial}
               </span>

@@ -76,6 +76,10 @@ public class SecurityConfig {
                                 "/api/auth/refresh",
                                 "/api/auth/google",
                                 "/api/auth/microsoft",
+                                // WebSocket 연결은 ?token= 으로 핸드셰이크에서 직접 검증해요(JwtHandshakeInterceptor).
+                                "/ws/**",
+                                // 서버 오류가 /error로 넘어갈 때 로그인 요구(401)로 바뀌어 원인이 가려지지 않게 열어둬요.
+                                "/error",
                                 // 업로드·기본 커버 이미지는 <img> 태그가 직접 불러와서 Authorization 헤더를 못 붙여요.
                                 "/uploads/**",
                                 "/covers/**",

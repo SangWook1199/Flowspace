@@ -509,6 +509,11 @@
   background: #e9edf3;
   color: #60708a;
 }
+/* 오프라인인 팀원 — 회색은 이 용도로만 써요(getAvatarTone은 회색을 고르지 않아요). */
+.avatar.offline {
+  background: #e9edf3;
+  color: #8a96ab;
+}
 .avatar.orange {
   background: #ffe8d2;
   color: #c1630b;

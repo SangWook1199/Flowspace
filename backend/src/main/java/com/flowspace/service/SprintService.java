@@ -32,6 +32,7 @@ import com.flowspace.entity.enums.ActivityType;
 import com.flowspace.entity.enums.BlockType;
 import com.flowspace.entity.enums.DatabaseColumnType;
 import com.flowspace.entity.enums.DatabaseViewType;
+import com.flowspace.entity.enums.NotificationType;
 import com.flowspace.entity.enums.SprintStatus;
 import com.flowspace.entity.enums.TaskStatusCategory;
 import com.flowspace.entity.BlockDatabaseRow;
@@ -88,6 +89,7 @@ public class SprintService {
     private final UserRepository userRepository;
 
     private final ActivityService activityService;
+    private final NotificationService notificationService;
 
     // 스프린트 생성
     public SprintResponse createSprint(Long workspaceId, SprintCreateRequest request, String email) {
@@ -195,9 +197,34 @@ public class SprintService {
                 sprint.getSprintId());
         }
 
+        SprintStatus before = sprint.getStatus();
+
         sprint.updateStatus(request.status());
 
+        notifySprintStatus(sprint, before, user);
+
         return toSprintResponse(sprint);
+    }
+
+    // 스프린트 시작/완료를 워크스페이스 멤버에게 알림
+    private void notifySprintStatus(Sprint sprint, SprintStatus before, User actor) {
+
+        if (before == sprint.getStatus()) {
+            return;
+        }
+
+        List<User> members = workspaceMemberRepository.findByWorkspace(sprint.getWorkspace()).stream()
+            .map(m -> m.getUser()).toList();
+
+        if (sprint.getStatus() == SprintStatus.ACTIVE) {
+            notificationService.sendAll(members, actor, sprint.getWorkspace(), NotificationType.SPRINT_STARTED,
+                actor.getNickname() + "님이 '" + sprint.getName() + "' 스프린트를 시작했어요.", sprint.getSprintId(),
+                "/sprints/" + sprint.getSprintId() + "/tasks");
+        } else if (sprint.getStatus() == SprintStatus.COMPLETED) {
+            notificationService.sendAll(members, actor, sprint.getWorkspace(), NotificationType.SPRINT_COMPLETED,
+                "'" + sprint.getName() + "' 스프린트가 완료되어 회고가 만들어졌어요.", sprint.getSprintId(),
+                "/retrospectives/" + sprint.getSprintId());
+        }
     }
 
     // 스프린트 삭제

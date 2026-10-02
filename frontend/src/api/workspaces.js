@@ -23,6 +23,16 @@ export const updateWorkspace = async (workspaceId, form) => {
 export const inviteMember = (workspaceId, email) =>
   client.post(`/workspaces/${workspaceId}/invites`, { email });
 
+// 내가 받은 초대 중 아직 수락/거절하지 않은 것들
+export const getMyInvites = async () => {
+  const { data } = await client.get("/workspaces/invites/me");
+  return data;
+};
+
+export const acceptInvite = (inviteId) => client.patch(`/workspaces/invites/${inviteId}/accept`);
+
+export const declineInvite = (inviteId) => client.patch(`/workspaces/invites/${inviteId}/decline`);
+
 // 워크스페이스 멤버 목록 (currentUserId는 online 표시용)
 export const getMembers = async (workspaceId, currentUserId) => {
   const { data } = await client.get(`/workspaces/${workspaceId}/members`);

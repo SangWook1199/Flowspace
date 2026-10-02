@@ -8,10 +8,12 @@
 // mock/dashboard.js의 민수가 tone:"green"인데 실제 CSS엔 .green이
 // 없어서 조용히 기본색으로 떨어지는 식) 값이 어긋나는 일이 있었는데,
 // 이제 이 함수 하나로만 색을 정하면 그런 불일치가 애초에 생기지 않아요.
-export const AVATAR_TONES = ["blue", "green", "purple", "gray", "orange", "pink"];
+// 회색(gray)은 일부러 뺐어요 — 회색 아바타는 "오프라인인 팀원"만 쓰는 색이라(.avatar.offline),
+// 해시로 고르는 색에 섞이면 오프라인과 헷갈려요.
+export const AVATAR_TONES = ["blue", "green", "purple", "orange", "pink"];
 
 export function getAvatarTone(userId) {
-  if (userId === null || userId === undefined) return "gray";
+  if (userId === null || userId === undefined) return "blue";
 
   const n =
     typeof userId === "number" && Number.isFinite(userId)

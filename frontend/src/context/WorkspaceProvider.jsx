@@ -563,6 +563,17 @@ export function WorkspaceProvider({ children }) {
 
   const currentWorkspace = workspaces.find((w) => w.id === currentWorkspaceId) ?? null;
 
+  // 받은 초대를 수락하고, 새로 들어온 워크스페이스로 바로 옮겨가요. 실패하면 예외를 던져요.
+  const acceptInvite = async (inviteId, workspaceId) => {
+    await workspaceApi.acceptInvite(inviteId);
+
+    // 진행 중이던 목록 요청이 이 최신 목록을 덮어쓰지 않게 번호를 올려요.
+    workspaceRequestId.current++;
+    const list = await workspaceApi.getWorkspaces();
+    setWorkspaces(list);
+    if (list.some((w) => w.id === workspaceId)) enterWorkspace(workspaceId);
+  };
+
   /* ---------- 워크스페이스 설정(수정 · 멤버 · 나가기 · 삭제) ---------- */
 
   // 지금 워크스페이스의 이름·이니셜·색·아이콘을 고쳐요(소유자만 — 서버가 확인해요). 실패하면 예외를 던져요.
@@ -614,6 +625,7 @@ export function WorkspaceProvider({ children }) {
     currentWorkspace,
     workspaceError,
     reloadWorkspaces: loadWorkspaces,
+    acceptInvite,
     switchWorkspace,
     createWorkspace,
     updateCurrentWorkspace,
