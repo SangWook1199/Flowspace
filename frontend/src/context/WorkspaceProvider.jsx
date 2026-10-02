@@ -9,7 +9,7 @@ import { getSavedWorkspaceId, saveWorkspaceId } from "../utils/workspaceStorage"
 import { useSprintData } from "./useSprintData";
 
 // 사이드바 메뉴 목록은 아직 목데이터예요(대시보드 연결 M4에서 정리해요).
-import { navigation as navigationMock } from "../mock/dashboard";
+import { NAVIGATION } from "../utils/navigation";
 // workspaceId가 없는 페이지(서버에 만드는 중인 임시 페이지 등)는 1번 워크스페이스 소속으로 봐요.
 const DEFAULT_WORKSPACE_ID = 1;
 const DEFAULT_CREATOR = "상욱"; // 로그인 정보가 없을 때만 쓰는 예전 기본값이에요.
@@ -171,6 +171,17 @@ export function WorkspaceProvider({ children }) {
     },
     [userId],
   );
+
+  // 실시간으로 받은 접속 상태(PRESENCE)를 팀원 목록에 반영해요. 목록에 없는 사람이면 아무 일도 안 해요.
+  const setMemberPresence = useCallback((memberId, online, lastActiveAt = null) => {
+    setMembers((prev) =>
+      prev.some((m) => m.id === memberId && (m.online !== online || (lastActiveAt && m.lastActiveAt !== lastActiveAt)))
+        ? prev.map((m) =>
+            m.id === memberId ? { ...m, online, lastActiveAt: lastActiveAt ?? m.lastActiveAt } : m,
+          )
+        : prev,
+    );
+  }, []);
 
   const refreshPages = useCallback(
     () => (currentWorkspaceId == null ? Promise.resolve() : loadPages(currentWorkspaceId, { silent: true })),
@@ -528,7 +539,7 @@ export function WorkspaceProvider({ children }) {
   // 워크스페이스로 전환해요. 첫 페이지가 있어야 만들자마자 보여줄 화면이 생겨요.
   // 이름이 비어 있으면 null, 만들기에 실패하면 예외를 던져요(호출한 화면이 안내 문구를 보여줘요).
   // 초대는 이메일마다 따로 보내고, 실패한 이메일은 failedInvites로 돌려줘요(워크스페이스는 이미 만들어진 뒤라서요).
-  const createWorkspace = async ({ name, initials, color, invitedMembers = [] }) => {
+  const createWorkspace = async ({ name, initials, color, icon, invitedMembers = [] }) => {
     const trimmedName = (name ?? "").trim();
     if (!trimmedName) return null;
 
@@ -536,6 +547,7 @@ export function WorkspaceProvider({ children }) {
       name: trimmedName,
       initials: (initials ?? "").trim() || fallbackInitials(trimmedName),
       color,
+      icon,
     });
 
     let page = null;
@@ -562,6 +574,55 @@ export function WorkspaceProvider({ children }) {
 
   const currentWorkspace = workspaces.find((w) => w.id === currentWorkspaceId) ?? null;
 
+  // 받은 초대를 수락하고, 새로 들어온 워크스페이스로 바로 옮겨가요. 실패하면 예외를 던져요.
+  const acceptInvite = async (inviteId, workspaceId) => {
+    await workspaceApi.acceptInvite(inviteId);
+
+    // 진행 중이던 목록 요청이 이 최신 목록을 덮어쓰지 않게 번호를 올려요.
+    workspaceRequestId.current++;
+    const list = await workspaceApi.getWorkspaces();
+    setWorkspaces(list);
+    if (list.some((w) => w.id === workspaceId)) enterWorkspace(workspaceId);
+  };
+
+  /* ---------- 워크스페이스 설정(수정 · 멤버 · 나가기 · 삭제) ---------- */
+
+  // 지금 워크스페이스의 이름·이니셜·색·아이콘을 고쳐요(소유자만 — 서버가 확인해요). 실패하면 예외를 던져요.
+  const updateCurrentWorkspace = async (form) => {
+    if (currentWorkspaceId == null) return null;
+    const updated = await workspaceApi.updateWorkspace(currentWorkspaceId, form);
+    setWorkspaces((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
+    return updated;
+  };
+
+  const reloadMembers = () => (currentWorkspaceId == null ? Promise.resolve() : loadMembers(currentWorkspaceId));
+
+  const inviteToCurrentWorkspace = (email) => workspaceApi.inviteMember(currentWorkspaceId, email);
+
+  const removeMemberFromCurrentWorkspace = async (memberId) => {
+    await workspaceApi.removeMember(currentWorkspaceId, memberId);
+    await reloadMembers();
+  };
+
+  // 소유권을 넘기면 내 역할과 멤버들의 역할이 바뀌니까 워크스페이스 목록(내 역할)과 멤버를 다시 받아요.
+  const transferCurrentOwnership = async (memberId) => {
+    await workspaceApi.transferOwnership(currentWorkspaceId, memberId);
+    await Promise.all([loadWorkspaces(), reloadMembers()]);
+  };
+
+  // 나가기·삭제 뒤에는 남은 워크스페이스 중 첫 번째로 옮겨가요. 화면 이동(홈으로)은 부르는 쪽이 해요.
+  const leaveOrDropCurrent = async (request) => {
+    const leavingId = currentWorkspaceId;
+    await request(leavingId);
+
+    const rest = workspaces.filter((w) => w.id !== leavingId);
+    setWorkspaces(rest);
+    if (rest.length > 0) enterWorkspace(rest[0].id);
+  };
+
+  const leaveCurrentWorkspace = () => leaveOrDropCurrent(workspaceApi.leaveWorkspace);
+  const deleteCurrentWorkspace = () => leaveOrDropCurrent(workspaceApi.deleteWorkspace);
+
   // 사이드바는 지금 워크스페이스의 페이지만 보여줘야 해서 걸러진 목록을 따로 내보내요.
   // 전체 pages는 그대로 두는 이유는 setPages 업데이터와 BlockEditor의 페이지 링크 조회가 전체 배열 기준이라서예요.
   const pagesInWorkspace = useMemo(
@@ -575,8 +636,17 @@ export function WorkspaceProvider({ children }) {
     currentWorkspace,
     workspaceError,
     reloadWorkspaces: loadWorkspaces,
+    acceptInvite,
     switchWorkspace,
     createWorkspace,
+    updateCurrentWorkspace,
+    inviteToCurrentWorkspace,
+    removeMemberFromCurrentWorkspace,
+    transferCurrentOwnership,
+    leaveCurrentWorkspace,
+    deleteCurrentWorkspace,
+    reloadMembers,
+    setMemberPresence,
     // 페이지
     pages,
     setPages,
@@ -619,7 +689,7 @@ export function WorkspaceProvider({ children }) {
     deleteStatus: sprintData.deleteStatus,
     reorderStatuses: sprintData.reorderStatuses,
     // 레이아웃용 데이터(사이드바 메뉴 · 헤더의 팀원)
-    navigation: navigationMock,
+    navigation: NAVIGATION,
     members,
   };
 

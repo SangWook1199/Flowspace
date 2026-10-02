@@ -33,4 +33,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
         LocalDate start, LocalDate end);
 
     List<Task> findByWorkspaceAndTitleContainingIgnoreCase(Workspace workspace, String keyword);
+
+    // 마감일이 date이고 아직 완료 상태가 아닌 작업 (마감 임박 알림용)
+    List<Task> findByEndDateAndStatus_CategoryNot(LocalDate endDate, TaskStatusCategory category);
 }

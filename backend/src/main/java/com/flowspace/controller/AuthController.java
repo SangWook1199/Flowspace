@@ -4,12 +4,16 @@ import com.flowspace.dto.auth.GoogleLoginRequest;
 import com.flowspace.dto.auth.LoginRequest;
 import com.flowspace.dto.auth.LoginResponse;
 import com.flowspace.dto.auth.MicrosoftLoginRequest;
+import com.flowspace.dto.auth.PasswordChangeRequest;
 import com.flowspace.dto.auth.ProfileUpdateRequest;
 import com.flowspace.dto.auth.RefreshRequest;
 import com.flowspace.dto.auth.SignupRequest;
 import com.flowspace.dto.auth.UserResponse;
+import com.flowspace.dto.auth.WithdrawCheckResponse;
+import com.flowspace.dto.auth.WithdrawRequest;
 import com.flowspace.dto.auth.TokenResponse;
 import com.flowspace.dto.auth.TokenRequest;
+import com.flowspace.service.AccountService;
 import com.flowspace.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +32,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 public class AuthController {
 
     private final AuthService authService;
+    private final AccountService accountService;
 
     @Operation(summary = "회원가입")
     @PostMapping("/signup")
@@ -74,6 +79,28 @@ public class AuthController {
         @AuthenticationPrincipal UserDetails userDetails) {
 
         return authService.updateProfile(request, image, userDetails.getUsername());
+    }
+
+    @Operation(summary = "비밀번호 변경", description = "성공하면 다른 기기의 로그인은 풀리고, 이 기기용 새 토큰을 반환합니다.")
+    @PutMapping("/me/password")
+    public LoginResponse changePassword(@Valid @RequestBody PasswordChangeRequest request,
+        @AuthenticationPrincipal UserDetails userDetails) {
+
+        return authService.changePassword(request, userDetails.getUsername());
+    }
+
+    @Operation(summary = "회원 탈퇴 사전 확인", description = "탈퇴하면 내 워크스페이스가 어떻게 되는지(탈퇴 가능 여부 포함)를 반환합니다.")
+    @GetMapping("/me/withdraw-check")
+    public WithdrawCheckResponse checkWithdraw(@AuthenticationPrincipal UserDetails userDetails) {
+
+        return accountService.checkWithdraw(userDetails.getUsername());
+    }
+
+    @Operation(summary = "회원 탈퇴", description = "개인정보를 지우고 '탈퇴한 사용자'로 익명 처리합니다. 이메일 계정은 비밀번호, 소셜 계정은 이메일 입력으로 확인합니다.")
+    @PostMapping("/me/withdraw")
+    public void withdraw(@RequestBody WithdrawRequest request, @AuthenticationPrincipal UserDetails userDetails) {
+
+        accountService.withdraw(request, userDetails.getUsername());
     }
 
     @Operation(summary = "프로필 이미지 삭제")

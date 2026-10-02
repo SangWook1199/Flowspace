@@ -23,6 +23,9 @@ export const refresh = (refreshToken) =>
 // 내 정보 조회
 export const getMe = () => client.get("/auth/me");
 
+// 비밀번호 변경. 응답으로 이 기기용 새 토큰이 와요(다른 기기의 로그인은 풀려요).
+export const changePassword = (data) => client.put("/auth/me/password", data);
+
 // 프로필 수정
 export const updateProfile = (formData) =>
   client.patch("/auth/me/profile", formData, {
@@ -33,3 +36,12 @@ export const updateProfile = (formData) =>
 
 // 프로필 삭제
 export const deleteProfileImage = () => client.delete("/auth/me/profile/image");
+
+// 탈퇴하면 내 워크스페이스가 어떻게 되는지(탈퇴 가능 여부 포함) 미리 확인
+export const getWithdrawCheck = async () => {
+  const { data } = await client.get("/auth/me/withdraw-check");
+  return data;
+};
+
+// 회원 탈퇴. 이메일 계정은 { password }, 소셜 계정은 { confirmEmail }로 본인을 확인해요.
+export const withdraw = (data) => client.post("/auth/me/withdraw", data);

@@ -5,6 +5,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import styles from "../styles/classes.js";
 import FlowSpaceLogo from "../components/common/FlowSpaceLogo";
 import WorkspaceSwitcher from "./WorkspaceSwitcher";
+import TrashPopover from "./TrashPopover";
+import WorkspaceIcon from "../components/common/WorkspaceIcon";
 
 // 페이지 줄을 드래그할 때 dataTransfer에 심는 커스텀 MIME이에요. Firefox는
 // dragstart에서 setData를 한 번도 안 부르면 드래그 자체를 시작하지 않아요.
@@ -80,13 +82,11 @@ export default function Sidebar({
   /* ---------- Pages ---------- */
   // 사이드바에는 최상위 페이지만 보여줘요. 하위 페이지는 각 페이지
   // 안의 "하위 페이지" 목록에서 오가는 구조라, 트리로 펼치는 건 아직 안 함.
-  // 휴지통으로 간 페이지는 여기 목록엔 안 보이고 아래 "휴지통" 섹션에서만
+  // 휴지통으로 간 페이지는 여기 목록엔 안 보이고 맨 아래 휴지통 팝업에서만
   // 보여요(중첩 여부와 상관없이 trashedAt이 있으면 전부 후보).
   const topLevelPages = pages.filter((page) => !page.parentPageId && !page.trashedAt);
   const trashedPages = pages.filter((page) => page.trashedAt);
   const isPageActive = (page) => pathname === `/pages/${page.id}`;
-
-  const [trashOpen, setTrashOpen] = useState(false);
 
   // 최상위 페이지 순서를 마우스로 드래그해서 바꿔요 — 블록 에디터의
   // 블록 드래그(BlockEditor.jsx의 handleBlockDragOver/commitBlockDrop)와
@@ -359,78 +359,6 @@ export default function Sidebar({
           <span>새 페이지</span>
         </button>
 
-        {/* ---------- Trash ---------- */}
-        {/* 페이지 삭제가 소프트 삭제(trashedAt)로 바뀌면서 생긴 복구 창구예요.
-            휴지통이 비어있으면 아예 안 보이게 해서 평소 사이드바를 어지럽히지
-            않아요. */}
-        {trashedPages.length > 0 && (
-          <div className="trashSection">
-            <button
-              type="button"
-              className="trashSection__toggle"
-              onClick={() => setTrashOpen((prev) => !prev)}
-              aria-expanded={trashOpen}
-              aria-label={`휴지통, 페이지 ${trashedPages.length}개`}
-            >
-              <Icon name="Trash2" size={15} />
-              <span>휴지통</span>
-              <b>{trashedPages.length}</b>
-              <Icon
-                name="ChevronRight"
-                size={14}
-                className={`trashSection__chevron ${trashOpen ? "open" : ""}`}
-              />
-            </button>
-
-            {trashOpen && (
-              <div className="trashSection__list">
-                {trashedPages.map((page) => (
-                  <div key={page.id} className="trashRow">
-                    <span className="trashRow__title">
-                      {page.icon ? (
-                        <span style={{ fontSize: 14, lineHeight: 1, width: 16, textAlign: "center" }}>
-                          {page.icon}
-                        </span>
-                      ) : (
-                        <Icon name="FileText" size={14} />
-                      )}
-                      <span>{page.title || "제목 없음"}</span>
-                    </span>
-
-                    <button
-                      type="button"
-                      className="trashRow__action"
-                      onClick={() => handleRestorePage(page.id)}
-                      title="복원"
-                      aria-label={`${page.title || "제목 없음"} 복원`}
-                    >
-                      <Icon name="RotateCcw" size={13} />
-                    </button>
-
-                    <button
-                      type="button"
-                      className="trashRow__action trashRow__action--danger"
-                      onClick={() => handlePermanentlyDeletePage(page)}
-                      title="완전히 삭제"
-                      aria-label={`${page.title || "제목 없음"} 완전히 삭제`}
-                    >
-                      <Icon name="X" size={13} />
-                    </button>
-                  </div>
-                ))}
-
-                <button
-                  type="button"
-                  className="trashSection__empty"
-                  onClick={handleEmptyTrash}
-                >
-                  휴지통 비우기
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* ---------- Sprint ---------- */}
 
         <div className="sidebarSprints">
@@ -473,14 +401,38 @@ export default function Sidebar({
           있고, 실제 설정 항목은 API 연결 때 채워요. 위쪽 WorkspaceSwitcher
           (워크스페이스 전환)와는 역할이 달라요. */}
 
-      <button
-        type="button"
-        className={styles.workspaceSettingsBtn}
-        onClick={onOpenSettings}
-      >
-        <Icon name="Settings" />
-        <span>워크스페이스 설정</span>
-      </button>
+      {/* 설정 버튼은 노션의 워크스페이스 버튼처럼 "아이콘 + 워크스페이스 이름(길면 …)"이고,
+          소유자가 아닌 멤버에게만 "멤버" 배지가 붙어요(소유자는 표시 없음). 오른쪽에는 아이콘만
+          있는 휴지통이 있고, 눌렀을 때 위로 팝업이 열려요(TrashPopover). */}
+      <div className="sidebarFooter">
+        <button
+          type="button"
+          className={styles.workspaceSettingsBtn}
+          onClick={onOpenSettings}
+          title="워크스페이스 설정"
+          aria-label={`워크스페이스 설정, ${currentWorkspace?.name ?? ""}`}
+        >
+          {currentWorkspace && (
+            <WorkspaceIcon
+              workspace={currentWorkspace}
+              className="workspaceSettingsBtn__icon"
+            />
+          )}
+          <span className="workspaceSettingsBtn__name">{currentWorkspace?.name}</span>
+          {currentWorkspace?.role === "MEMBER" && (
+            <em className="workspaceSettingsBtn__badge">멤버</em>
+          )}
+        </button>
+
+        <TrashPopover
+          pages={trashedPages}
+          allPages={pages}
+          canManage={currentWorkspace?.role === "OWNER"}
+          onRestore={handleRestorePage}
+          onPermanentlyDelete={handlePermanentlyDeletePage}
+          onEmpty={handleEmptyTrash}
+        />
+      </div>
     </aside>
   );
 }

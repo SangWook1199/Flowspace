@@ -13,6 +13,11 @@ public enum ErrorCode {
     NICKNAME_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 사용 중인 닉네임입니다."),
     INVALID_LOGIN(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "리프레시 토큰이 유효하지 않습니다."),
+    INVALID_CURRENT_PASSWORD(HttpStatus.BAD_REQUEST, "현재 비밀번호가 올바르지 않습니다."),
+    SAME_PASSWORD(HttpStatus.BAD_REQUEST, "새 비밀번호는 현재 비밀번호와 달라야 합니다."),
+    PASSWORD_NOT_SET(HttpStatus.BAD_REQUEST, "소셜 로그인 계정은 비밀번호를 변경할 수 없습니다."),
+    WITHDRAW_CONFIRM_MISMATCH(HttpStatus.BAD_REQUEST, "입력한 이메일이 계정 이메일과 다릅니다."),
+    OWNED_WORKSPACE_HAS_MEMBERS(HttpStatus.CONFLICT, "다른 멤버가 있는 워크스페이스의 소유자는 탈퇴할 수 없습니다. 소유권을 넘기거나 멤버를 내보낸 뒤 다시 시도해주세요."),
 
     // User
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."),
@@ -25,6 +30,10 @@ public enum ErrorCode {
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "멤버를 찾을 수 없습니다."),
     OWNER_CANNOT_REMOVE(HttpStatus.BAD_REQUEST, "OWNER는 추방할 수 없습니다."),
     OWNER_CANNOT_LEAVE(HttpStatus.BAD_REQUEST, "OWNER는 워크스페이스를 나갈 수 없습니다."),
+    LAST_WORKSPACE(HttpStatus.BAD_REQUEST, "마지막 남은 워크스페이스는 삭제하거나 나갈 수 없습니다."),
+
+    // Notification
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "알림을 찾을 수 없습니다."),
 
     // Sprint
     SPRINT_NOT_FOUND(HttpStatus.NOT_FOUND, "스프린트를 찾을 수 없습니다."),

@@ -47,12 +47,18 @@
 }
 .workspace span:nth-child(2) {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 3px;
   flex: 1;
+  min-width: 0;
 }
 .workspace b {
   font-size: 14px;
   font-weight: 600;
+  /* 이름이 길면 한 줄로 줄이고 …으로 생략해요(두 줄로 넘어가지 않게). */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .workspace small,
 .pageArea > p {
@@ -182,83 +188,170 @@
   background: #fde8e8;
   color: #e65353;
 }
-/* 휴지통 섹션 — 평소엔 접혀 있다가 눌러서 펼쳐요. 페이지 목록과
-   톤은 맞추되, 삭제 관련 UI라는 걸 알 수 있게 회색 계열로 살짝
-   낮춰요. */
-.trashSection {
-  margin-top: 4px;
-}
-.trashSection__toggle {
-  width: 100%;
-  height: 40px;
-  border: 0;
-  background: transparent;
-  border-radius: 9px;
+/* 휴지통 — 사이드바 맨 아래 설정 버튼 옆에 아이콘만 두고, 누르면 위로 팝업이 열려요.
+   삭제 관련 UI라 회색 계열로 톤을 낮췄어요. */
+.sidebarFooter {
+  margin-top: auto;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 11px;
-  text-align: left;
-  font-size: 13px;
-  font-weight: 500;
-  color: #7c879c;
+  gap: 8px;
 }
-.trashSection__toggle:hover {
-  background: #f4f6fa;
-}
-.trashSection__toggle svg {
-  color: #96a2b8;
+.trashPopover {
+  position: relative;
   flex-shrink: 0;
 }
-.trashSection__toggle span {
-  flex: 1;
+.trashPopover__btn {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #e7ebf2;
+  border-radius: 11px;
+  background: transparent;
+  color: #7c879c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.trashSection__toggle b {
+.trashPopover__btn:hover,
+.trashPopover__btn[aria-expanded="true"] {
+  background: #f4f6fa;
+}
+.trashPopover__badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #64748b;
+  color: #fff;
   font-size: 11px;
   font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  box-sizing: border-box;
+}
+.trashPopover__panel {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 10px);
+  width: 340px;
+  max-height: 420px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid #e7ebf2;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.14);
+  z-index: 20;
+}
+.trashPopover__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid #e3e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
   color: #96a2b8;
 }
-.trashSection__chevron {
-  transition: transform 0.15s ease;
+.trashPopover__search:focus-within {
+  border-color: #b9c6ff;
+  background: #fff;
 }
-.trashSection__chevron.open {
-  transform: rotate(90deg);
+.trashPopover__search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 13px;
+  color: #2a3951;
 }
-.trashSection__list {
-  padding: 2px 2px 4px 2px;
+.trashPopover__empty {
+  margin: 0;
+  padding: 24px 8px 26px;
+  text-align: center;
+  font-size: 13px;
+  color: #9aa4b8;
+}
+.trashPopover__list {
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 1px;
+  margin-right: -4px;
+  padding-right: 4px;
+}
+.trashPopover__foot {
+  border-top: 1px solid #eef1f6;
+  padding-top: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.trashPopover__foot small {
+  flex: 1;
+  padding-left: 4px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #9aa4b8;
+}
+.trashPopover__foot .trashSection__empty {
+  flex-shrink: 0;
 }
 .trashRow {
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 36px;
-  padding: 0 8px 0 27px;
+  gap: 10px;
+  min-height: 46px;
+  padding: 4px 6px 4px 8px;
   border-radius: 8px;
 }
 .trashRow:hover {
-  background: #f8fafc;
+  background: #f4f6fa;
 }
-.trashRow__title {
+.trashRow__icon {
+  flex-shrink: 0;
+  width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+  color: #7c879c;
+}
+.trashRow__text {
   flex: 1;
   min-width: 0;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
-  color: #9aa4b8;
+  flex-direction: column;
+  gap: 2px;
 }
-.trashRow__title span:last-child {
+.trashRow__text strong,
+.trashRow__text small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.trashRow__text strong {
+  font-size: 13px;
+  font-weight: 500;
+  color: #2a3951;
+}
+.trashRow__text small {
+  font-size: 11px;
+  color: #9aa4b8;
+}
 .trashRow__action {
   flex-shrink: 0;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   border: 0;
   border-radius: 7px;
   background: transparent;
@@ -268,7 +361,7 @@
   justify-content: center;
 }
 .trashRow__action:hover {
-  background: #eef2ff;
+  background: #e8edf8;
   color: #4e6dff;
 }
 .trashRow__action--danger:hover {
@@ -276,13 +369,11 @@
   color: #e65353;
 }
 .trashSection__empty {
-  margin-top: 4px;
-  height: 34px;
-  padding: 0 27px;
+  height: 30px;
+  padding: 0 10px;
   border: 0;
   background: transparent;
   border-radius: 8px;
-  text-align: left;
   font-size: 12px;
   font-weight: 500;
   color: #b3364a;
@@ -291,22 +382,59 @@
   background: #fde8e8;
 }
 .workspaceSettingsBtn {
-  /* 온라인 팀원 위젯이 있던 자리(margin-top:auto로 사이드바 맨 아래에
-     붙음). 워크스페이스 설정으로 들어가는 진입점이라 nav 버튼과
-     비슷한 톤으로, 다만 구분되게 테두리를 둘렀어요. */
-  margin-top: auto;
-  width: 100%;
-  height: 53px;
+  /* 사이드바 맨 아래(.sidebarFooter 안). 워크스페이스 설정으로 들어가는 진입점이고,
+     오른쪽 휴지통 버튼과 높이를 맞췄어요. */
+  flex: 1;
+  min-width: 0;
+  height: 40px;
   border: 1px solid #e7ebf2;
   border-radius: 11px;
   background: transparent;
   display: flex;
   align-items: center;
-  gap: 17px;
-  padding: 0 18px;
+  gap: 10px;
+  padding: 0 14px;
   text-align: left;
+  font-size: 13px;
   font-weight: 500;
   color: #2a3951;
+}
+.workspaceSettingsBtn__icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 워크스페이스 선택의 아이콘(40px에 글자 16px)과 같은 비율(0.4)로 맞춰요. */
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.workspaceSettingsBtn__icon.workspace-icon--emoji {
+  font-size: 17px;
+  line-height: 1;
+  box-sizing: border-box;
+  padding-bottom: 0.12em;
+}
+.workspaceSettingsBtn__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.workspaceSettingsBtn__badge {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: #fdf1d8;
+  color: #a16207;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 1.5;
 }
 .workspaceSettingsBtn:hover {
   background: #f8fafc;
@@ -336,10 +464,40 @@
   border: 2px solid #fff;
 }
 .headerMembers .avatar {
-  margin-left: -5px;
+  margin-left: -8px;
 }
 .headerMembers .avatar:first-child {
   margin-left: 0;
+}
+/* 팀원 아이콘에 마우스를 올리면 바로 뜨는 안내(이름 + 온라인 / 마지막 접속 n시간 전) */
+.headerMembers .avatar[data-tip] {
+  position: relative;
+  cursor: pointer;
+}
+.headerMembers .avatar[data-tip]:hover {
+  z-index: 5;
+}
+.headerMembers .avatar[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #1f2a44;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+  text-align: center;
+  white-space: pre;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s;
+}
+.headerMembers .avatar[data-tip]:hover::after {
+  opacity: 1;
 }
 /* 헤더로 옮긴 온라인 팀원 — 검색창과 벨/프로필 사이에 비던 여백을
    채워요. 세로로 쌓던 사이드바 버전과 달리 가로 한 줄로 배치해요. */
@@ -357,6 +515,94 @@
 }
 .headerMembers > div {
   display: flex;
+}
+/* 프로필 사진이 있는 팀원은 사진으로 보여요 */
+.headerMembers .avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+/* 5명이 넘으면 나머지를 묶은 "+N명" — 올리면 그 멤버들이 목록으로 보여요 */
+.headerMembersMore {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-left: 8px;
+}
+.headerMembersMore__btn {
+  padding: 4px 2px;
+  border: 0;
+  background: transparent;
+  color: #708098;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.headerMembersMore__btn:hover,
+.headerMembersMore:focus-within .headerMembersMore__btn {
+  color: #2a3951;
+}
+/* 버튼과 목록 사이 틈(padding)까지 호버 영역이라, 마우스를 내려도 목록이 사라지지 않아요 */
+.headerMembersMore__pop {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  padding-top: 8px;
+  z-index: 20;
+}
+.headerMembersMore:hover .headerMembersMore__pop,
+.headerMembersMore:focus-within .headerMembersMore__pop {
+  display: block;
+}
+.headerMembersMore__box {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  width: 230px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.14);
+}
+.headerMembersMore__box button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.headerMembersMore__box button:hover {
+  background: #f1f5f9;
+}
+.headerMembers .headerMembersMore__box .avatar {
+  width: 30px;
+  height: 30px;
+  margin-left: 0;
+  flex-shrink: 0;
+  font-size: 13px;
+}
+.headerMembersMore__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+  color: #1e293b;
+}
+.headerMembersMore__box small {
+  color: #94a3b8;
+  font-size: 11.5px;
 }
 /* 아바타 배경색은 이제 유저마다 값을 직접 넣는 게 아니라
    utils/avatarColor.js의 getAvatarTone(userId)가 고정 팔레트(6가지)
@@ -380,6 +626,11 @@
 .avatar.gray {
   background: #e9edf3;
   color: #60708a;
+}
+/* 오프라인인 팀원 — 회색은 이 용도로만 써요(getAvatarTone은 회색을 고르지 않아요). */
+.avatar.offline {
+  background: #e9edf3;
+  color: #8a96ab;
 }
 .avatar.orange {
   background: #ffe8d2;
@@ -511,8 +762,27 @@
   flex-shrink: 0;
 }
 
+/* 이모지 아이콘은 이니셜(16px 글자)보다 크게 */
+.workspaceIcon.workspace-icon--emoji,
+.workspaceAvatar.workspace-icon--emoji {
+  font-size: 28px;
+  line-height: 1;
+  /* 이모지 글자가 상자 중앙보다 살짝 아래에 앉아서, 아래 여백을 조금 줘서 위로 올려요. */
+  box-sizing: border-box;
+  padding-bottom: 0.12em;
+}
+
+/* 흰색 대표 색은 흰 배경과 구분되도록 얇은 테두리를 줘요. */
+.workspace-icon--light {
+  box-shadow: inset 0 0 0 1px #cbd5e1;
+}
+
 .workspaceName {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   text-align: left;
   font-size: 14px;
   color: #1e293b;

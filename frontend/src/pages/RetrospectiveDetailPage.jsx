@@ -1,19 +1,14 @@
-import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
 import { CalendarDays, Users, MoreHorizontal } from "lucide-react";
+import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 
-import retrospectiveDetails from "../mock/retrospectiveDetail";
+import * as retrospectiveApi from "../api/retrospectives";
+import { useRequest } from "../hooks/useRequest";
 
 import RetroSummary from "../components/retrospective/RetroSummary";
 import KanbanSnapshot from "../components/retrospective/KanbanSnapshot";
-// 회고 노트(Keep/Problem/Try 표 + 자유 메모)는 예전엔 회고 전용으로
-// 따로 만든 PageBlockSection을 썼는데, 페이지 상세(PageDetailPage)가
-// 쓰는 것과 거의 같은 블록 에디터를 두 벌 유지하게 돼서 — 특히 둘 다
-// 전역 CSS에 .block-row/.block-menu 같은 같은 이름의 클래스를 따로
-// 정의하다 보니 로드 순서에 따라 서로 스타일을 덮어쓰는 문제가 있었어요.
-// 페이지 기능 쪽 컴포넌트를 그대로 재사용하기로 하면서 PageBlockSection은
-// 더 이상 안 써요.
-import BlockEditor from "../components/page/BlockEditor";
+// 회고 노트(Keep/Problem/Try 표 + 자유 메모)는 페이지 상세와 같은 블록 에디터(PageBlocks)를 그대로 써요.
+// 회고 페이지도 서버에서는 평범한 페이지라서, 불러오기·자동 저장이 페이지 상세와 똑같이 동작해요.
+import PageBlocks from "../components/page/PageBlocks";
 
 import "../styles/retrospective-detail.css";
 import "../styles/page-detail.css";
@@ -22,26 +17,29 @@ export default function RetrospectiveDetailPage() {
   const { sprintId } = useParams();
   const navigate = useNavigate();
 
-  // Mock → 나중에 API로 교체해요.
-  /*
-  // Spring 연결 시: detail을 mock 대신 API 응답으로 채우면 돼요.
-  const [retrospective, setRetrospective] = useState(null);
-
-  useEffect(() => {
-    const fetchRetrospective = async () => {
-      const response = await retrospectiveApi.getDetail(sprintId);
-      setRetrospective(response.data);
-    };
-
-    fetchRetrospective();
-  }, [sprintId]);
-  */
-
-  // 주소의 :sprintId로 회고를 찾아요. 숫자가 아니거나(abc, NaN) 없는 스프린트면 undefined라서 아래에서 "없음" 화면을 보여줘요.
+  // 주소의 :sprintId로 회고를 불러와요. 숫자가 아니면(abc, NaN) 요청하지 않고 "없음" 화면을 보여줘요.
   const id = /^\d+$/.test(sprintId ?? "") ? Number(sprintId) : null;
-  const detail = id === null ? undefined : retrospectiveDetails[id];
+  const { data, loading, error, reload } = useRequest(
+    () => retrospectiveApi.getSprintRetrospective(id),
+    [id],
+    { enabled: id !== null },
+  );
 
-  if (!detail) {
+  // 요청 중이거나 실패했을 때 이전 주소의 회고가 남아 보이지 않게, 지금 주소의 회고일 때만 써요.
+  const retrospective = data && data.sprintId === id ? data : null;
+  const loadError = id === null ? null : error;
+
+  if (id !== null && loading) {
+    return (
+      <main className="retro-detail-page">
+        <p role="status" style={{ padding: 24 }}>
+          회고를 불러오는 중이에요…
+        </p>
+      </main>
+    );
+  }
+
+  if (!retrospective) {
     return (
       <main className="retro-detail-page">
         <header className="retro-detail-header">
@@ -49,11 +47,18 @@ export default function RetrospectiveDetailPage() {
             <h1>회고를 찾을 수 없어요</h1>
 
             <div className="retro-meta">
-              <span>주소가 잘못됐거나 아직 만들어지지 않은 회고예요.</span>
+              <span role={loadError ? "alert" : undefined}>
+                {loadError || "주소가 잘못됐거나 아직 만들어지지 않은 회고예요."}
+              </span>
             </div>
           </div>
         </header>
 
+        {loadError && (
+          <button className="detail-btn" onClick={reload} style={{ marginRight: 8 }}>
+            다시 시도
+          </button>
+        )}
         <button className="detail-btn" onClick={() => navigate("/retrospectives")}>
           회고 목록으로
         </button>
@@ -62,17 +67,11 @@ export default function RetrospectiveDetailPage() {
   }
 
   // key를 sprintId로 줘서 다른 스프린트로 이동하면 편집 중이던 블록 상태가 섞이지 않고 새로 시작해요.
-  return <RetrospectiveDetail key={detail.sprintId} initialRetrospective={detail} />;
+  return <RetrospectiveDetail key={retrospective.sprintId} retrospective={retrospective} />;
 }
 
-// setRetrospective가 필요한 이유: 아래 BlockEditor는 PageDetailPage와 똑같이 "제어 컴포넌트"라(blocks를
-// props로 받고 onChange로 바뀐 배열을 돌려줌) 회고 쪽에서도 그 변경을 받아 담아둘 곳이 있어야 해요.
-function RetrospectiveDetail({ initialRetrospective }) {
-  const [retrospective, setRetrospective] = useState(initialRetrospective);
-
-  const updateBlocks = (blocks) => {
-    setRetrospective((prev) => ({ ...prev, blocks }));
-  };
+function RetrospectiveDetail({ retrospective }) {
+  const { pages, pageIdMap, sprintTasks, toggleSubtask } = useOutletContext();
 
   return (
     <main className="retro-detail-page">
@@ -106,13 +105,11 @@ function RetrospectiveDetail({ initialRetrospective }) {
       />
 
       {/* ---------- 완료 시점 칸반 ---------- */}
-      <KanbanSnapshot kanban={retrospective.kanban} />
+      <KanbanSnapshot columns={retrospective.kanban} />
 
       {/* ---------- 회고 노트 (Keep/Problem/Try 표 + 노션 스타일 페이지 블록) ----------
-          BlockEditor는 원래 하위 페이지 링크 기능도 있는데(pages/
-          onCreateChildPage/onRenameRowPage/onDeleteRowPage), 회고엔 그런
-          하위 페이지 개념이 없어서 그 props는 안 넘겨요 — BlockEditor가
-          그 경우엔 "하위 페이지" 메뉴 항목 자체를 알아서 숨겨줘요. */}
+          하위 페이지를 만드는 props(onCreateChildPage 등)는 안 넘겨요 — 회고엔 하위 페이지 개념이 없어서
+          BlockEditor가 "하위 페이지" 메뉴 항목을 알아서 숨겨줘요. */}
       <section className="page-block-section">
         <div className="retro-section__header">
           <h2>회고 노트</h2>
@@ -123,7 +120,17 @@ function RetrospectiveDetail({ initialRetrospective }) {
           </p>
         </div>
 
-        <BlockEditor blocks={retrospective.blocks} onChange={updateBlocks} />
+        {retrospective.pageId == null ? (
+          <p className="page-detail__missing">회고 노트 페이지를 찾을 수 없어요.</p>
+        ) : (
+          <PageBlocks
+            pageId={retrospective.pageId}
+            pages={pages}
+            pageIdMap={pageIdMap}
+            sprintTasks={sprintTasks}
+            onToggleSubtask={toggleSubtask}
+          />
+        )}
       </section>
     </main>
   );

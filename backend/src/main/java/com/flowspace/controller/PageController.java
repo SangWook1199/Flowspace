@@ -53,7 +53,7 @@ public class PageController {
         return pageService.getTrash(workspaceId, userDetails.getUsername());
     }
 
-    @Operation(summary = "휴지통 비우기", description = "회고 페이지는 삭제하지 않고 남겨둡니다.")
+    @Operation(summary = "휴지통 비우기", description = "OWNER만 가능합니다. 회고 페이지는 삭제하지 않고 남겨둡니다.")
     @DeleteMapping("/workspaces/{workspaceId}/pages/trash")
     public void emptyTrash(@PathVariable Long workspaceId, @AuthenticationPrincipal UserDetails userDetails) {
         pageService.emptyTrash(workspaceId, userDetails.getUsername());
@@ -91,7 +91,7 @@ public class PageController {
         return pageService.restorePage(pageId, userDetails.getUsername());
     }
 
-    @Operation(summary = "휴지통 페이지 영구 삭제")
+    @Operation(summary = "휴지통 페이지 영구 삭제", description = "OWNER만 가능합니다.")
     @DeleteMapping("/pages/{pageId}/permanent")
     public void deletePagePermanently(@PathVariable Long pageId, @AuthenticationPrincipal UserDetails userDetails) {
         pageService.deletePagePermanently(pageId, userDetails.getUsername());

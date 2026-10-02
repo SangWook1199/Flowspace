@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, PlusCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import WorkspaceIcon from "../components/common/WorkspaceIcon";
 
 // 예전엔 Sidebar.jsx 안에 워크스페이스 드롭다운을 통째로 다시 구현해놔서,
 // 이 컴포넌트는 만들어놓고 아무도 안 쓰는 죽은 코드였어요(클래스명도
@@ -51,15 +52,10 @@ export default function WorkspaceSwitcher({ currentWorkspace, workspaces, onChan
         aria-expanded={open}
         aria-label={`워크스페이스 전환, 현재 ${currentWorkspace.name}`}
       >
-        <span
-          className="workspaceIcon"
-          style={{ background: currentWorkspace.color, color: "#fff" }}
-        >
-          {currentWorkspace.initials}
-        </span>
+        <WorkspaceIcon workspace={currentWorkspace} className="workspaceIcon" />
 
         <span>
-          <b>{currentWorkspace.name}</b>
+          <b title={currentWorkspace.name}>{currentWorkspace.name}</b>
           <small>워크스페이스</small>
         </span>
 
@@ -81,12 +77,7 @@ export default function WorkspaceSwitcher({ currentWorkspace, workspaces, onChan
                 setOpen(false);
               }}
             >
-              <span
-                className="workspaceAvatar"
-                style={{ background: workspace.color }}
-              >
-                {workspace.initials}
-              </span>
+              <WorkspaceIcon workspace={workspace} className="workspaceAvatar" />
 
               <span className="workspaceName">{workspace.name}</span>
 

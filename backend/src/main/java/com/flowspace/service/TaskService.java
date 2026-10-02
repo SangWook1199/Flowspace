@@ -3,6 +3,8 @@ package com.flowspace.service;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.flowspace.dto.task.TaskCreateRequest;
 import com.flowspace.dto.task.TaskReorderRequest;
@@ -31,6 +33,7 @@ import com.flowspace.entity.Workspace;
 import com.flowspace.entity.WorkspaceTaskStatus;
 import com.flowspace.entity.enums.ActivityTargetType;
 import com.flowspace.entity.enums.ActivityType;
+import com.flowspace.entity.enums.NotificationType;
 import com.flowspace.entity.enums.TaskStatusCategory;
 import com.flowspace.entity.id.WorkspaceTaskStatusId;
 import com.flowspace.exception.ErrorCode;
@@ -67,6 +70,7 @@ public class TaskService {
     private final UserRepository userRepository;
 
     private final ActivityService activityService;
+    private final NotificationService notificationService;
 
     // Task 상태 생성
     public TaskStatusResponse createStatus(Long workspaceId, TaskStatusCreateRequest request, String email) {
@@ -256,6 +260,8 @@ public class TaskService {
                 .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
             taskAssigneeRepository.save(TaskAssignee.builder().task(task).user(assignee).build());
+
+            notifyAssigned(task, assignee, user);
         }
 
         List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
@@ -347,6 +353,10 @@ public class TaskService {
 
         task.updatePosition(position);
 
+        // 새로 담당자가 된 사람에게만 알리려고, 바꾸기 전 담당자를 기억해둬요.
+        Set<Long> previousAssigneeIds = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task).stream()
+            .map(assignee -> assignee.getUser().getUserId()).collect(Collectors.toSet());
+
         taskAssigneeRepository.deleteByTask(task);
 
         List<Long> assigneeIds = request.assigneeIds() == null ? List.of() : request.assigneeIds();
@@ -360,11 +370,21 @@ public class TaskService {
                 .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
             taskAssigneeRepository.save(TaskAssignee.builder().task(task).user(assignee).build());
+
+            if (!previousAssigneeIds.contains(assignee.getUserId())) {
+                notifyAssigned(task, assignee, user);
+            }
         }
 
         List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
         List<CommentResponse> comments = getTaskCommentResponses(task);
         List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task);
+
+        // 상태가 바뀌었으면 (이번에 새로 담당자가 된 사람을 뺀) 담당자들에게 알려요.
+        if (statusChanged) {
+            notifyStatusChanged(task, status, user,
+                assignees.stream().filter(a -> previousAssigneeIds.contains(a.getUser().getUserId())).toList());
+        }
 
         return TaskResponse.from(task, assignees, subtasks, comments);
     }
@@ -429,6 +449,8 @@ public class TaskService {
         List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
         List<CommentResponse> comments = getTaskCommentResponses(task);
         List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task);
+
+        notifyStatusChanged(task, status, user, assignees);
 
         return TaskResponse.from(task, assignees, subtasks, comments);
     }
@@ -642,9 +664,32 @@ public class TaskService {
 
             TaskStatus status = validateWorkspaceStatus(task.getWorkspace(), item.statusId());
 
+            // 칸반에서 다른 열로 옮긴 작업만(같은 열 안에서 순서만 바꾼 건 제외) 알려요.
+            boolean statusChanged = !task.getStatus().getStatusId().equals(status.getStatusId());
+
             task.updateStatus(status);
             task.updatePosition(item.position());
+
+            if (statusChanged) {
+                notifyStatusChanged(task, status, user,
+                    taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task));
+            }
         }
+    }
+
+    // 담당자로 지정된 사람에게 알림
+    private void notifyAssigned(Task task, User assignee, User actor) {
+        notificationService.send(assignee, actor, task.getWorkspace(), NotificationType.TASK_ASSIGNED,
+            actor.getNickname() + "님이 '" + task.getTitle() + "' 작업의 담당자로 지정했어요.", task.getTaskId(),
+            NotificationService.taskLink(task));
+    }
+
+    // 작업 상태가 바뀌었음을 담당자들에게 알림 (바꾼 본인은 제외돼요)
+    private void notifyStatusChanged(Task task, TaskStatus status, User actor, List<TaskAssignee> assignees) {
+        notificationService.sendAll(assignees.stream().map(TaskAssignee::getUser).toList(), actor,
+            task.getWorkspace(), NotificationType.TASK_STATUS_CHANGED,
+            actor.getNickname() + "님이 '" + task.getTitle() + "' 작업을 '" + status.getName() + "' 상태로 바꿨어요.",
+            task.getTaskId(), NotificationService.taskLink(task));
     }
 
     // 공통 검증 메서드

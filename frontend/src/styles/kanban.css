@@ -588,6 +588,15 @@
   background: #ec4899;
 }
 
+.colorCircle.white {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.colorCircle.white.active {
+  border-color: #111827;
+}
+
 .statusModalFooter {
   padding: 18px 22px;
   border-top: 1px solid #eef2f7;

@@ -1,5 +1,7 @@
 import { CalendarDays, Clock3, Flag } from "lucide-react";
 
+import { swatchStyle } from "../../utils/color";
+
 const STATUS_COLOR = {
   GRAY: "#64748B",
   BLUE: "#3B82F6",
@@ -8,6 +10,7 @@ const STATUS_COLOR = {
   RED: "#EF4444",
   ORANGE: "#F59E0B",
   PINK: "#EC4899",
+  WHITE: "#FFFFFF",
 };
 
 const EVENT_COLOR = {
@@ -18,6 +21,7 @@ const EVENT_COLOR = {
   ORANGE: "#F59E0B",
   PINK: "#EC4899",
   GRAY: "#64748B",
+  WHITE: "#FFFFFF",
 };
 
 const PRIORITY_LABEL = {
@@ -60,9 +64,7 @@ export default function DaySidebar({ sprint, tasks = [], events = [] }) {
               <div className="taskHeader">
                 <span
                   className="statusDot"
-                  style={{
-                    background: STATUS_COLOR[task.status?.color],
-                  }}
+                  style={swatchStyle(STATUS_COLOR[task.status?.color])}
                 />
 
                 <small>{task.code}</small>
@@ -112,9 +114,7 @@ export default function DaySidebar({ sprint, tasks = [], events = [] }) {
               <div className="sidebarEvent" key={event.event_id}>
                 <div
                   className="eventLine"
-                  style={{
-                    background: EVENT_COLOR[event.color],
-                  }}
+                  style={swatchStyle(EVENT_COLOR[event.color])}
                 />
 
                 <div className="eventContent">

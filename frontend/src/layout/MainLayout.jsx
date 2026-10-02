@@ -5,6 +5,7 @@ import Header from "./Header";
 import WorkspaceSettingsModal from "./WorkspaceSettingsModal";
 import { Outlet } from "react-router-dom";
 import { useWorkspace } from "../context/WorkspaceContext";
+import { MemberProfileProvider } from "../context/MemberProfileProvider";
 
 // 워크스페이스 · 페이지 · 스프린트 태스크 상태와 그걸 바꾸는 함수들은 예전엔 여기서
 // 들고 있었는데, MainLayout이 다시 마운트될 때마다(예: /workspace/create 같은
@@ -96,7 +97,7 @@ export default function MainLayout() {
   );
 
   return (
-    <>
+    <MemberProfileProvider>
       <Sidebar
         navigation={navigation}
         pages={pagesInWorkspace}
@@ -159,6 +160,6 @@ export default function MainLayout() {
       {settingsOpen && (
         <WorkspaceSettingsModal onClose={() => setSettingsOpen(false)} />
       )}
-    </>
+    </MemberProfileProvider>
   );
 }

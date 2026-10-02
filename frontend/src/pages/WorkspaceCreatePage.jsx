@@ -2,10 +2,10 @@ import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 
-import workspaceCreateMock from "../mock/workspaceCreateMock";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { nextNumericId } from "../utils/id";
 import { getErrorMessage } from "../utils/apiError";
+import { WORKSPACE_COLORS } from "../utils/color";
 
 import ProgressHeader from "../components/workspace/ProgressHeader";
 import WorkspaceNameStep from "../components/workspace/WorkspaceNameStep";
@@ -16,6 +16,19 @@ import FlowSpaceLogo from "../components/common/FlowSpaceLogo";
 import "../styles/workspace-create.css";
 
 const DEFAULT_INITIALS = "H";
+
+// 워크스페이스 만들기 화면의 처음 값이에요. 초대 목록(invitedMembers)은 반드시 빈 배열로 시작해요 —
+// 아무도 추가하지 않았는데(심지어 "건너뛰기"를 눌러도) 초대가 나가면 안 되니까요.
+const INITIAL_WORKSPACE = {
+  name: "",
+  initials: DEFAULT_INITIALS,
+  color: "#4F46E5",
+  // 이모지 아이콘(선택). 비어 있으면 이니셜을 보여줘요.
+  icon: "",
+  invitedMembers: [],
+  // 서버 WorkspaceColor 7종과 같아요(utils/color.js).
+  colorPalette: WORKSPACE_COLORS.map((c) => c.hex),
+};
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // 이름에서 이니셜을 뽑아요 — 단어마다 첫 글자를 모아 최대 2글자.
@@ -32,7 +45,7 @@ function deriveInitials(name) {
 
 export default function WorkspaceCreatePage() {
   const [step, setStep] = useState(1);
-  const [workspace, setWorkspace] = useState(workspaceCreateMock);
+  const [workspace, setWorkspace] = useState(INITIAL_WORKSPACE);
   // 2단계에서 사용자가 이니셜을 직접 고쳤는지. 고쳤다면 1단계로 돌아가 이름을
   // 바꿔도 사용자가 정한 이니셜을 자동 값으로 덮어쓰지 않아요.
   const [initialsTouched, setInitialsTouched] = useState(false);
@@ -59,6 +72,8 @@ export default function WorkspaceCreatePage() {
     setInitialsTouched(initials.length > 0);
     setWorkspace((prev) => ({ ...prev, initials }));
   };
+
+  const updateIcon = (icon) => setWorkspace((prev) => ({ ...prev, icon }));
 
   const updateColor = (color) =>
     setWorkspace((prev) => ({
@@ -121,6 +136,7 @@ export default function WorkspaceCreatePage() {
         name,
         initials: workspace.initials,
         color: workspace.color,
+        icon: workspace.icon,
         invitedMembers,
       });
 
@@ -187,6 +203,7 @@ export default function WorkspaceCreatePage() {
             colors={workspace.colorPalette}
             onInitialsChange={updateInitials}
             onColorChange={updateColor}
+            onIconChange={updateIcon}
             onPrev={() => setStep(1)}
             onNext={() => setStep(3)}
           />

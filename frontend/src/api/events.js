@@ -21,6 +21,23 @@ export const getEventsAround = async (workspaceId, year, month) => {
   return [...events.values()];
 };
 
+// 일정 한 건 (색까지 포함). 페이지의 일정 블록이 연결된 일정을 그릴 때 써요.
+export const getEvent = async (eventId) => {
+  const { data } = await client.get(`/events/${eventId}`);
+  return toEvent(data);
+};
+
+// 제목으로 일정 검색(keyword가 비면 전체). 일정 블록의 선택 목록에 써요. 검색 응답엔 색·설명이 없어요.
+export const searchEvents = async (workspaceId, keyword = "") => {
+  const { data } = await client.get(`/workspaces/${workspaceId}/events/search`, { params: { keyword } });
+  return data.map((item) => ({
+    event_id: item.eventId,
+    title: item.title,
+    start_datetime: item.startAt ? String(item.startAt).slice(0, 16) : null,
+    end_datetime: item.endAt ? String(item.endAt).slice(0, 16) : null,
+  }));
+};
+
 // 일정 만들기 (form은 캘린더의 새 일정 모달 값)
 export const createEvent = async (workspaceId, form) => {
   const { data } = await client.post(`/workspaces/${workspaceId}/events`, toEventRequest(form));

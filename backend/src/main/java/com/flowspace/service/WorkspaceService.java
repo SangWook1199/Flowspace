@@ -9,6 +9,7 @@ import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.repository.*;
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,12 +20,18 @@ import java.util.List;
 @Transactional
 public class WorkspaceService {
 
+        // 프로필 카드에 보여줄 담당 작업 최대 개수
+        private static final int PROFILE_TASK_LIMIT = 5;
+
         private final WorkspaceRepository workspaceRepository;
         private final WorkspaceMemberRepository workspaceMemberRepository;
         private final UserRepository userRepository;
         private final WorkspaceInviteRepository workspaceInviteRepository;
         private final TaskStatusRepository taskStatusRepository;
         private final WorkspaceTaskStatusRepository workspaceTaskStatusRepository;
+        private final NotificationService notificationService;
+        private final PresenceService presenceService;
+        private final TaskAssigneeRepository taskAssigneeRepository;
 
         // 워크스페이스 생성
         public WorkspaceResponse createWorkspace(WorkspaceCreateRequest request, String email) {
@@ -33,7 +40,7 @@ public class WorkspaceService {
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
                 Workspace workspace = Workspace.builder().owner(user).name(request.name()).initials(request.initials())
-                        .color(request.color()).build();
+                        .color(request.color()).icon(normalizeIcon(request.icon())).build();
 
                 workspaceRepository.save(workspace);
 
@@ -48,6 +55,33 @@ public class WorkspaceService {
                 user.updateLastWorkspace(workspace);
 
                 return WorkspaceResponse.from(workspace, WorkspaceRole.OWNER);
+        }
+
+        // 아이콘 값 정리: 비어 있으면 null(아이콘 없음), 아니면 앞뒤 공백을 지워요.
+        private String normalizeIcon(String icon) {
+                return icon == null || icon.isBlank() ? null : icon.trim();
+        }
+
+        // 워크스페이스 수정 (소유자만 가능)
+        public WorkspaceResponse updateWorkspace(Long workspaceId, WorkspaceUpdateRequest request, String email) {
+
+                User user = userRepository.findByEmail(email)
+                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+                Workspace workspace = workspaceRepository.findById(workspaceId)
+                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+
+                WorkspaceMember member = workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
+                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+                if (member.getRole() != WorkspaceRole.OWNER) {
+                        throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
+                }
+
+                workspace.update(request.name().trim(), request.initials().trim(), request.color(),
+                        normalizeIcon(request.icon()));
+
+                return WorkspaceResponse.from(workspace, member.getRole());
         }
 
         // 개인 워크스페이스 생성 (회원가입 전용)
@@ -149,6 +183,11 @@ public class WorkspaceService {
 
                 workspaceInviteRepository.save(invite);
 
+                // 초대받은 사람에게 알림 (알림창에서 바로 수락/거절할 수 있어요)
+                notificationService.send(invitee, inviter, workspace, NotificationType.WORKSPACE_INVITE,
+                        inviter.getNickname() + "님이 '" + workspace.getName() + "' 워크스페이스에 초대했어요.",
+                        invite.getInviteId(), null);
+
                 return WorkspaceInviteResponse.from(invite);
         }
 
@@ -187,6 +226,13 @@ public class WorkspaceService {
 
                 invite.accept();
                 user.updateLastWorkspace(invite.getWorkspace());
+
+                // 받은 초대 알림은 읽음 처리하고, 초대한 사람에게 수락했다고 알려요.
+                notificationService.markReadByRef(user, NotificationType.WORKSPACE_INVITE, invite.getInviteId());
+                notificationService.send(invite.getInviter(), user, invite.getWorkspace(),
+                        NotificationType.INVITE_ACCEPTED,
+                        user.getNickname() + "님이 '" + invite.getWorkspace().getName() + "' 초대를 수락했어요.",
+                        invite.getInviteId(), null);
         }
 
         // 워크스페이스 초대 거절
@@ -207,6 +253,12 @@ public class WorkspaceService {
                 }
 
                 invite.decline();
+
+                notificationService.markReadByRef(user, NotificationType.WORKSPACE_INVITE, invite.getInviteId());
+                notificationService.send(invite.getInviter(), user, invite.getWorkspace(),
+                        NotificationType.INVITE_DECLINED,
+                        user.getNickname() + "님이 '" + invite.getWorkspace().getName() + "' 초대를 거절했어요.",
+                        invite.getInviteId(), null);
         }
 
         // 워크스페이스 멤버 목록 조회
@@ -222,8 +274,42 @@ public class WorkspaceService {
                 workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-                return workspaceMemberRepository.findByWorkspace(workspace).stream().map(WorkspaceMemberResponse::from)
+                return workspaceMemberRepository.findByWorkspace(workspace).stream()
+                        .map(member -> WorkspaceMemberResponse.from(member,
+                                presenceService.isOnline(member.getUser().getUserId())))
                         .toList();
+        }
+
+        // 멤버 프로필 카드 조회 (같은 워크스페이스 멤버끼리만 볼 수 있고, 이 워크스페이스 안의 정보만 보여줘요)
+        @Transactional(readOnly = true)
+        public MemberProfileResponse getMemberProfile(Long workspaceId, Long userId, String email) {
+
+                User viewer = userRepository.findByEmail(email)
+                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+                Workspace workspace = workspaceRepository.findById(workspaceId)
+                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+
+                workspaceMemberRepository.findByWorkspaceAndUser(workspace, viewer)
+                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+                User target = userRepository.findById(userId)
+                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+                WorkspaceMember member = workspaceMemberRepository.findByWorkspaceAndUser(workspace, target)
+                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.MEMBER_NOT_FOUND));
+
+                List<MemberProfileResponse.TaskItem> tasks = taskAssigneeRepository
+                        .findOpenTasks(target, workspace, TaskStatusCategory.DONE, PageRequest.of(0, PROFILE_TASK_LIMIT))
+                        .stream().map(MemberProfileResponse.TaskItem::from).toList();
+
+                return new MemberProfileResponse(target.getUserId(), target.getNickname(), target.getEmail(),
+                        target.getBio(),
+                        target.getProfileFile() == null ? null : target.getProfileFile().getFileUrl(),
+                        member.getRole(), member.getJoinedAt(), presenceService.isOnline(target.getUserId()),
+                        target.getLastActiveAt(),
+                        taskAssigneeRepository.countOpen(target, workspace, TaskStatusCategory.DONE),
+                        taskAssigneeRepository.countDone(target, workspace, TaskStatusCategory.DONE), tasks);
         }
 
         // 워크스페이스 소유권 이전
@@ -252,6 +338,10 @@ public class WorkspaceService {
                 targetMember.changeRole(WorkspaceRole.OWNER);
 
                 workspace.changeOwner(targetUser);
+
+                notificationService.send(targetUser, user, workspace, NotificationType.OWNERSHIP_TRANSFERRED,
+                        user.getNickname() + "님이 '" + workspace.getName() + "'의 소유권을 넘겼어요. 이제 내가 소유자예요.", null,
+                        null);
         }
 
         // 워크스페이스 삭제
@@ -268,6 +358,11 @@ public class WorkspaceService {
 
                 if (member.getRole() != WorkspaceRole.OWNER) {
                         throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
+                }
+
+                // 내가 속한 워크스페이스가 이것 하나뿐이면 삭제할 수 없어요(앱을 쓸 곳이 없어져요).
+                if (workspaceMemberRepository.findByUser(user).size() <= 1) {
+                        throw new FlowSpaceException(ErrorCode.LAST_WORKSPACE);
                 }
 
                 workspaceRepository.delete(workspace);
@@ -300,6 +395,9 @@ public class WorkspaceService {
                 }
 
                 workspaceMemberRepository.delete(targetMember);
+
+                notificationService.send(targetUser, loginUser, workspace, NotificationType.MEMBER_REMOVED,
+                        "'" + workspace.getName() + "' 워크스페이스에서 내보내졌어요.", null, null);
         }
 
         // 워크스페이스 나가기
@@ -318,7 +416,16 @@ public class WorkspaceService {
                         throw new FlowSpaceException(ErrorCode.OWNER_CANNOT_LEAVE);
                 }
 
+                // 내가 속한 워크스페이스가 이것 하나뿐이면 나갈 수 없어요.
+                if (workspaceMemberRepository.findByUser(user).size() <= 1) {
+                        throw new FlowSpaceException(ErrorCode.LAST_WORKSPACE);
+                }
+
                 workspaceMemberRepository.delete(member);
+
+                // 소유자에게 멤버가 나갔다고 알려요.
+                notificationService.send(workspace.getOwner(), user, workspace, NotificationType.MEMBER_LEFT,
+                        user.getNickname() + "님이 '" + workspace.getName() + "' 워크스페이스를 나갔어요.", null, null);
 
                 if (user.getLastWorkspace() != null && user.getLastWorkspace().getWorkspaceId().equals(workspaceId)) {
                         user.updateLastWorkspace(null);

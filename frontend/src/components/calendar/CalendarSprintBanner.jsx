@@ -2,6 +2,7 @@ import { CalendarDays, Flag } from "lucide-react";
 
 import { todayKey } from "../../utils/date";
 import { getSprintPhase } from "../../utils/sprintRange";
+import { inkColor, swatchStyle, tintStyle } from "../../utils/color";
 
 const SPRINT_COLOR = {
   BLUE: "#3B82F6",
@@ -11,6 +12,7 @@ const SPRINT_COLOR = {
   ORANGE: "#F59E0B",
   PINK: "#EC4899",
   GRAY: "#64748B",
+  WHITE: "#FFFFFF",
 };
 
 // 시작 전/진행 중/종료에 따라 D-day와 "N/M일" 문구를 만들어요.
@@ -50,15 +52,12 @@ export default function CalendarSprintBanner({ sprint, today = todayKey() }) {
 
   return (
     <section className="calendarSprintBanner">
-      <div className="bannerAccent" style={{ background: color }} />
+      <div className="bannerAccent" style={swatchStyle(color)} />
 
       <div className="bannerLeft">
         <div
           className="bannerIcon"
-          style={{
-            background: `${color}18`,
-            color,
-          }}
+          style={tintStyle(color, "18")}
         >
           <Flag size={28} />
         </div>
@@ -81,7 +80,7 @@ export default function CalendarSprintBanner({ sprint, today = todayKey() }) {
       <div className="bannerRight">
         <strong>{progress}%</strong>
 
-        <span className="dDay" style={{ color }}>
+        <span className="dDay" style={{ color: inkColor(color) }}>
           {dday}
         </span>
 
@@ -89,7 +88,7 @@ export default function CalendarSprintBanner({ sprint, today = todayKey() }) {
           <i
             style={{
               width: `${progress}%`,
-              background: color,
+              ...swatchStyle(color),
             }}
           />
         </div>

@@ -45,14 +45,24 @@ public class JwtProvider {
     }
 
     public String createRefreshToken(User user) {
+        return createRefreshToken(user, refreshTokenExpiration);
+    }
+
+    // 유효 기간(ms)을 직접 정해서 만들어요 (로그인 상태 유지 여부에 따라 길이가 달라져요)
+    public String createRefreshToken(User user, long ttlMillis) {
         Date now = new Date();
 
         return Jwts.builder()
                 .subject(String.valueOf(user.getUserId()))
                 .issuedAt(now)
-                .expiration(new Date(now.getTime() + refreshTokenExpiration))
+                .expiration(new Date(now.getTime() + ttlMillis))
                 .signWith(secretKey)
                 .compact();
+    }
+
+    // 설정(jwt.refresh-token-expiration)에 있는 기본 유효 기간(ms)
+    public long getRefreshTokenExpiration() {
+        return refreshTokenExpiration;
     }
 
     public boolean validateToken(String token) {
