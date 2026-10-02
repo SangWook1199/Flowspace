@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import "../styles/retrospectiveList.css";
 
-import {
-  retrospectiveSummary,
-  retrospectiveList,
-} from "../mock/retrospectiveMock";
+import * as retrospectiveApi from "../api/retrospectives";
+import { useRequest } from "../hooks/useRequest";
+import { retrospectiveSummary } from "../components/retrospective/summaryMeta";
 
 import { percentOf } from "../utils/date";
 
@@ -34,12 +34,24 @@ const buildSummary = (meta, list) => {
 };
 
 export default function RetrospectiveList() {
+  const { workspaceId } = useOutletContext();
   const [tab, setTab] = useState("all");
   const [keyword, setKeyword] = useState("");
 
+  // 회고 목록은 서버에서 받아요. 워크스페이스를 바꾸면 다시 받아요.
+  const {
+    data,
+    loading,
+    error,
+    reload,
+  } = useRequest(() => retrospectiveApi.getRetrospectives(workspaceId), [workspaceId], {
+    initialData: [],
+  });
+  const retrospectiveList = useMemo(() => data ?? [], [data]);
+
   const summaryCards = useMemo(
     () => buildSummary(retrospectiveSummary, retrospectiveList),
-    [],
+    [retrospectiveList],
   );
 
   const filteredList = useMemo(() => {
@@ -62,7 +74,7 @@ export default function RetrospectiveList() {
 
       return matchKeyword && matchTab;
     });
-  }, [tab, keyword]);
+  }, [retrospectiveList, tab, keyword]);
 
   return (
     <main className="retro-page">
@@ -91,14 +103,29 @@ export default function RetrospectiveList() {
 
       {/* Retrospective List */}
       <section className="retro-list">
-        {filteredList.length === 0 && (
+        {loading && retrospectiveList.length === 0 && (
+          <div className="retro-column__empty" role="status">
+            <p>회고를 불러오는 중이에요…</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="retro-column__empty" role="alert">
+            <p>회고를 불러오지 못했어요. {error}</p>
+            <button type="button" className="detail-btn" onClick={reload}>
+              다시 시도
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && filteredList.length === 0 && (
           <div className="retro-column__empty">
             <p>조건에 맞는 회고가 없어요.</p>
           </div>
         )}
 
         {filteredList.map((retro) => (
-          <RetroCard key={retro.id} retrospective={retro} />
+          <RetroCard key={retro.sprintId} retrospective={retro} />
         ))}
       </section>
 

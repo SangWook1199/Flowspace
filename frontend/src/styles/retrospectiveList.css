@@ -205,6 +205,11 @@
   color: #92400e;
 }
 
+.retro-card__icon.progress {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
 /* ---------- Content ---------- */
 
 .retro-card__content {
@@ -275,6 +280,11 @@
 .retro-status.planned {
   background: #fef3c7;
   color: #92400e;
+}
+
+.retro-status.progress {
+  background: #e0f2fe;
+  color: #0369a1;
 }
 
 /* ---------- Right ---------- */

@@ -9,7 +9,7 @@ import { getSavedWorkspaceId, saveWorkspaceId } from "../utils/workspaceStorage"
 import { useSprintData } from "./useSprintData";
 
 // 사이드바 메뉴 목록은 아직 목데이터예요(대시보드 연결 M4에서 정리해요).
-import { navigation as navigationMock } from "../mock/dashboard";
+import { NAVIGATION } from "../utils/navigation";
 // workspaceId가 없는 페이지(서버에 만드는 중인 임시 페이지 등)는 1번 워크스페이스 소속으로 봐요.
 const DEFAULT_WORKSPACE_ID = 1;
 const DEFAULT_CREATOR = "상욱"; // 로그인 정보가 없을 때만 쓰는 예전 기본값이에요.
@@ -619,7 +619,7 @@ export function WorkspaceProvider({ children }) {
     deleteStatus: sprintData.deleteStatus,
     reorderStatuses: sprintData.reorderStatuses,
     // 레이아웃용 데이터(사이드바 메뉴 · 헤더의 팀원)
-    navigation: navigationMock,
+    navigation: NAVIGATION,
     members,
   };
 

@@ -4,6 +4,7 @@ import CircleProgress from "./CircleProgress";
 
 export default function RetroCard({ retrospective }) {
   const {
+    id,
     sprintId,
     sprint,
     status,
@@ -44,7 +45,8 @@ export default function RetroCard({ retrospective }) {
           <div>
             <h3>{sprint} 회고</h3>
             <p>
-              {start} ~ {end} · 참여자 {members}명
+              {start} ~ {end}
+              {members != null && ` · 참여자 ${members}명`}
             </p>
           </div>
 
@@ -64,7 +66,8 @@ export default function RetroCard({ retrospective }) {
 
       {/* 우측 */}
       <div className="retro-card__right">
-        {status === "planned" ? (
+        {/* 회고가 아직 없는 스프린트(예정·진행 중)는 숫자 대신 안내를 보여줘요. */}
+        {status === "planned" || id == null ? (
           <div className="retro-card__planned">
             <span>스프린트 종료 후</span>
             <strong>자동 생성</strong>
@@ -91,10 +94,10 @@ export default function RetroCard({ retrospective }) {
         )}
 
         <div className="retro-card__actions">
-          {/* 상세 주소는 회고 id가 아니라 스프린트 id(:sprintId) 기준이에요. sprintId가 없으면 이동할 곳이 없어서 막아둬요. */}
+          {/* 상세 주소는 회고 id가 아니라 스프린트 id(:sprintId) 기준이에요. 회고가 아직 없는 스프린트(id가 null)는 열 곳이 없어서 막아둬요. */}
           <button
             className="retro-open-btn"
-            disabled={sprintId == null}
+            disabled={sprintId == null || id == null}
             aria-label={`${sprint} 회고 열기`}
             onClick={() => navigate(`/retrospectives/${sprintId}`)}
           >

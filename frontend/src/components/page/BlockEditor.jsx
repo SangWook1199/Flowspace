@@ -31,10 +31,10 @@ import useBlockSelectionShortcuts from "./hooks/useBlockSelectionShortcuts.js";
 import createBlockKeyDownHandler from "./hooks/blockKeyDown.js";
 import useMultiBlockTextSelection from "./hooks/useMultiBlockTextSelection.js";
 import { selectionTextBounds } from "./lib/selectionMove.js";
-import { sprintTaskRows } from "../../mock/sprintTasks";
 
 // 기본값으로 매 렌더마다 새 배열([])을 만들면 memo된 BlockRow의 props가 항상 "달라져" 보여요.
 const NO_PAGES = [];
+const NO_TASKS = [];
 
 export default function BlockEditor({
   blocks: initialBlocks,
@@ -47,12 +47,9 @@ export default function BlockEditor({
   // 서버에 만드는 중이던 임시 페이지 id → 실제 id. 하위 페이지 링크 블록은 임시 id를 들고 있을 수 있어서
   // 페이지를 찾을 때만 실제 id로 이어줘요(블록 데이터는 그대로 둬서 실행 취소와 안 부딪혀요).
   pageIdMap,
-  // sprintTasks가 안 넘어오면(다른 화면에서 아직 안 챙겨줬다면) 정적
-  // import를 그대로 써서 예전처럼은 동작하게 해요 — 다만 그러면 체크박스로
-  // 토글해도 화면엔 안 남아요(상태를 들고 있는 쪽이 없으니까). 진짜로
-  // 저장되게 하려면 상위(PageDetailPage → MainLayout)에서 상태로 끌어올린
-  // sprintTasks/onToggleSubtask를 내려줘야 해요.
-  sprintTasks = sprintTaskRows,
+  // 작업 임베드 블록이 고를 수 있는 작업 목록과 하위 작업 체크 함수예요. 상위(PageDetailPage → MainLayout)가
+  // 작업 상태를 들고 있다가 내려줘요. 안 넘어오면 빈 목록이라 작업 블록은 선택할 게 없어요.
+  sprintTasks = NO_TASKS,
   onToggleSubtask,
 }) {
   // pages/{pageId}/blocks API로 교체 예정. onChange가 있으면 상위(페이지 목록

@@ -1,6 +1,9 @@
 import { useRef, useState } from "react";
 import { CalendarDays, Plus, Send, Trash2, X } from "lucide-react";
 import styles from "./TaskWorkspace.module.css";
+import { useAuth } from "../../context/useAuth";
+import { useTaskComments } from "../../hooks/useTaskComments";
+import { toRelativeTime } from "../../api/mappers";
 import { isRangeReversed, parseDateKey, percentOf, toDateKey } from "../../utils/date";
 
 // "YYYY-MM-DD"로 끝까지 입력된, 실제로 있는 날짜인지 확인해요(2월 30일 같은 건 거절). 연도는 4자리라도
@@ -175,23 +178,85 @@ export default function TaskDetailPanel({
           <button type="button" onClick={() => onAddSubtask(true)}>여러 개 추가</button>
         </div>
       </div>
-      <section className={styles.comments}>
-        <h3>
-          댓글 <small>1</small>
-        </h3>
-        <label>
-          <input placeholder="댓글을 입력하세요..." />
-          <Send size={16} />
-        </label>
-        <p>
-          <b>서연</b>　<small>3시간 전</small>
-          <br />
-          토큰 만료 시간은 30분으로 설정하면 좋을 것 같아요.
-        </p>
-      </section>
+      <TaskComments key={task.id} taskId={task.id} />
     </aside>
   );
 }
+
+// 작업 댓글: 서버에서 불러오고, 입력창에서 Enter(또는 보내기 버튼)로 남겨요. 내가 쓴 댓글만 삭제할 수 있어요.
+function TaskComments({ taskId }) {
+  const me = useAuth()?.user ?? null;
+  const { comments, loading, saving, error, add, remove } = useTaskComments(taskId);
+  const [draft, setDraft] = useState("");
+
+  const submit = async () => {
+    if (await add(draft)) setDraft("");
+  };
+
+  return (
+    <section className={styles.comments}>
+      <h3>
+        댓글 <small>{comments.length}</small>
+      </h3>
+      <label>
+        <input
+          placeholder="댓글을 입력하세요..."
+          value={draft}
+          maxLength={1000}
+          disabled={saving}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            // 한글 조합 중 Enter는 글자를 확정하는 키라서 보내지 않아요.
+            if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              submit();
+            }
+          }}
+        />
+        <button
+          type="button"
+          aria-label="댓글 보내기"
+          disabled={saving || !draft.trim()}
+          onClick={submit}
+          style={{ background: "none", border: 0, padding: 0, color: "inherit", cursor: "pointer", display: "flex" }}
+        >
+          <Send size={16} />
+        </button>
+      </label>
+      {error && (
+        <small role="alert" style={{ color: "#dc2626", display: "block", marginTop: 6 }}>
+          {error}
+        </small>
+      )}
+      {loading && comments.length === 0 && (
+        <small role="status" style={{ display: "block", marginTop: 8 }}>
+          댓글을 불러오는 중이에요…
+        </small>
+      )}
+      {comments.map((comment) => {
+        const isMine = me?.id != null && comment.userId === me.id;
+        return (
+          <p key={comment.id}>
+            <b>{comment.author}</b>　<small>{toRelativeTime(comment.createdAt)}</small>
+            {comment.editedAt && <small> (수정됨)</small>}
+            {isMine && (
+              <Trash2
+                size={13}
+                role="button"
+                aria-label="댓글 삭제"
+                style={{ cursor: "pointer", float: "right" }}
+                onClick={() => remove(comment.id)}
+              />
+            )}
+            <br />
+            {comment.text}
+          </p>
+        );
+      })}
+    </section>
+  );
+}
+
 function Field({ label, children }) {
   return (
     <label className={styles.field}>

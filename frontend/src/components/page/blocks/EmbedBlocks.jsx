@@ -1,13 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { File as FileIcon } from "lucide-react";
-import { PRIORITY_LABEL } from "../../../mock/sprintTasks";
-import { calendarEvents } from "../../../mock/calendar";
-import { sprints } from "../../../mock/sprints";
+import * as eventApi from "../../../api/events";
+import { useRequest } from "../../../hooks/useRequest";
+import { useWorkspace } from "../../../context/WorkspaceContext";
+import { PRIORITY_LABEL } from "../../../utils/priority";
 
-// mock/sprintTasks.js가 이제 우선순위를 영문 enum(HIGH/MEDIUM/LOW)으로
-// 저장해요(칸반 보드와 공유하는 공용 모델이라서) — 여기선 CSS 클래스용
-// 키만 영문으로 맞추고, 배지에 보여줄 한글 라벨은 PRIORITY_LABEL로
-// 따로 가져와요.
+// 우선순위는 영문 enum(HIGH/MEDIUM/LOW)이에요 — 여기선 CSS 클래스용 키만 영문으로 맞추고,
+// 배지에 보여줄 한글 라벨은 PRIORITY_LABEL로 가져와요.
 const PRIORITY_CLASS = { HIGH: "high", MEDIUM: "medium", LOW: "low" };
 const EVENT_COLOR_CLASS = {
   RED: "red",
@@ -37,7 +36,7 @@ export function TaskEmbed({ taskId, tasks, onChange, onToggleSubtask }) {
         <select
           defaultValue=""
           onChange={(e) => {
-            const picked = tasks?.find((t) => t.id === e.target.value);
+            const picked = tasks?.find((t) => String(t.id) === e.target.value);
             if (!picked) return;
             onChange(picked.id);
           }}
@@ -47,7 +46,7 @@ export function TaskEmbed({ taskId, tasks, onChange, onToggleSubtask }) {
           </option>
           {tasks?.map((t) => (
             <option key={t.id} value={t.id}>
-              {t.id} · {t.title}
+              {t.code ?? t.id} · {t.title}
             </option>
           ))}
         </select>
@@ -64,7 +63,7 @@ export function TaskEmbed({ taskId, tasks, onChange, onToggleSubtask }) {
       <button
         type="button"
         className="embed-task-card__link"
-        onClick={() => navigate(`/sprints/1/tasks`)}
+        onClick={() => navigate(`/sprints/${task.sprintId ?? "backlog"}/tasks`)}
         title="태스크로 이동"
       >
         <span className={`embed-priority embed-priority--${priorityClass}`}>
@@ -108,15 +107,35 @@ export function TaskEmbed({ taskId, tasks, onChange, onToggleSubtask }) {
 
 export function EventEmbed({ eventId, onChange }) {
   const navigate = useNavigate();
-  const event = calendarEvents.find((ev) => ev.event_id === eventId) || null;
+  const { currentWorkspaceId } = useWorkspace();
+
+  // 연결된 일정은 한 건을 서버에서 받아와요(색까지 필요해서). 연결 전이면 선택 목록(제목 검색 전체)을 받아와요.
+  const linked = useRequest(() => eventApi.getEvent(eventId), [eventId], { enabled: eventId != null });
+  const choices = useRequest(() => eventApi.searchEvents(currentWorkspaceId), [currentWorkspaceId, eventId], {
+    enabled: currentWorkspaceId != null && (eventId == null || Boolean(linked.error)),
+    initialData: [],
+  });
+
+  const event = eventId != null ? linked.data : null;
+
+  if (eventId != null && linked.loading) {
+    return (
+      <div className="embed-picker" role="status">
+        일정을 불러오는 중이에요…
+      </div>
+    );
+  }
 
   if (!event) {
+    const list = choices.data ?? [];
+
     return (
       <div className="embed-picker">
+        {linked.error && <p role="alert">연결된 일정을 불러오지 못했어요. 다른 일정을 선택해 주세요.</p>}
         <select
           defaultValue=""
           onChange={(e) => {
-            const picked = calendarEvents.find((ev) => String(ev.event_id) === e.target.value);
+            const picked = list.find((ev) => String(ev.event_id) === e.target.value);
             if (!picked) return;
             onChange(picked.event_id);
           }}
@@ -124,7 +143,7 @@ export function EventEmbed({ eventId, onChange }) {
           <option value="" disabled>
             연결할 이벤트를 선택하세요
           </option>
-          {calendarEvents.map((ev) => (
+          {list.map((ev) => (
             <option key={ev.event_id} value={ev.event_id}>
               {ev.title}
             </option>
@@ -170,6 +189,8 @@ const SPRINT_STATUS_LABEL = {
 
 export function SprintEmbed({ sprintId, onChange }) {
   const navigate = useNavigate();
+  // 워크스페이스의 스프린트 목록(진행률·상태는 작업 데이터로 계산된 값)에서 찾아요.
+  const { sprintsInWorkspace: sprints = [] } = useWorkspace();
   // sprintId만 갖고 있다가 매번 sprints에서 새로 찾아 그리니까, 주석에서
   // 원래 얘기했던 "progress/completed/total이 바뀌면 새로 불러올 때마다
   // 반영된다"는 게 스냅샷을 저장하던 예전 구현과 달리 이제 실제로도

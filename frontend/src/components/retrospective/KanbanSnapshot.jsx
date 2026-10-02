@@ -1,6 +1,7 @@
 import KanbanColumn from "./KanbanColumn";
 
-export default function KanbanSnapshot({ kanban = {} }) {
+// 완료 시점의 상태 스냅샷마다 컬럼 하나씩 그려요(columns: [{ id, name, lane, tasks }]).
+export default function KanbanSnapshot({ columns = [] }) {
   return (
     <section className="retro-section">
       <div className="retro-section__header">
@@ -8,12 +9,13 @@ export default function KanbanSnapshot({ kanban = {} }) {
         <p>스프린트 완료 시점의 칸반 상태입니다. (읽기 전용)</p>
       </div>
 
-      <div className="retro-kanban">
-        <KanbanColumn title="할 일" color="todo" tasks={kanban.todo ?? []} />
-
-        <KanbanColumn title="진행 중" color="doing" tasks={kanban.doing ?? []} />
-
-        <KanbanColumn title="완료" color="done" tasks={kanban.done ?? []} />
+      <div
+        className="retro-kanban"
+        style={{ gridTemplateColumns: `repeat(${Math.max(columns.length, 1)}, minmax(0, 1fr))` }}
+      >
+        {columns.map((column) => (
+          <KanbanColumn key={column.id} title={column.name} color={column.lane} tasks={column.tasks} />
+        ))}
       </div>
     </section>
   );

@@ -8,7 +8,7 @@ import CalendarCard from "../components/dashboard/CalendarCard";
 import ActivityCard from "../components/dashboard/ActivityCard";
 
 // KPI 카드의 모양(아이콘/색/이름)만 목데이터 파일에 남아 있어요. 숫자와 문구는 아래에서 계산해요.
-import { kpis } from "../mock/dashboard";
+import { KPI_CARDS } from "../utils/dashboardKpis";
 
 import * as eventApi from "../api/events";
 import * as activityApi from "../api/activities";
@@ -149,7 +149,7 @@ export default function Dashboard() {
 
   const metrics = useMemo(
     () =>
-      buildKpis(kpis, {
+      buildKpis(KPI_CARDS, {
         banner,
         tasks: todayTasks,
         schedule: todaySchedule,
