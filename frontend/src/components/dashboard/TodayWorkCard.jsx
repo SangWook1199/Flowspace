@@ -1,8 +1,28 @@
+import { useState } from "react";
 import { MoreVertical } from "lucide-react";
 import styles from "../../styles/classes";
 import { getAvatarTone } from "../../utils/avatarColor";
 
-export default function TodayWorkCard({ tasks }) {
+// 탭 정의: key가 task.status 값이에요(null이면 전체). 개수는 tasks에서 세서 탭 이름 옆에 붙여요.
+const FILTERS = [
+  { key: "all", label: "전체", status: null },
+  { key: "todo", label: "해야 할 일", status: "todo" },
+  { key: "progress", label: "진행 중", status: "progress" },
+  { key: "done", label: "완료", status: "done" },
+];
+
+export default function TodayWorkCard({ tasks = [] }) {
+  const [filter, setFilter] = useState("all");
+
+  // 탭에 적힌 숫자를 직접 적으면 작업이 바뀌어도 그대로라서, 항상 tasks에서 세요.
+  const countOf = (status) =>
+    status ? tasks.filter((task) => task.status === status).length : tasks.length;
+
+  const activeStatus = FILTERS.find((f) => f.key === filter)?.status ?? null;
+  const visibleTasks = activeStatus
+    ? tasks.filter((task) => task.status === activeStatus)
+    : tasks;
+
   return (
     <section className={styles.panel}>
       <div className={styles.panelHeader}>
@@ -11,10 +31,16 @@ export default function TodayWorkCard({ tasks }) {
       </div>
 
       <div className={styles.taskFilter}>
-        <button className={styles.active}>전체 6</button>
-        <button>해야 할 일 5</button>
-        <button>진행 중 2</button>
-        <button>완료 1</button>
+        {FILTERS.map((f) => (
+          <button
+            key={f.key}
+            className={filter === f.key ? styles.active : undefined}
+            aria-pressed={filter === f.key}
+            onClick={() => setFilter(f.key)}
+          >
+            {f.label} {countOf(f.status)}
+          </button>
+        ))}
       </div>
 
       <table className={styles.taskTable}>
@@ -25,22 +51,38 @@ export default function TodayWorkCard({ tasks }) {
             <th>작업 제목</th>
             <th>상태</th>
             <th>담당</th>
-            <th>시간</th>
+            <th>마감</th>
             <th width="40"></th>
           </tr>
         </thead>
 
         <tbody>
-          {tasks.map((task) => (
+          {visibleTasks.length === 0 && (
+            <tr>
+              <td
+                colSpan={7}
+                style={{ textAlign: "center", color: "#94a3b8", padding: "24px 0" }}
+              >
+                해당하는 작업이 없어요.
+              </td>
+            </tr>
+          )}
+
+          {visibleTasks.map((task) => (
             <tr key={task.id}>
               <td>
-                <input type="checkbox" checked={task.done} readOnly />
+                <input
+                  type="checkbox"
+                  checked={task.done}
+                  readOnly
+                  aria-label={`${task.title} 완료 여부`}
+                />
               </td>
 
               <td>
                 <span
                   className={`${styles.priority} ${
-                    styles[task.priority.toLowerCase()]
+                    styles[(task.priority || "").toLowerCase()]
                   }`}
                 >
                   {task.priorityLabel}
@@ -59,7 +101,7 @@ export default function TodayWorkCard({ tasks }) {
 
               <td>
                 <div className={styles.assigneeGroup}>
-                  {task.assignees.map((user) => (
+                  {(task.assignees ?? []).map((user) => (
                     <span
                       key={user.id}
                       className={`${styles.assignee} ${styles[getAvatarTone(user.id)]}`}
@@ -73,7 +115,7 @@ export default function TodayWorkCard({ tasks }) {
               <td>{task.time}</td>
 
               <td>
-                <button className={styles.moreIcon}>
+                <button className={styles.moreIcon} aria-label={`${task.title} 메뉴`}>
                   <MoreVertical size={16} />
                 </button>
               </td>

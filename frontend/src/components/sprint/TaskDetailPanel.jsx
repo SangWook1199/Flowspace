@@ -1,21 +1,39 @@
-import { CalendarDays, CheckSquare, Plus, Send, Trash2, X } from "lucide-react";
+import { useRef, useState } from "react";
+import { CalendarDays, Plus, Send, Trash2, X } from "lucide-react";
 import styles from "./TaskWorkspace.module.css";
-import { taskMembers } from "../../mock/sprintTasks";
+import { isRangeReversed, parseDateKey, percentOf, toDateKey } from "../../utils/date";
 
+// "YYYY-MM-DD"로 끝까지 입력된, 실제로 있는 날짜인지 확인해요(2월 30일 같은 건 거절). 연도는 4자리라도
+// 0002처럼 타이핑 중간 값이 올 수 있어서 1900~2999 사이만 인정해요.
+const isCompleteDate = (value) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const year = Number(value.slice(0, 4));
+  const date = parseDateKey(value);
+  return year >= 1900 && year <= 2999 && date !== null && toDateKey(date) === value;
+};
+
+// members(담당자 후보 이름 목록)는 부모가 내려줘요 — 이 컴포넌트가 mock을 직접 읽지 않아요.
 export default function TaskDetailPanel({
   task,
+  members = [],
   selectedIds,
   onChange,
   onClose,
   onAddSubtask,
   onToggleSubtask,
+  onDeleteSubtask,
   onBatchChange,
   onDelete,
 }) {
+  // 날짜가 거절됐을 때 보여줄 메시지예요. 어느 작업에서 난 건지(id)도 같이 들고 있어서, 다른 작업으로
+  // 옮기면 저절로 사라져요.
+  const [dateError, setDateError] = useState({ taskId: null, message: "" });
+
   const batchMode = selectedIds.length > 1;
   if (batchMode)
     return (
       <BatchPanel
+        members={members}
         count={selectedIds.length}
         onChange={onBatchChange}
         onDelete={onDelete}
@@ -25,7 +43,7 @@ export default function TaskDetailPanel({
   if (!task)
     return (
       <aside className={styles.detailPanel}>
-        <button className={styles.close} onClick={onClose}>
+        <button type="button" className={styles.close} onClick={onClose} aria-label="닫기">
           <X size={20} />
         </button>
         <p className={styles.emptyDetail}>
@@ -33,20 +51,38 @@ export default function TaskDetailPanel({
         </p>
       </aside>
     );
-  const done = task.subtasks.filter((item) => item.checked).length;
+  const subtasks = task.subtasks ?? [];
+  const done = subtasks.filter((item) => item.checked).length;
+
+  // 시작일이 마감일보다 늦어지거나 마감일이 시작일보다 앞서는 변경은 받아들이지 않고 이유를 보여줘요.
+  const changeDate = (key, value) => {
+    const range = { startDate: task.startDate, dueDate: task.dueDate, [key]: value };
+
+    if (isRangeReversed(range.startDate, range.dueDate)) {
+      setDateError({
+        taskId: task.id,
+        message:
+          key === "startDate"
+            ? "시작일은 마감일보다 늦을 수 없어요."
+            : "마감일은 시작일보다 빠를 수 없어요.",
+      });
+      return;
+    }
+
+    setDateError({ taskId: null, message: "" });
+    onChange(key, value);
+  };
+
   return (
     <aside className={styles.detailPanel}>
       <header>
         <div>
-          <small>{task.id}</small>
+          <small>{task.code ?? task.id}</small>
           <h2>
-            <input
-              value={task.title}
-              onChange={(e) => onChange("title", e.target.value)}
-            />
+            <TitleInput key={task.id} value={task.title} onChange={(value) => onChange("title", value)} />
           </h2>
         </div>
-        <button className={styles.close} onClick={onClose}>
+        <button type="button" className={styles.close} onClick={onClose} aria-label="닫기">
           <X size={20} />
         </button>
       </header>
@@ -55,7 +91,7 @@ export default function TaskDetailPanel({
           value={task.assignee}
           onChange={(e) => onChange("assignee", e.target.value)}
         >
-          {taskMembers.map((member) => (
+          {members.map((member) => (
             <option key={member}>{member}</option>
           ))}
         </select>
@@ -74,16 +110,23 @@ export default function TaskDetailPanel({
         <Field label="시작일">
           <DateInput
             value={task.startDate}
-            onChange={(value) => onChange("startDate", value)}
+            max={task.dueDate}
+            onChange={(value) => changeDate("startDate", value)}
           />
         </Field>
         <Field label="마감일">
           <DateInput
             value={task.dueDate}
-            onChange={(value) => onChange("dueDate", value)}
+            min={task.startDate}
+            onChange={(value) => changeDate("dueDate", value)}
           />
         </Field>
       </div>
+      {dateError.taskId === task.id && (
+        <small role="alert" style={{ color: "#dc2626", display: "block", marginTop: -8, marginBottom: 12 }}>
+          {dateError.message}
+        </small>
+      )}
       <Field label="설명">
         <textarea
           value={task.description}
@@ -95,32 +138,41 @@ export default function TaskDetailPanel({
         <h3>
           하위 작업{" "}
           <span>
-            ({done} / {task.subtasks.length})
+            ({done} / {subtasks.length})
           </span>
           <i>
             <b
               style={{
-                width: `${task.subtasks.length ? (done / task.subtasks.length) * 100 : 0}%`,
+                width: `${percentOf(done, subtasks.length)}%`,
               }}
             />
           </i>
         </h3>
-        {task.subtasks.map((subtask, index) => (
-          <label key={`${subtask.text}-${index}`}>
+        {subtasks.map((subtask, index) => (
+          <label key={`${subtask.id ?? subtask.text}-${index}`}>
             <input
               type="checkbox"
               checked={subtask.checked}
               onChange={() => onToggleSubtask(index)}
             />
             <span>{subtask.text}</span>
-            <Trash2 size={14} />
+            <Trash2
+              size={14}
+              style={{ cursor: "pointer" }}
+              aria-label="하위 작업 삭제"
+              onClick={(e) => {
+                // label 안이라 그냥 두면 체크박스도 같이 토글돼요.
+                e.preventDefault();
+                onDeleteSubtask?.(index);
+              }}
+            />
           </label>
         ))}
         <div>
-          <button onClick={() => onAddSubtask(false)}>
+          <button type="button" onClick={() => onAddSubtask(false)}>
             <Plus size={15} /> 하위 작업 추가
           </button>
-          <button onClick={() => onAddSubtask(true)}>여러 개 추가</button>
+          <button type="button" onClick={() => onAddSubtask(true)}>여러 개 추가</button>
         </div>
       </div>
       <section className={styles.comments}>
@@ -148,26 +200,87 @@ function Field({ label, children }) {
     </label>
   );
 }
-function DateInput({ value, onChange }) {
+function DateInput({ value, min, max, onChange }) {
   return (
     <label className={styles.dateInput}>
       <CalendarDays size={15} />
       <input
         type="date"
-        value={value}
+        value={value ?? ""}
+        min={min || undefined}
+        max={max || undefined}
         onChange={(e) => onChange(e.target.value)}
       />
     </label>
   );
 }
-function BatchPanel({ count, onChange, onDelete, onClose }) {
+
+// 제목은 입력하는 동안 로컬 draft로 들고 있다가, 비어있지 않을 때만 부모에게 알려요. 제목을 지운 채로
+// 포커스를 잃으면 마지막으로 저장된(비어있지 않은) 제목으로 되돌리고, 앞뒤 공백은 지워서 저장해요.
+function TitleInput({ value, onChange }) {
+  const [draft, setDraft] = useState(value);
+
+  return (
+    <input
+      aria-label="작업 제목"
+      value={draft}
+      onChange={(e) => {
+        const next = e.target.value;
+        setDraft(next);
+        if (next.trim()) onChange(next);
+      }}
+      onBlur={() => {
+        const trimmed = draft.trim();
+        if (!trimmed) {
+          setDraft(value);
+        } else if (trimmed !== draft) {
+          setDraft(trimmed);
+          onChange(trimmed);
+        }
+      }}
+    />
+  );
+}
+
+// 일괄 편집의 날짜는 타이핑 중간 값(연도를 한 글자씩 칠 때 0002, 0020…)마다 바로 적용하면 엉뚱한
+// 날짜가 모든 선택 작업에 들어가요. 그래서 입력은 draft에만 담고, 입력칸을 벗어나거나(blur) Enter를
+// 눌렀을 때 "끝까지 입력된 올바른 날짜"일 때만 한 번 적용해요.
+function BatchDateInput({ onApply }) {
+  const [draft, setDraft] = useState("");
+  const appliedRef = useRef("");
+
+  const apply = () => {
+    if (!isCompleteDate(draft) || draft === appliedRef.current) return;
+    appliedRef.current = draft;
+    onApply(draft);
+  };
+
+  return (
+    <label className={styles.dateInput}>
+      <CalendarDays size={15} />
+      <input
+        type="date"
+        value={draft}
+        onChange={(e) => {
+          setDraft(e.target.value);
+          if (!e.target.value) appliedRef.current = "";
+        }}
+        onBlur={apply}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") apply();
+        }}
+      />
+    </label>
+  );
+}
+function BatchPanel({ members, count, onChange, onDelete, onClose }) {
   return (
     <aside className={styles.detailPanel}>
       <header>
         <h2>
           일괄 편집 <small>{count}개 선택됨</small>
         </h2>
-        <button className={styles.close} onClick={onClose}>
+        <button type="button" className={styles.close} onClick={onClose} aria-label="닫기">
           <X size={20} />
         </button>
       </header>
@@ -180,7 +293,7 @@ function BatchPanel({ count, onChange, onDelete, onClose }) {
           onChange={(e) => onChange("assignee", e.target.value)}
         >
           <option value="">변경 안 함</option>
-          {taskMembers.map((member) => (
+          {members.map((member) => (
             <option key={member}>{member}</option>
           ))}
         </select>
@@ -198,19 +311,13 @@ function BatchPanel({ count, onChange, onDelete, onClose }) {
       </Field>
       <div className={styles.dateFields}>
         <Field label="시작일">
-          <DateInput
-            value=""
-            onChange={(value) => onChange("startDate", value)}
-          />
+          <BatchDateInput onApply={(value) => onChange("startDate", value)} />
         </Field>
         <Field label="마감일">
-          <DateInput
-            value=""
-            onChange={(value) => onChange("dueDate", value)}
-          />
+          <BatchDateInput onApply={(value) => onChange("dueDate", value)} />
         </Field>
       </div>
-      <button className={styles.deleteSelected} onClick={onDelete}>
+      <button type="button" className={styles.deleteSelected} onClick={onDelete}>
         <Trash2 size={16} /> 선택한 작업 삭제
       </button>
     </aside>

@@ -5,6 +5,9 @@ const STATUS_COLOR = {
   BLUE: "#3B82F6",
   PURPLE: "#9333EA",
   GREEN: "#22C55E",
+  RED: "#EF4444",
+  ORANGE: "#F59E0B",
+  PINK: "#EC4899",
 };
 
 const EVENT_COLOR = {
@@ -23,22 +26,25 @@ const PRIORITY_LABEL = {
   LOW: "낮음",
 };
 
-export default function DaySidebar({ sprint, tasks, events }) {
+export default function DaySidebar({ sprint, tasks = [], events = [] }) {
   return (
     <aside className="daySidebar">
-      <section className="sidebarSection sprintInfoCard">
-        <div className="sprintInfoTop">
-          <Flag size={16} />
-          <span>{sprint.name}</span>
-        </div>
+      {/* 스프린트가 없으면(선택값이 목록에 없을 때) 정보 카드만 빼고 나머지는 그대로 보여줘요. */}
+      {sprint && (
+        <section className="sidebarSection sprintInfoCard">
+          <div className="sprintInfoTop">
+            <Flag size={16} />
+            <span>{sprint.name}</span>
+          </div>
 
-        <strong>{sprint.goal}</strong>
+          <strong>{sprint.goal}</strong>
 
-        <div className="sprintInfoBottom">
-          <span>{sprint.startDate}</span>
-          <span>{sprint.endDate}</span>
-        </div>
-      </section>
+          <div className="sprintInfoBottom">
+            <span>{sprint.startDate}</span>
+            <span>{sprint.endDate}</span>
+          </div>
+        </section>
+      )}
 
       <section className="sidebarSection">
         <div className="sectionTitle">
@@ -55,7 +61,7 @@ export default function DaySidebar({ sprint, tasks, events }) {
                 <span
                   className="statusDot"
                   style={{
-                    background: STATUS_COLOR[task.status.color],
+                    background: STATUS_COLOR[task.status?.color],
                   }}
                 />
 
@@ -65,7 +71,7 @@ export default function DaySidebar({ sprint, tasks, events }) {
               <h4>{task.title}</h4>
 
               <div className="taskMeta">
-                <em className={task.priority.toLowerCase()}>
+                <em className={(task.priority || "").toLowerCase()}>
                   {PRIORITY_LABEL[task.priority]}
                 </em>
 
@@ -94,6 +100,7 @@ export default function DaySidebar({ sprint, tasks, events }) {
         ) : (
           events.map((event) => {
             const start = new Date(event.start_datetime);
+            // end_datetime이 ""(빈 문자열)일 수도 있어서 truthy 검사로 "없음"을 판단해요.
             const end = event.end_datetime
               ? new Date(event.end_datetime)
               : null;

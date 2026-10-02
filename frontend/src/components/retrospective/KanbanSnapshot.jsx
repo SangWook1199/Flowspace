@@ -1,6 +1,6 @@
 import KanbanColumn from "./KanbanColumn";
 
-export default function KanbanSnapshot({ kanban }) {
+export default function KanbanSnapshot({ kanban = {} }) {
   return (
     <section className="retro-section">
       <div className="retro-section__header">
@@ -9,11 +9,11 @@ export default function KanbanSnapshot({ kanban }) {
       </div>
 
       <div className="retro-kanban">
-        <KanbanColumn title="할 일" color="todo" tasks={kanban.todo} />
+        <KanbanColumn title="할 일" color="todo" tasks={kanban.todo ?? []} />
 
-        <KanbanColumn title="진행 중" color="doing" tasks={kanban.doing} />
+        <KanbanColumn title="진행 중" color="doing" tasks={kanban.doing ?? []} />
 
-        <KanbanColumn title="완료" color="done" tasks={kanban.done} />
+        <KanbanColumn title="완료" color="done" tasks={kanban.done ?? []} />
       </div>
     </section>
   );

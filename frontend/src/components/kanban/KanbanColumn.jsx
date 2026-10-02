@@ -4,11 +4,16 @@ import { GripVertical, MoreHorizontal, Plus } from "lucide-react";
 import TaskCard from "./TaskCard";
 import StatusModal from "./StatusModal";
 import DeleteStatusModal from "./DeleteStatusModal";
+import { KANBAN_DRAG_MIME } from "./kanbanDrag";
 
-import { statuses } from "../../mock/kanban";
-
+// statuses(보드의 전체 상태 목록)와 onStatusSave/onStatusDelete는 부모(Kanban 페이지)가 내려줘요 —
+// 이 컴포넌트가 mock을 직접 읽으면 API로 바꿀 때 컬럼마다 손봐야 해서, 데이터는 전부 props로만 받아요.
+// onColumnDragEnd/onTaskDragEnd(cancelled)의 cancelled는 Esc나 보드 밖 드롭으로 취소됐다는 뜻이에요.
 export default function KanbanColumn({
   status,
+  statuses = [],
+  onStatusSave,
+  onStatusDelete,
   tasks,
   isDragging = false,
   onColumnDragStart,
@@ -20,13 +25,20 @@ export default function KanbanColumn({
   onTaskDragOver,
   onColumnEndDragEnter,
   onTaskDragEnd,
+  onAddTask,
 }) {
   const [menu, setMenu] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const menuRef = useRef(null);
+  const menuButtonRef = useRef(null);
   const columnRef = useRef(null);
+
+  // 메뉴 항목(수정/삭제 버튼)은 모달을 열면서 사라지니까, 모달이 닫히면 포커스를 "..." 버튼으로 돌려줘요.
+  const restoreMenuFocus = () => {
+    requestAnimationFrame(() => menuButtonRef.current?.focus());
+  };
 
   useEffect(() => {
     const handleOutsideClick = (e) => {
@@ -63,6 +75,8 @@ export default function KanbanColumn({
           draggable
           onDragStart={(e) => {
             e.dataTransfer.effectAllowed = "move";
+            // Firefox는 dataTransfer에 데이터가 없으면 드래그를 시작하지 않아요.
+            e.dataTransfer.setData(KANBAN_DRAG_MIME, JSON.stringify({ type: "column", id: status.id }));
 
             if (columnRef.current) {
               const rect = columnRef.current.getBoundingClientRect();
@@ -83,36 +97,44 @@ export default function KanbanColumn({
             onColumnDragOver?.(ratio >= 2 / 3);
           }}
           onDrop={(e) => e.preventDefault()}
-          onDragEnd={() => onColumnDragEnd?.()}
+          onDragEnd={(e) => onColumnDragEnd?.(e.dataTransfer.dropEffect === "none")}
         >
           <div className="columnTitle">
             <GripVertical size={14} className="columnGrip" />
-            <i className={`columnDot ${status.color.toLowerCase()}`} />
+            <i className={`columnDot ${(status.color ?? "").toLowerCase()}`} />
             <h3>{status.name}</h3>
             <span>{tasks.length}</span>
           </div>
 
-          <div className="columnMenuWrap" ref={menuRef}>
-            <button
-              className="columnMenu"
-              onClick={() => setMenu((prev) => !prev)}
-            >
-              <MoreHorizontal size={18} />
-            </button>
+          {/* 기본 상태(할 일·진행 중·완료)는 모든 워크스페이스가 같이 쓰는 값이라 고치거나 지울 수 없어요. */}
+          {!status.isDefault && (
+            <div className="columnMenuWrap" ref={menuRef}>
+              <button
+                type="button"
+                className="columnMenu"
+                ref={menuButtonRef}
+                aria-label={`${status.name} 컬럼 메뉴`}
+                aria-haspopup="true"
+                aria-expanded={menu}
+                onClick={() => setMenu((prev) => !prev)}
+              >
+                <MoreHorizontal size={18} />
+              </button>
 
-            {menu && (
-              <div className="columnDropdown">
-                <button
-                  onClick={() => {
-                    setEditOpen(true);
-                    setMenu(false);
-                  }}
-                >
-                  상태 수정
-                </button>
-
-                {!status.isDefault && (
+              {menu && (
+                <div className="columnDropdown">
                   <button
+                    type="button"
+                    onClick={() => {
+                      setEditOpen(true);
+                      setMenu(false);
+                    }}
+                  >
+                    상태 수정
+                  </button>
+
+                  <button
+                    type="button"
                     className="danger"
                     onClick={() => {
                       setDeleteOpen(true);
@@ -121,10 +143,10 @@ export default function KanbanColumn({
                   >
                     상태 삭제
                   </button>
-                )}
-              </div>
-            )}
-          </div>
+                </div>
+              )}
+            </div>
+          )}
         </header>
 
         {/* 카드도 컬럼과 같은 방식이에요 — 카드 위에서 dragover가 계속
@@ -154,7 +176,7 @@ export default function KanbanColumn({
                 isDragging={task.id === draggingTaskId}
                 onDragStart={() => onTaskDragStart?.(task.id)}
                 onDragOverCard={(isAfter) => onTaskDragOver?.(task.id, isAfter)}
-                onDragEnd={() => onTaskDragEnd?.()}
+                onDragEnd={(cancelled) => onTaskDragEnd?.(cancelled)}
               />
             </Fragment>
           ))}
@@ -175,7 +197,7 @@ export default function KanbanColumn({
           />
         </div>
 
-        <button className="columnAddTask">
+        <button type="button" className="columnAddTask" onClick={onAddTask}>
           <Plus size={15} />
           작업 추가
         </button>
@@ -185,10 +207,15 @@ export default function KanbanColumn({
         <StatusModal
           mode="edit"
           status={status}
-          onClose={() => setEditOpen(false)}
-          onSave={(data) => {
-            console.log("수정", data);
+          statuses={statuses}
+          onClose={() => {
             setEditOpen(false);
+            restoreMenuFocus();
+          }}
+          onSave={(data) => {
+            onStatusSave?.(data);
+            setEditOpen(false);
+            restoreMenuFocus();
           }}
         />
       )}
@@ -197,9 +224,12 @@ export default function KanbanColumn({
         <DeleteStatusModal
           status={status}
           statuses={statuses}
-          onClose={() => setDeleteOpen(false)}
+          onClose={() => {
+            setDeleteOpen(false);
+            restoreMenuFocus();
+          }}
           onDelete={(data) => {
-            console.log("삭제", data);
+            onStatusDelete?.(data);
             setDeleteOpen(false);
           }}
         />

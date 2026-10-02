@@ -17,6 +17,7 @@ public record CalendarItemResponse(
     String type,
 
     String title,
+    String description,
 
     WorkspaceColor color,
 
@@ -38,6 +39,7 @@ public record CalendarItemResponse(
             task.getTaskId(),
             "TASK",
             task.getTitle(),
+            task.getDescription(),
             task.getStatus().getColor(),
             task.getStartDate().atStartOfDay(),
             task.getEndDate() == null ? null : task.getEndDate().atTime(23, 59),
@@ -54,6 +56,7 @@ public record CalendarItemResponse(
             event.getEventId(),
             "EVENT",
             event.getTitle(),
+            event.getDescription(),
             event.getColor(),
             event.getStartDatetime(),
             event.getEndDatetime(),

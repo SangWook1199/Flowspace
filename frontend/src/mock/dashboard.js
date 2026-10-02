@@ -18,54 +18,19 @@ export const members = [
   { id: 4, name: "지민", initial: "지", online: true },
 ];
 
-export const sprint = {
-  name: "Sprint 1",
-  status: "진행 중",
-
-  start: "2026.09.01",
-  end: "2026.09.14",
-  remain: "14일 남음",
-
-  progress: 68,
-  total: 35,
-  completed: 24,
-  progressing: 8,
-  todo: 3,
-
-  goal: "핵심 기능 개발 및 베타 배포 준비",
-  goalDesc:
-    "안정적인 서비스를 출시하기 위한 핵심 기능을 완성하고 내부 베타 테스트를 진행합니다.",
+// 스프린트 이름/기간/진행 수치는 mock/sprints.js(스프린트 목록과 같은 데이터)에서 가져와 대시보드 페이지가 계산해요.
+// 여기엔 그 목록에 없는 "목표 설명"만 스프린트 id별로 둬요(API를 붙이면 스프린트 응답에 포함될 값이에요).
+export const sprintGoalDescriptions = {
+  1: "안정적인 서비스를 출시하기 위한 핵심 기능을 완성하고 내부 베타 테스트를 진행합니다.",
 };
 
+// KPI 카드는 모양(아이콘/색/이름)만 여기 두고, 숫자와 문구는 utils/dashboardMetrics.js의 buildKpis가
+// 스프린트/작업/일정/팀원 데이터로 계산해서 채워요(값을 mock에 박아두면 데이터가 바뀌어도 그대로 남아서 모순이 생겨요).
 export const kpis = [
-  {
-    label: "완료율",
-    value: "68%",
-    note: "24 / 35 작업 완료",
-    icon: "CheckCircle2",
-    color: "blue",
-  },
-  {
-    label: "오늘 할 일",
-    value: "8건",
-    note: "전체 12건 중",
-    icon: "ClipboardCheck",
-    color: "blue",
-  },
-  {
-    label: "오늘 일정",
-    value: "3건",
-    note: "회의 2 · 발표 1",
-    icon: "CalendarDays",
-    color: "purple",
-  },
-  {
-    label: "온라인 팀원",
-    value: "4 / 4명",
-    note: "지금 함께 작업 중",
-    icon: "Users",
-    color: "green",
-  },
+  { key: "completion", label: "완료율", icon: "CheckCircle2", color: "blue" },
+  { key: "todayTasks", label: "오늘 할 일", icon: "ClipboardCheck", color: "blue" },
+  { key: "todaySchedule", label: "오늘 일정", icon: "CalendarDays", color: "purple" },
+  { key: "online", label: "온라인 팀원", icon: "Users", color: "green" },
 ];
 
 export const todayTasks = [
@@ -151,24 +116,28 @@ export const todayTasks = [
 
 export const todaySchedule = [
   {
+    id: 1,
     time: "09:00",
     title: "팀 회의 (Daily Standup)",
     desc: "09:00 - 09:30 · 회의실 A",
     color: "purple",
   },
   {
+    id: 2,
     time: "11:00",
     title: "기획안 리뷰",
     desc: "11:00 - 12:00 · 온라인 미팅",
     color: "blue",
   },
   {
+    id: 3,
     time: "14:00",
     title: "Sprint UI 디자인 리뷰",
     desc: "14:00 - 15:00 · 회의실 B",
     color: "green",
   },
   {
+    id: 4,
     time: "16:00",
     title: "프로토타입 개발 미팅",
     desc: "16:00 - 17:00 · 온라인 미팅",

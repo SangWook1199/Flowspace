@@ -15,6 +15,7 @@ public record CommentResponse(
     Long userId,
     String userName,
     Long profileFileId,
+    String profileImageUrl,
     String content,
     LocalDateTime createdAt,
     LocalDateTime updatedAt,
@@ -34,6 +35,9 @@ public record CommentResponse(
             comment.getUser().getProfileFile() == null
                 ? null
                 : comment.getUser().getProfileFile().getFileId(),
+            comment.getUser().getProfileFile() == null
+                ? null
+                : comment.getUser().getProfileFile().getFileUrl(),
             comment.getContent(),
             comment.getCreatedAt(),
             comment.getUpdatedAt(),

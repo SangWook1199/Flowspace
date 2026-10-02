@@ -7,7 +7,7 @@ export default function SocialLogin() {
   };
 
   const handleMicrosoftLogin = () => {
-    // TODO : Kakao OAuth API
+    // TODO : Microsoft OAuth API
   };
 
   return (

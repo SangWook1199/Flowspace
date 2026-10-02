@@ -8,7 +8,8 @@ public record AssigneeItem(
 
     Long userId,
     String name,
-    Long profileFileId
+    Long profileFileId,
+    String profileImageUrl
 
 ) {
 
@@ -18,7 +19,10 @@ public record AssigneeItem(
             assignee.getUser().getNickname(),
             assignee.getUser().getProfileFile() == null
                 ? null
-                : assignee.getUser().getProfileFile().getFileId()
+                : assignee.getUser().getProfileFile().getFileId(),
+            assignee.getUser().getProfileFile() == null
+                ? null
+                : assignee.getUser().getProfileFile().getFileUrl()
         );
     }
 

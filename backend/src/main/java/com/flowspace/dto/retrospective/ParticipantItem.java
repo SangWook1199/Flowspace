@@ -6,7 +6,8 @@ public record ParticipantItem(
 
     Long userId,
     String name,
-    Long profileFileId
+    Long profileFileId,
+    String profileImageUrl
 
 ) { }
 

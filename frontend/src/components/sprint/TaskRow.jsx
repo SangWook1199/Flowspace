@@ -1,5 +1,6 @@
 import { Flag, MoreHorizontal } from "lucide-react";
 import styles from "./TaskWorkspace.module.css";
+import { formatDateDots } from "../../utils/date";
 
 const priorityColor = { 높음: "high", 보통: "medium", 낮음: "low" };
 export default function TaskRow({
@@ -9,7 +10,8 @@ export default function TaskRow({
   onCheck,
   onSelect,
 }) {
-  const done = task.subtasks.filter((item) => item.checked).length;
+  const subtasks = task.subtasks ?? [];
+  const done = subtasks.filter((item) => item.checked).length;
   return (
     <tr
       className={selected ? styles.selected : ""}
@@ -19,13 +21,14 @@ export default function TaskRow({
         <input
           type="checkbox"
           checked={checked}
+          aria-label={`${task.code ?? task.id} 선택`}
           onChange={() => onCheck(task.id)}
         />
       </td>
-      <td>{task.id}</td>
+      <td>{task.code ?? task.id}</td>
       <td className={styles.taskTitle}>{task.title}</td>
       <td>
-        <span className={styles.avatar}>{task.assignee[0]}</span>
+        <span className={styles.avatar}>{task.assignee?.[0]}</span>
         {task.assignee}
       </td>
       <td>
@@ -36,13 +39,13 @@ export default function TaskRow({
           {task.priority}
         </span>
       </td>
-      <td>{task.startDate.replaceAll("-", ".")}</td>
-      <td>{task.dueDate.replaceAll("-", ".")}</td>
+      <td>{formatDateDots(task.startDate)}</td>
+      <td>{formatDateDots(task.dueDate)}</td>
       <td>
-        {done} / {task.subtasks.length}
+        {done} / {subtasks.length}
       </td>
       <td onClick={(event) => event.stopPropagation()}>
-        <button className={styles.more} aria-label="작업 메뉴">
+        <button type="button" className={styles.more} aria-label="작업 메뉴">
           <MoreHorizontal size={19} />
         </button>
       </td>

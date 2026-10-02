@@ -13,6 +13,7 @@ export default function WorkspaceSwitcher({ currentWorkspace, workspaces, onChan
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const rootRef = useRef(null);
+  const toggleRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
@@ -22,8 +23,13 @@ export default function WorkspaceSwitcher({ currentWorkspace, workspaces, onChan
         setOpen(false);
       }
     };
+    // Esc로 닫으면 포커스를 열기 버튼으로 돌려줘요 — 안 그러면 사라진 메뉴 항목에
+    // 있던 포커스가 body로 날아가서 키보드 사용자가 길을 잃어요.
     const handleKeyDown = (e) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        toggleRef.current?.focus();
+      }
     };
 
     document.addEventListener("mousedown", handlePointerDown, true);
@@ -39,7 +45,11 @@ export default function WorkspaceSwitcher({ currentWorkspace, workspaces, onChan
       <button
         type="button"
         className="workspace"
+        ref={toggleRef}
         onClick={() => setOpen((v) => !v)}
+        aria-haspopup="true"
+        aria-expanded={open}
+        aria-label={`워크스페이스 전환, 현재 ${currentWorkspace.name}`}
       >
         <span
           className="workspaceIcon"
@@ -57,7 +67,7 @@ export default function WorkspaceSwitcher({ currentWorkspace, workspaces, onChan
       </button>
 
       {open && (
-        <div className="workspaceDropdown">
+        <div className="workspaceDropdown" role="group" aria-label="내 워크스페이스">
           <p>내 워크스페이스</p>
 
           {workspaces.map((workspace) => (
@@ -65,6 +75,7 @@ export default function WorkspaceSwitcher({ currentWorkspace, workspaces, onChan
               key={workspace.id}
               type="button"
               className="workspaceItem"
+              aria-current={workspace.id === currentWorkspace.id ? "true" : undefined}
               onClick={() => {
                 onChange(workspace.id);
                 setOpen(false);

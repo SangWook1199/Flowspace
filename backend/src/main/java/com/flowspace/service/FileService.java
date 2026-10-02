@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -87,12 +88,66 @@ public class FileService {
         fileRepository.delete(file);
     }
 
+    // 파일 복사 (페이지 복제용, 원본 파일이 없으면 null)
+    public File copy(File source, Workspace workspace, User user) {
+
+        // 기본 커버는 실제 파일 없이 정적 리소스를 가리키므로 행만 새로 만들어요.
+        if (source.getFileUrl().startsWith("/covers/")) {
+
+            File cover = File.builder().workspace(workspace).uploadedBy(user).originalName(source.getOriginalName())
+                .storedName(source.getStoredName()).mimeType(source.getMimeType()).size(source.getSize())
+                .width(source.getWidth()).height(source.getHeight()).fileUrl(source.getFileUrl()).build();
+
+            return fileRepository.save(cover);
+        }
+
+        try {
+
+            Path directory = Paths.get(uploadDir);
+            Path sourcePath = directory.resolve(source.getStoredName());
+
+            if (!Files.exists(sourcePath)) {
+                return null;
+            }
+
+            String storedName = source.getStoredName();
+            String extension = storedName.contains(".") ? storedName.substring(storedName.lastIndexOf(".")) : "";
+            String copiedName = UUID.randomUUID() + extension;
+
+            Files.copy(sourcePath, directory.resolve(copiedName), StandardCopyOption.REPLACE_EXISTING);
+
+            File copied = File.builder().workspace(workspace).uploadedBy(user).originalName(source.getOriginalName())
+                .storedName(copiedName).mimeType(source.getMimeType()).size(source.getSize()).width(source.getWidth())
+                .height(source.getHeight()).fileUrl("/uploads/" + copiedName).build();
+
+            return fileRepository.save(copied);
+
+        } catch (IOException e) {
+            throw new FlowSpaceException(ErrorCode.FILE_UPLOAD_FAILED);
+        }
+    }
+
     // 기본 커버 File 생성
     public File createDefaultCover(String coverName, Workspace workspace, User user) {
 
-        String fileName = coverName + ".jpg";
+        // 커버 이름에 경로 문자가 섞여 있으면 static/covers 밖을 가리킬 수 있어서 막아요.
+        if (coverName == null || coverName.isBlank() || coverName.contains("/") || coverName.contains("\\")
+            || coverName.contains("..")) {
+            throw new FlowSpaceException(ErrorCode.FILE_NOT_FOUND);
+        }
 
+        // 갤러리에는 실제 파일 확장자(png 등)로 올라가 있어서, 있는 확장자를 찾아서 써요.
+        String fileName = coverName + ".png";
         ClassPathResource resource = new ClassPathResource("static/covers/" + fileName);
+
+        for (String ext : List.of("png", "jpg", "jpeg", "webp")) {
+            ClassPathResource candidate = new ClassPathResource("static/covers/" + coverName + "." + ext);
+            if (candidate.exists()) {
+                fileName = coverName + "." + ext;
+                resource = candidate;
+                break;
+            }
+        }
 
         String extension = fileName.substring(fileName.lastIndexOf(".") + 1);
 

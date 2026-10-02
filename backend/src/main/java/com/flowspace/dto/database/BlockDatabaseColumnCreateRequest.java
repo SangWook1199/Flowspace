@@ -1,7 +1,6 @@
 package com.flowspace.dto.database;
 
 import com.flowspace.entity.enums.DatabaseColumnType;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -10,7 +9,8 @@ import jakarta.validation.constraints.Size;
 // 데이터베이스 컬럼 생성 요청 DTO
 public record BlockDatabaseColumnCreateRequest(
 
-    @NotBlank(message = "컬럼명은 필수입니다.")
+    // 표(TABLE) 블록의 열은 이름이 비어 있을 수 있어요.
+    @NotNull(message = "컬럼명은 필수입니다.")
     @Size(max = 50, message = "컬럼명은 50자 이하입니다.")
     String name,
 

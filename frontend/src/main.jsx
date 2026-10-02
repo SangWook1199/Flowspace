@@ -5,6 +5,7 @@ import "./styles/layout.css";
 import "./styles/dashboard.css";
 import "./styles/sprint.css";
 import "./styles/sprint-list.css";
+import "./styles/sprint-colors.css";
 import "./styles/sidebar-sprints.css";
 import "./styles/sprint-detail.css";
 import "./styles/kanban.css";

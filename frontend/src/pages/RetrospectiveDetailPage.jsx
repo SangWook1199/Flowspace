@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { CalendarDays, Users, MoreHorizontal } from "lucide-react";
 
-import retrospectiveMock from "../mock/retrospectiveDetail";
+import retrospectiveDetails from "../mock/retrospectiveDetail";
 
 import RetroSummary from "../components/retrospective/RetroSummary";
 import KanbanSnapshot from "../components/retrospective/KanbanSnapshot";
@@ -18,19 +19,12 @@ import "../styles/retrospective-detail.css";
 import "../styles/page-detail.css";
 
 export default function RetrospectiveDetailPage() {
-  // Mock → 나중에 API로 교체. setRetrospective가 필요해진 이유: 아래
-  // BlockEditor는 PageDetailPage와 똑같이 "제어 컴포넌트"라(blocks를
-  // props로 받고 onChange로 바뀐 배열을 돌려줌) 회고 쪽에서도 그 변경을
-  // 받아 담아둘 곳이 있어야 해요.
-  const [retrospective, setRetrospective] = useState(retrospectiveMock);
-
-  const updateBlocks = (blocks) => {
-    setRetrospective((prev) => ({ ...prev, blocks }));
-  };
-
-  /*
-  // Spring 연결 시
   const { sprintId } = useParams();
+  const navigate = useNavigate();
+
+  // Mock → 나중에 API로 교체해요.
+  /*
+  // Spring 연결 시: detail을 mock 대신 API 응답으로 채우면 돼요.
   const [retrospective, setRetrospective] = useState(null);
 
   useEffect(() => {
@@ -43,7 +37,42 @@ export default function RetrospectiveDetailPage() {
   }, [sprintId]);
   */
 
-  if (!retrospective) return null;
+  // 주소의 :sprintId로 회고를 찾아요. 숫자가 아니거나(abc, NaN) 없는 스프린트면 undefined라서 아래에서 "없음" 화면을 보여줘요.
+  const id = /^\d+$/.test(sprintId ?? "") ? Number(sprintId) : null;
+  const detail = id === null ? undefined : retrospectiveDetails[id];
+
+  if (!detail) {
+    return (
+      <main className="retro-detail-page">
+        <header className="retro-detail-header">
+          <div>
+            <h1>회고를 찾을 수 없어요</h1>
+
+            <div className="retro-meta">
+              <span>주소가 잘못됐거나 아직 만들어지지 않은 회고예요.</span>
+            </div>
+          </div>
+        </header>
+
+        <button className="detail-btn" onClick={() => navigate("/retrospectives")}>
+          회고 목록으로
+        </button>
+      </main>
+    );
+  }
+
+  // key를 sprintId로 줘서 다른 스프린트로 이동하면 편집 중이던 블록 상태가 섞이지 않고 새로 시작해요.
+  return <RetrospectiveDetail key={detail.sprintId} initialRetrospective={detail} />;
+}
+
+// setRetrospective가 필요한 이유: 아래 BlockEditor는 PageDetailPage와 똑같이 "제어 컴포넌트"라(blocks를
+// props로 받고 onChange로 바뀐 배열을 돌려줌) 회고 쪽에서도 그 변경을 받아 담아둘 곳이 있어야 해요.
+function RetrospectiveDetail({ initialRetrospective }) {
+  const [retrospective, setRetrospective] = useState(initialRetrospective);
+
+  const updateBlocks = (blocks) => {
+    setRetrospective((prev) => ({ ...prev, blocks }));
+  };
 
   return (
     <main className="retro-detail-page">
@@ -60,12 +89,12 @@ export default function RetrospectiveDetailPage() {
 
             <span>
               <Users size={16} />
-              참여자 {retrospective.participants.length}명
+              참여자 {(retrospective.participants ?? []).length}명
             </span>
           </div>
         </div>
 
-        <button className="retro-more-button">
+        <button className="retro-more-button" aria-label="더보기">
           <MoreHorizontal size={18} />
         </button>
       </header>

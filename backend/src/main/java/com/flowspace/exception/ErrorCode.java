@@ -12,6 +12,7 @@ public enum ErrorCode {
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
     NICKNAME_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 사용 중인 닉네임입니다."),
     INVALID_LOGIN(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."),
+    INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "리프레시 토큰이 유효하지 않습니다."),
 
     // User
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."),
@@ -46,6 +47,8 @@ public enum ErrorCode {
     // Page
     PAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "페이지를 찾을 수 없습니다."),
     INVALID_PAGE_PARENT(HttpStatus.BAD_REQUEST, "자기 자신을 부모 페이지로 지정할 수 없습니다."),
+    INVALID_PAGE_REORDER(HttpStatus.BAD_REQUEST, "같은 상위 페이지에 속한 페이지만 순서를 바꿀 수 있습니다."),
+    RETROSPECTIVE_PAGE_PROTECTED(HttpStatus.BAD_REQUEST, "회고 페이지는 영구 삭제할 수 없습니다."),
     BLOCK_NOT_FOUND(HttpStatus.NOT_FOUND, "블록을 찾을 수 없습니다."),
     INVALID_BLOCK_PARENT(HttpStatus.BAD_REQUEST, "자기 자신 또는 하위 블록으로 이동할 수 없습니다."),
     DATABASE_NOT_FOUND(HttpStatus.NOT_FOUND, "데이터베이스를 찾을 수 없습니다."),
@@ -54,6 +57,8 @@ public enum ErrorCode {
     DATABASE_CELL_NOT_FOUND(HttpStatus.NOT_FOUND, "데이터베이스 셀을 찾을 수 없습니다."),
     DATABASE_OPTION_NOT_FOUND(HttpStatus.NOT_FOUND, "데이터베이스 컬럼 옵션을 찾을 수 없습니다."),
 
+    INVALID_BLOCK_CONTENT(HttpStatus.BAD_REQUEST, "블록 내용이 올바른 JSON 형식이 아닙니다."),
+    INVALID_BLOCK_SYNC(HttpStatus.BAD_REQUEST, "블록 동기화 요청이 올바르지 않습니다."),
     // File
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "파일 업로드에 실패했습니다."),
     FILE_DELETE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "파일 삭제에 실패했습니다."),

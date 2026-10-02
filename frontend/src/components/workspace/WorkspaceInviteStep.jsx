@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { ArrowLeft, Mail, Plus, X } from "lucide-react";
 
 export default function WorkspaceInviteStep({
@@ -7,15 +7,27 @@ export default function WorkspaceInviteStep({
   onRemove,
   onPrev,
   onCreate,
+  onSkip,
+  submitting = false,
 }) {
   const [email, setEmail] = useState("");
+  // 이메일 형식/중복 검사 결과 안내 문구. 입력을 고치기 시작하면 지워요.
+  const [error, setError] = useState("");
+  const emailId = useId();
+  const errorId = useId();
 
+  // onAdd는 성공하면 null, 실패하면 안내 문구를 돌려줘요(검증은 부모가 목록을 알고 있어서 거기서 해요).
   const handleAdd = () => {
     const value = email.trim();
 
     if (!value) return;
 
-    onAdd(value);
+    const message = onAdd(value);
+    if (message) {
+      setError(message);
+      return;
+    }
+    setError("");
     setEmail("");
   };
 
@@ -24,6 +36,16 @@ export default function WorkspaceInviteStep({
       e.preventDefault();
       handleAdd();
     }
+  };
+
+  // 입력칸에 쓰다 만 이메일이 남아 있는데 그냥 생성하면 그 사람은 조용히 빠져요.
+  // "추가"를 누른 사람만 초대되는 걸 분명히 알려주고 한 번 멈춰요.
+  const handleCreate = () => {
+    if (email.trim()) {
+      setError("입력한 이메일을 추가(+)하거나 지운 뒤 생성해 주세요.");
+      return;
+    }
+    onCreate();
   };
 
   return (
@@ -40,23 +62,39 @@ export default function WorkspaceInviteStep({
 
       {/* 이메일 입력 */}
       <div className="workspace-field">
-        <label>팀원 이메일</label>
+        <label htmlFor={emailId}>팀원 이메일</label>
 
         <div className="workspace-email-input">
           <Mail size={18} />
 
           <input
+            id={emailId}
             type="email"
             placeholder="example@email.com"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setError("");
+            }}
             onKeyDown={handleKeyDown}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? errorId : undefined}
           />
 
-          <button type="button" onClick={handleAdd}>
+          <button type="button" onClick={handleAdd} aria-label="팀원 이메일 추가">
             <Plus size={18} />
           </button>
         </div>
+
+        {error && (
+          <small
+            id={errorId}
+            role="alert"
+            style={{ display: "block", marginTop: 8, color: "#ef4444", fontSize: 13 }}
+          >
+            {error}
+          </small>
+        )}
       </div>
 
       {/* 초대 목록 */}
@@ -67,7 +105,7 @@ export default function WorkspaceInviteStep({
           members.map((member) => (
             <div className="workspace-member-chip" key={member.id}>
               <div className="member-avatar">
-                {member.name.charAt(0).toUpperCase()}
+                {Array.from(member.name)[0]?.toUpperCase()}
               </div>
 
               <div className="member-info">
@@ -75,7 +113,11 @@ export default function WorkspaceInviteStep({
                 <span>{member.email}</span>
               </div>
 
-              <button onClick={() => onRemove(member.id)}>
+              <button
+                type="button"
+                onClick={() => onRemove(member.id)}
+                aria-label={`${member.email} 초대 취소`}
+              >
                 <X size={16} />
               </button>
             </div>
@@ -85,17 +127,18 @@ export default function WorkspaceInviteStep({
 
       {/* 버튼 */}
       <div className="workspace-actions between">
-        <button className="workspace-prev" onClick={onPrev}>
+        <button type="button" className="workspace-prev" onClick={onPrev} disabled={submitting}>
           <ArrowLeft size={18} />
           이전
         </button>
 
         <div className="workspace-action-group">
-          <button className="workspace-skip" onClick={onCreate}>
+          {/* 건너뛰기는 목록에 누가 있든 아무도 초대하지 않고 만들어요. */}
+          <button type="button" className="workspace-skip" onClick={onSkip} disabled={submitting}>
             건너뛰기
           </button>
 
-          <button className="workspace-create" onClick={onCreate}>
+          <button type="button" className="workspace-create" onClick={handleCreate} disabled={submitting}>
             워크스페이스 생성
           </button>
         </div>

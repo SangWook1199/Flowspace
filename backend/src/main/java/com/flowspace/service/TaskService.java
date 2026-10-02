@@ -211,26 +211,48 @@ public class TaskService {
         workspaceMemberRepository.findByWorkspaceAndUser(sprint.getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        TaskStatus status = validateWorkspaceStatus(sprint.getWorkspace(), request.statusId());
+        return saveNewTask(sprint.getWorkspace(), sprint, request, user);
+    }
+
+    // Backlog Task 생성 (스프린트 없이 워크스페이스에 바로 만든다)
+    public TaskResponse createBacklogTask(Long workspaceId, TaskCreateRequest request, String email) {
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        Workspace workspace = workspaceRepository.findById(workspaceId)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+
+        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        return saveNewTask(workspace, null, request, user);
+    }
+
+    // Task 저장 공통 처리 (sprint가 null이면 Backlog Task)
+    private TaskResponse saveNewTask(Workspace workspace, Sprint sprint, TaskCreateRequest request, User user) {
+
+        TaskStatus status = validateWorkspaceStatus(workspace, request.statusId());
 
         BigDecimal position = BigDecimal
-            .valueOf(taskRepository.findByWorkspaceAndStatusOrderByPositionAsc(sprint.getWorkspace(), status).size());
+            .valueOf(taskRepository.findByWorkspaceAndStatusOrderByPositionAsc(workspace, status).size());
 
-        Task task = Task.builder().workspace(sprint.getWorkspace()).sprint(sprint).createdBy(user).status(status)
+        Task task = Task.builder().workspace(workspace).sprint(sprint).createdBy(user).status(status)
             .position(position).title(request.title()).description(request.description()).startDate(request.startDate())
             .endDate(request.endDate()).priority(request.priority()).build();
 
         taskRepository.save(task);
 
-        activityService.log(sprint.getWorkspace(), user, ActivityType.TASK_CREATED, ActivityTargetType.TASK,
-            task.getTaskId());
+        activityService.log(workspace, user, ActivityType.TASK_CREATED, ActivityTargetType.TASK, task.getTaskId());
 
-        for (Long assigneeId : request.assigneeIds()) {
+        List<Long> assigneeIds = request.assigneeIds() == null ? List.of() : request.assigneeIds();
+
+        for (Long assigneeId : assigneeIds) {
 
             User assignee = userRepository.findById(assigneeId)
                 .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-            workspaceMemberRepository.findByWorkspaceAndUser(sprint.getWorkspace(), assignee)
+            workspaceMemberRepository.findByWorkspaceAndUser(workspace, assignee)
                 .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
             taskAssigneeRepository.save(TaskAssignee.builder().task(task).user(assignee).build());
@@ -327,7 +349,9 @@ public class TaskService {
 
         taskAssigneeRepository.deleteByTask(task);
 
-        for (Long assigneeId : request.assigneeIds()) {
+        List<Long> assigneeIds = request.assigneeIds() == null ? List.of() : request.assigneeIds();
+
+        for (Long assigneeId : assigneeIds) {
 
             User assignee = userRepository.findById(assigneeId)
                 .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));

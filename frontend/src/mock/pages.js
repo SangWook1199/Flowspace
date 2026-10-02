@@ -86,14 +86,14 @@ export const pages = [
       {
         id: 7,
         type: "TASK",
-        task: {
-          id: 8,
-          code: "SP1-08",
-          title: "API 문서 작성",
-          assignee: "지민",
-          status: "진행 전",
-          priority: "낮음",
-        },
+        // 예전엔 여기에 title/assignee 같은 필드를 통째로 복사해서
+        // 넣어뒀는데(스냅샷), 그러면 스프린트 화면에서 이 태스크를
+        // 고쳐도 여기는 그대로였어요. 이제는 sprintTaskRows의 id만
+        // 참조로 갖고 있고, 실제 내용은 BlockEditor가 매번 새로
+        // 찾아서 보여줘요(그래서 서브태스크 체크도 여기서 바로 할 수
+        // 있어요) — sprintTaskRows의 "SP1-8"(제목/담당자/우선순위 모두
+        // 같음)로 그대로 연결돼요.
+        taskId: "SP1-8",
       },
       { id: 8, type: "DIVIDER" },
       { id: 9, type: "H2", content: "하위 페이지" },
@@ -156,13 +156,9 @@ export const pages = [
       {
         id: 12,
         type: "EVENT",
-        event: {
-          id: 104,
-          title: "UI/UX 리뷰",
-          start: "2026-09-19T09:00",
-          end: "2026-09-20T18:00",
-          color: "BLUE",
-        },
+        // event_id 104(calendarEvents의 "UI/UX 리뷰")를 참조만 해요 —
+        // 위 TASK 블록과 같은 이유로 스냅샷 대신 id 참조로 바꿨어요.
+        eventId: 104,
       },
       { id: 13, type: "DIVIDER" },
       { id: 14, type: "H2", content: "하위 페이지" },
@@ -240,14 +236,8 @@ export const pages = [
       {
         id: 13,
         type: "TASK",
-        task: {
-          id: 5,
-          code: "SP1-05",
-          title: "파일 업로드 테스트",
-          assignee: "민수",
-          status: "진행 전",
-          priority: "낮음",
-        },
+        // sprintTaskRows의 "SP1-5"(파일 업로드 테스트)를 참조해요.
+        taskId: "SP1-5",
       },
     ],
   },

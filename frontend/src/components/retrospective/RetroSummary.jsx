@@ -1,7 +1,8 @@
 import { CheckCircle2, Clock3, Users } from "lucide-react";
 import { getAvatarTone } from "../../utils/avatarColor";
+import { clampPercent } from "../../utils/date";
 
-export default function RetroSummary({ summary, participants }) {
+export default function RetroSummary({ summary, participants = [] }) {
   return (
     <section className="retro-section">
       <div className="retro-section__header">
@@ -13,7 +14,7 @@ export default function RetroSummary({ summary, participants }) {
         {/* 완료율 */}
         <div className="summary-card summary-rate">
           <div className="summary-circle">
-            <strong>{summary.completionRate}%</strong>
+            <strong>{clampPercent(summary.completionRate)}%</strong>
           </div>
 
           <div className="summary-content">

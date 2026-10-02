@@ -14,7 +14,10 @@ public record DatabaseCreateRequest(
     @Size(max = 100, message = "제목은 100자 이하입니다.")
     String title,
 
-    DatabaseViewType viewType
+    DatabaseViewType viewType,
+
+    // 시드 행(첫 번째 행)에 연결할 기존 페이지 (없으면 새 페이지를 만들어요)
+    Long seedPageId
 
 ) {
 }

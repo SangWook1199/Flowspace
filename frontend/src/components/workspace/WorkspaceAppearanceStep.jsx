@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
 export default function WorkspaceAppearanceStep({
@@ -9,6 +10,8 @@ export default function WorkspaceAppearanceStep({
   onNext,
 }) {
   const isValid = workspace.initials.trim().length > 0;
+  const initialsId = useId();
+  const colorLabelId = useId();
 
   return (
     <section className="workspace-step">
@@ -35,12 +38,14 @@ export default function WorkspaceAppearanceStep({
 
       {/* 이니셜 */}
       <div className="workspace-field">
-        <label>이니셜</label>
+        <label htmlFor={initialsId}>이니셜</label>
 
         <div className="workspace-input">
+          {/* maxLength는 이모지 한 글자를 2로 세서 "A😀" 같은 입력을 막아요 —
+              글자 수 제한(최대 2글자)은 onInitialsChange 쪽에서 Array.from으로 해요. */}
           <input
+            id={initialsId}
             type="text"
-            maxLength={2}
             value={workspace.initials}
             placeholder="HE"
             onChange={(e) => onInitialsChange(e.target.value)}
@@ -52,9 +57,9 @@ export default function WorkspaceAppearanceStep({
 
       {/* 색상 */}
       <div className="workspace-field">
-        <label>대표 색상</label>
+        <label id={colorLabelId}>대표 색상</label>
 
-        <div className="workspace-color-grid">
+        <div className="workspace-color-grid" role="group" aria-labelledby={colorLabelId}>
           {colors.map((color) => (
             <button
               key={color}
@@ -63,6 +68,8 @@ export default function WorkspaceAppearanceStep({
                 workspace.color === color ? "selected" : ""
               }`}
               style={{ background: color }}
+              aria-label={`색상 ${color}`}
+              aria-pressed={workspace.color === color}
               onClick={() => onColorChange(color)}
             />
           ))}
@@ -71,12 +78,12 @@ export default function WorkspaceAppearanceStep({
 
       {/* 버튼 */}
       <div className="workspace-actions between">
-        <button className="workspace-prev" onClick={onPrev}>
+        <button type="button" className="workspace-prev" onClick={onPrev}>
           <ArrowLeft size={18} />
           이전
         </button>
 
-        <button className="workspace-next" disabled={!isValid} onClick={onNext}>
+        <button type="button" className="workspace-next" disabled={!isValid} onClick={onNext}>
           다음
           <ArrowRight size={18} />
         </button>

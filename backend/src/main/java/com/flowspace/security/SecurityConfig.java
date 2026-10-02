@@ -1,6 +1,7 @@
 package com.flowspace.security;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 // import org.springframework.security.config.Customizer;/
@@ -23,6 +24,10 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
+    // 배포 환경마다 프론트 주소가 다르니까 설정으로 뺐어요(여러 개면 쉼표로 구분, 기본값은 Vite 개발 서버).
+    @Value("${cors.allowed-origins:http://localhost:5173}")
+    private String allowedOrigins;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -36,7 +41,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+        configuration.setAllowedOrigins(List.of(allowedOrigins.split(",")));
         configuration.setAllowedMethods(List.of("GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
@@ -68,6 +73,12 @@ public class SecurityConfig {
                                 "/api/auth/login",
                                 "/api/auth/signup",
                                 "/api/auth/token",
+                                "/api/auth/refresh",
+                                "/api/auth/google",
+                                "/api/auth/microsoft",
+                                // 업로드·기본 커버 이미지는 <img> 태그가 직접 불러와서 Authorization 헤더를 못 붙여요.
+                                "/uploads/**",
+                                "/covers/**",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**")
                         .permitAll()

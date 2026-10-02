@@ -7,6 +7,7 @@ import com.flowspace.dto.auth.LoginResponse;
 import com.flowspace.dto.auth.MicrosoftLoginRequest;
 import com.flowspace.dto.auth.MicrosoftUserInfo;
 import com.flowspace.dto.auth.ProfileUpdateRequest;
+import com.flowspace.dto.auth.RefreshRequest;
 import com.flowspace.dto.auth.SignupRequest;
 import com.flowspace.dto.auth.UserResponse;
 import com.flowspace.dto.auth.TokenResponse;
@@ -105,6 +106,32 @@ public class AuthService {
         refreshTokenRepository.save(token);
 
         return LoginResponse.from(user, accessToken, refreshToken, user.getLastWorkspace().getWorkspaceId());
+    }
+
+    // 토큰 재발급 (로그인 때 저장해 둔 refresh token이 맞고 만료 전이면 새 access token을 발급해요)
+    public LoginResponse refresh(RefreshRequest request) {
+
+        String token = request.refreshToken();
+
+        if (!jwtProvider.validateToken(token)) {
+            throw new FlowSpaceException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        RefreshToken saved = refreshTokenRepository.findByToken(token)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.INVALID_REFRESH_TOKEN));
+
+        if (saved.getExpiredAt().isBefore(LocalDateTime.now())) {
+            throw new FlowSpaceException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        User user = saved.getUser();
+
+        // 동시에 여러 탭이 재발급을 요청해도 서로 끊기지 않도록 refresh token은 그대로 돌려줘요.
+        String accessToken = jwtProvider.createAccessToken(user);
+
+        Long workspaceId = user.getLastWorkspace() == null ? null : user.getLastWorkspace().getWorkspaceId();
+
+        return LoginResponse.from(user, accessToken, token, workspaceId);
     }
 
     // Swagger OAuth2 로그인

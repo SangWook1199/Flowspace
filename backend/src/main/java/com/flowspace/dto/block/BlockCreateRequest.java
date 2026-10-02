@@ -15,7 +15,9 @@ public record BlockCreateRequest(
 
     Long taskId,
 
-    Long eventId
+    Long eventId,
+
+    Long sprintId
 
 ) {
 }

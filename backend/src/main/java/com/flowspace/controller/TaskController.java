@@ -124,6 +124,14 @@ public class TaskController {
         return taskService.updateTaskStatus(taskId, request, userDetails.getUsername());
     }
 
+    @Operation(summary = "Backlog Task 생성")
+    @PostMapping("/workspaces/{workspaceId}/backlog/tasks")
+    public TaskResponse createBacklogTask(@PathVariable Long workspaceId,
+        @Valid @RequestBody TaskCreateRequest request, @AuthenticationPrincipal UserDetails userDetails) {
+
+        return taskService.createBacklogTask(workspaceId, request, userDetails.getUsername());
+    }
+
     @Operation(summary = "Backlog Task 목록 조회")
     @GetMapping("/workspaces/{workspaceId}/backlog/tasks")
     public List<TaskResponse> getBacklogTasks(@PathVariable Long workspaceId,
@@ -133,7 +141,7 @@ public class TaskController {
     }
 
     @Operation(summary = "SubTask 생성")
-    @PostMapping("/{taskId}/subtasks")
+    @PostMapping("/tasks/{taskId}/subtasks")
     public ResponseEntity<SubTaskResponse> createSubTask(@PathVariable Long taskId,
         @Valid @RequestBody SubTaskCreateRequest request, @AuthenticationPrincipal UserDetails userDetails) {
 
@@ -142,7 +150,7 @@ public class TaskController {
     }
 
     @Operation(summary = "SubTask 목록 조회")
-    @GetMapping("/{taskId}/subtasks")
+    @GetMapping("/tasks/{taskId}/subtasks")
     public ResponseEntity<List<SubTaskResponse>> getSubTasks(@PathVariable Long taskId,
         @AuthenticationPrincipal UserDetails userDetails) {
 
@@ -176,7 +184,7 @@ public class TaskController {
     }
 
     @Operation(summary = "Task 스프린트 이동")
-    @PatchMapping("/{taskId}/sprint")
+    @PatchMapping("/tasks/{taskId}/sprint")
     public ResponseEntity<TaskResponse> updateTaskSprint(@PathVariable Long taskId,
         @Valid @RequestBody TaskSprintUpdateRequest request, @AuthenticationPrincipal UserDetails userDetails) {
 
@@ -184,7 +192,7 @@ public class TaskController {
     }
 
     @Operation(summary = "Task 순서 변경")
-    @PatchMapping("/reorder")
+    @PatchMapping("/tasks/reorder")
     public ResponseEntity<Void> reorderTasks(@Valid @RequestBody TaskReorderRequest request,
         @AuthenticationPrincipal UserDetails userDetails) {
 

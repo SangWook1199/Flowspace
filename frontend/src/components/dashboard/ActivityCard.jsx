@@ -2,7 +2,7 @@ import { ArrowRight } from "lucide-react";
 import styles from "../../styles/classes";
 import { getAvatarTone } from "../../utils/avatarColor";
 
-export default function ActivityCard({ activities }) {
+export default function ActivityCard({ activities = [] }) {
   return (
     <section className={styles.panel}>
       <div className={styles.panelHeader}>

@@ -27,7 +27,7 @@ import {
 
 import ColumnResizeHandle from "./ColumnResizeHandle";
 import PopoverPortal from "./PopoverPortal";
-import { members } from "../../mock/dashboard";
+import { useWorkspace } from "../../context/WorkspaceContext";
 import { getAvatarTone } from "../../utils/avatarColor";
 
 // 컬럼에 width가 없으면(예전 목데이터, 새로 만든 컬럼) 쓰는 기본값이에요.
@@ -186,7 +186,16 @@ export default function DatabaseBlock({
   // 그래서 반드시 한 번의 onChange로 columns/cells를 같이 갱신해요.
   const chooseSelectValue = (rowId, columnId, rawValue) => {
     const trimmed = rawValue.trim();
-    if (!trimmed) return;
+    if (!trimmed) {
+      // 빈 값을 고르면 "선택 해제"예요(노션처럼 셀을 비워요). 예전엔 아무 일도 안 일어났어요.
+      if (cells.some((c) => c.rowId === rowId && c.columnId === columnId && c.value !== "")) {
+        onChange({
+          ...database,
+          cells: cells.map((c) => (c.rowId === rowId && c.columnId === columnId ? { ...c, value: "" } : c)),
+        });
+      }
+      return;
+    }
 
     const column = columns.find((c) => c.id === columnId);
     const existingOptions = column?.options || [];
@@ -281,12 +290,13 @@ export default function DatabaseBlock({
   };
 
   // 행 = 페이지라서, 행을 지우면 그 페이지(안의 내용까지 전부)도 같이
-  // 사라져요 — 되돌릴 수 없는 일이라 확인을 한 번 받아요.
+  // 휴지통으로 이동해요 — deletePage가 이제 소프트 삭제라 필요하면
+  // 휴지통에서 복원할 수 있어요.
   const deleteRow = (rowId) => {
     const row = rows.find((r) => r.id === rowId);
     if (row?.pageId) {
       const confirmed = window.confirm(
-        "이 행을 지우면 연결된 페이지도 함께 삭제돼요. 계속할까요?",
+        "이 행을 지우면 연결된 페이지도 함께 휴지통으로 이동해요. 계속할까요?",
       );
       if (!confirmed) return;
       onDeleteRowPage?.(row.pageId);
@@ -434,9 +444,16 @@ export default function DatabaseBlock({
     // 이 옵션을 이미 쓰고 있던 셀들도 이름을 따라가게 해요 — 안 그러면
     // 옵션 목록엔 새 이름, 셀엔 옛날 이름이 남아서 드롭다운에 없는
     // "미아 값"이 돼버려요.
-    const nextCells = cells.map((cell) =>
-      cell.columnId === columnId && cell.value === target.value ? { ...cell, value: trimmed } : cell,
-    );
+    // 다중 선택 셀은 값이 배열이라 그 안의 이름도 바꿔줘요.
+    const nextCells = cells.map((cell) => {
+      if (cell.columnId !== columnId) return cell;
+      if (Array.isArray(cell.value)) {
+        return cell.value.includes(target.value)
+          ? { ...cell, value: cell.value.map((v) => (v === target.value ? trimmed : v)) }
+          : cell;
+      }
+      return cell.value === target.value ? { ...cell, value: trimmed } : cell;
+    });
 
     onChange({ ...database, columns: nextColumns, cells: nextCells });
   };
@@ -459,11 +476,23 @@ export default function DatabaseBlock({
   };
 
   const removeOption = (columnId, optionId) => {
+    const removed = columns.find((c) => c.id === columnId)?.options?.find((o) => o.id === optionId);
+    // 지운 옵션을 쓰던 셀은 비워요(노션처럼). 안 비우면 옵션 목록엔 없는 "미아 값"이 회색 태그로 남아요.
+    const nextCells = removed
+      ? cells.map((cell) => {
+          if (cell.columnId !== columnId) return cell;
+          if (Array.isArray(cell.value)) {
+            return cell.value.includes(removed.value) ? { ...cell, value: cell.value.filter((v) => v !== removed.value) } : cell;
+          }
+          return cell.value === removed.value ? { ...cell, value: "" } : cell;
+        })
+      : cells;
     onChange({
       ...database,
       columns: columns.map((c) =>
         c.id === columnId ? { ...c, options: (c.options || []).filter((o) => o.id !== optionId) } : c,
       ),
+      cells: nextCells,
     });
   };
 
@@ -1348,13 +1377,13 @@ function StatusCell({ value, options, onChoose }) {
 }
 
 /* ================= PersonCell =================
-   담당자 지정 — 이 앱엔 아직 실제 "팀원" API/목데이터가 대시보드의
-   members뿐이라, 옵션을 직접 관리하지 않고 그 목록을 그대로 선택지로
-   써요. 값은 이름 배열(여러 명 지정 가능)이에요. 아바타 색은 member.tone
+   담당자 지정 — 옵션을 직접 관리하지 않고, 지금 워크스페이스의 팀원
+   목록(WorkspaceProvider의 members)을 그대로 선택지로 써요. 값은 이름 배열(여러 명 지정 가능)이에요. 아바타 색은 member.tone
    같은 값을 직접 두지 않고 getAvatarTone(member.id)로 계산해요(id가
    없는 경우, 즉 목록에 없는 이름이면 중립색인 gray로 빠져요). */
 
 function PersonCell({ values, onToggle }) {
+  const { members } = useWorkspace();
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef(null);
 
