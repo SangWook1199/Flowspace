@@ -17,6 +17,7 @@ import com.flowspace.dto.database.BlockDatabaseColumnUpdateRequest;
 import com.flowspace.dto.database.BlockDatabaseColumnWidthUpdateRequest;
 import com.flowspace.dto.database.BlockDatabaseRowReorderRequest;
 import com.flowspace.dto.database.BlockDatabaseRowResponse;
+import com.flowspace.dto.database.BlockDatabaseRowCreateRequest;
 import com.flowspace.dto.database.DatabaseCreateRequest;
 import com.flowspace.dto.database.DatabaseDetailResponse;
 import com.flowspace.dto.database.DatabaseResponse;
@@ -137,8 +138,9 @@ public class BlockDatabaseController {
     @Operation(summary = "데이터베이스 행 생성")
     @PostMapping("/databases/{databaseId}/rows")
     public BlockDatabaseRowResponse createRow(@PathVariable Long databaseId,
+        @RequestBody(required = false) BlockDatabaseRowCreateRequest request,
         @AuthenticationPrincipal UserDetails userDetails) {
-        return blockDatabaseService.createRow(databaseId, userDetails.getUsername());
+        return blockDatabaseService.createRow(databaseId, request, userDetails.getUsername());
     }
 
     @Operation(summary = "데이터베이스 행 순서 변경")

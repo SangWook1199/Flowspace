@@ -46,3 +46,26 @@ export const duplicatePage = async (pageId, parentPageId = null) => {
 // 같은 상위 페이지의 페이지를 표시 순서대로 저장
 export const reorderPages = (workspaceId, pageIds) =>
   client.patch(`/workspaces/${workspaceId}/pages/reorder`, { pageIds });
+
+// 커버 이미지 올리기 (파일)
+export const uploadCover = async (pageId, file) => {
+  const form = new FormData();
+  form.append("file", file);
+
+  const { data } = await client.post(`/pages/${pageId}/cover`, form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return toPage(data);
+};
+
+// 기본 커버 고르기 (coverName은 확장자 뺀 이름, 예: "beach")
+export const applyDefaultCover = async (pageId, coverName) => {
+  const { data } = await client.patch(`/pages/${pageId}/cover/default`, { coverName });
+  return toPage(data);
+};
+
+// 커버 지우기
+export const deleteCover = async (pageId) => {
+  const { data } = await client.delete(`/pages/${pageId}/cover`);
+  return toPage(data);
+};

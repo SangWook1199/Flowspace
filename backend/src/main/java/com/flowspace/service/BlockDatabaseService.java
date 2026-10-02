@@ -20,6 +20,7 @@ import com.flowspace.dto.database.BlockDatabaseColumnReorderRequest;
 import com.flowspace.dto.database.BlockDatabaseColumnResponse;
 import com.flowspace.dto.database.BlockDatabaseColumnUpdateRequest;
 import com.flowspace.dto.database.BlockDatabaseColumnWidthUpdateRequest;
+import com.flowspace.dto.database.BlockDatabaseRowCreateRequest;
 import com.flowspace.dto.database.BlockDatabaseRowOrderItem;
 import com.flowspace.dto.database.BlockDatabaseRowReorderRequest;
 import com.flowspace.dto.database.BlockDatabaseRowResponse;
@@ -172,10 +173,31 @@ public class BlockDatabaseService {
 
         String title = (request.title() == null || request.title().isBlank()) ? "제목 없음" : request.title();
 
-        BlockDatabase database = BlockDatabase.builder().block(block).title(title)
-            .viewType(request.viewType() == null ? DatabaseViewType.TABLE : request.viewType()).build();
+        DatabaseViewType viewType = request.viewType() == null ? DatabaseViewType.TABLE : request.viewType();
+
+        BlockDatabase database = BlockDatabase.builder().block(block).title(title).viewType(viewType).build();
 
         blockDatabaseRepository.save(database);
+
+        // 표(TABLE)는 속성 유형도 행 페이지도 없는 단순한 텍스트 칸이라, 이름 없는 텍스트 열 3개 · 행 3개로 시작해요.
+        if (viewType == DatabaseViewType.TABLE) {
+
+            List<BlockDatabaseColumn> tableColumns = List.of(createColumnEntity(database, "", DatabaseColumnType.TEXT, 0),
+                createColumnEntity(database, "", DatabaseColumnType.TEXT, 1),
+                createColumnEntity(database, "", DatabaseColumnType.TEXT, 2));
+
+            for (int i = 0; i < 3; i++) {
+
+                BlockDatabaseRow tableRow = createRowWithPage(database, null, i);
+
+                for (BlockDatabaseColumn column : tableColumns) {
+                    cellRepository
+                        .save(BlockDatabaseCell.builder().row(tableRow).column(column).value(null).build());
+                }
+            }
+
+            return DatabaseResponse.from(database);
+        }
 
         BlockDatabaseColumn nameColumn = createColumnEntity(database, "이름", DatabaseColumnType.TITLE, 0);
         BlockDatabaseColumn createdTimeColumn =
@@ -184,7 +206,7 @@ public class BlockDatabaseService {
 
         List<BlockDatabaseColumn> seedColumns = List.of(nameColumn, createdTimeColumn, personColumn);
 
-        BlockDatabaseRow seedRow = createRowWithPage(database, page, user, 0);
+        BlockDatabaseRow seedRow = createRowWithPage(database, resolveRowPage(request.seedPageId(), page, user), 0);
 
         for (BlockDatabaseColumn column : seedColumns) {
             BlockDatabaseCell cell = BlockDatabaseCell.builder().row(seedRow).column(column).value(null).build();
@@ -211,18 +233,37 @@ public class BlockDatabaseService {
     // 행 + 하위 페이지를 함께 만들고 저장해요 — "행 = 페이지" 모델이라
     // 행을 만드는 순간 바로 하위 페이지도 같이 만들어 연결해요.
     // createRow()와 createDatabase()의 시드 행 생성에서 공통으로 써요.
-    private BlockDatabaseRow createRowWithPage(BlockDatabase database, Page ownerPage, User user, int position) {
-
-        Page rowPage = Page.builder().workspace(ownerPage.getWorkspace()).parentPage(ownerPage).createdBy(user)
-            .build();
-
-        pageRepository.save(rowPage);
+    private BlockDatabaseRow createRowWithPage(BlockDatabase database, Page rowPage, int position) {
 
         BlockDatabaseRow row = BlockDatabaseRow.builder().database(database).page(rowPage).position(position).build();
 
         rowRepository.save(row);
 
         return row;
+    }
+
+    // 행에 연결할 페이지를 정해요 — 연결할 페이지가 넘어왔고(같은 워크스페이스, 다른 행에 안 쓰이는 페이지) 이면
+    // 그 페이지를, 아니면 이 데이터베이스가 있는 페이지의 하위 페이지로 새로 만들어요.
+    private Page resolveRowPage(Long pageId, Page ownerPage, User user) {
+
+        if (pageId != null) {
+
+            Page existing = pageRepository.findByPageIdAndIsDeletedFalse(pageId)
+                .orElseThrow(() -> new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND));
+
+            if (!existing.getWorkspace().getWorkspaceId().equals(ownerPage.getWorkspace().getWorkspaceId())) {
+                throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
+            }
+
+            if (rowRepository.findByPage(existing).isEmpty()) {
+                return existing;
+            }
+        }
+
+        Page rowPage = Page.builder().workspace(ownerPage.getWorkspace()).parentPage(ownerPage).createdBy(user)
+            .build();
+
+        return pageRepository.save(rowPage);
     }
 
     // 데이터베이스 단건 조회
@@ -476,7 +517,7 @@ public class BlockDatabaseService {
     }
 
     // 행 생성
-    public BlockDatabaseRowResponse createRow(Long databaseId, String email) {
+    public BlockDatabaseRowResponse createRow(Long databaseId, BlockDatabaseRowCreateRequest request, String email) {
 
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
@@ -493,9 +534,13 @@ public class BlockDatabaseService {
         // 행"이라는 상태를 안 만들려고, 행을 만들 때 바로 하위 페이지도
         // 같이 만들어 연결해요. 이 데이터베이스 블록이 속한 페이지의
         // 하위 페이지로 만들어요.
+        // 표(TABLE)의 행은 페이지 없이 만들어요. 연결할 페이지(pageId)가 오면 새로 만들지 않고 그 페이지를 써요.
         Page ownerPage = database.getBlock().getPage();
 
-        BlockDatabaseRow row = createRowWithPage(database, ownerPage, user, position);
+        Page rowPage = database.getViewType() == DatabaseViewType.TABLE ? null
+            : resolveRowPage(request == null ? null : request.pageId(), ownerPage, user);
+
+        BlockDatabaseRow row = createRowWithPage(database, rowPage, position);
 
         List<BlockDatabaseColumn> columns = columnRepository.findByDatabaseOrderByPositionAsc(database);
 

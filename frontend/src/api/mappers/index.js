@@ -14,3 +14,5 @@ export {
 } from "./task";
 export { toEvent, toEventRequest } from "./event";
 export { toActivity, toRelativeTime } from "./activity";
+export { toEditorComments, toEditorBlocks, toSyncItems, syncKey, collectServerImages } from "./block";
+export { toEditorDatabase, encodeCellValue, decodeCellValue } from "./database";

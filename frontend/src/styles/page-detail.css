@@ -3850,3 +3850,36 @@ span.block-number {
     pointer-events: auto;
   }
 }
+
+/* ---------- 블록 저장 상태 (저장 중 / 실패) ---------- */
+
+.page-save-status {
+  position: fixed;
+  right: 24px;
+  bottom: 20px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  border: 1px solid #dfe5f0;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(31, 41, 55, 0.1);
+  color: #62728b;
+  font-size: 12px;
+}
+
+.page-save-status--error {
+  border-color: #f2b8b8;
+  color: #c0392b;
+}
+
+.page-save-status button {
+  border: 0;
+  background: none;
+  color: #4f5cf6;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}

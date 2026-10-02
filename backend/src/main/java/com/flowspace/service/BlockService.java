@@ -452,8 +452,9 @@ public class BlockService {
         workspaceMemberRepository.findByWorkspaceAndUser(block.getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        // 이미지 파일만 허용
-        if (multipartFile.getContentType() == null || !multipartFile.getContentType().startsWith("image/")) {
+        // 이미지 블록은 이미지 파일만 허용하고, 파일 블록(FILE)은 종류와 상관없이 올릴 수 있어요.
+        if (block.getType() != BlockType.FILE
+            && (multipartFile.getContentType() == null || !multipartFile.getContentType().startsWith("image/"))) {
             throw new FlowSpaceException(ErrorCode.INVALID_IMAGE_FILE);
         }
 

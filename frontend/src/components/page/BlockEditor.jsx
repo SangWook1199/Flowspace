@@ -22,6 +22,7 @@ import { captureCaretOffset, restoreCaretOffset, splitContentAtCaret } from "./l
 import { matchMarkdownShortcut, parseMarkdownLine, BLOCKS_CLIPBOARD_TYPE } from "./lib/blockClipboard.js";
 import BlockRow from "./BlockRow";
 import { CURRENT_USER_NAME } from "./lib/comments.js";
+import { useAuth } from "../../context/useAuth";
 import { formatFileSize } from "./blocks/MediaBlocks";
 import { getOwnedPageIds, createEmptyBlock, createDefaultDatabase, createSimpleTable, normalizeBlockShape } from "./lib/blockFactory.js";
 import useBlockHistory from "./hooks/useBlockHistory.js";
@@ -43,6 +44,9 @@ export default function BlockEditor({
   onRenameRowPage,
   onDeleteRowPage,
   onDuplicatePage,
+  // 서버에 만드는 중이던 임시 페이지 id → 실제 id. 하위 페이지 링크 블록은 임시 id를 들고 있을 수 있어서
+  // 페이지를 찾을 때만 실제 id로 이어줘요(블록 데이터는 그대로 둬서 실행 취소와 안 부딪혀요).
+  pageIdMap,
   // sprintTasks가 안 넘어오면(다른 화면에서 아직 안 챙겨줬다면) 정적
   // import를 그대로 써서 예전처럼은 동작하게 해요 — 다만 그러면 체크박스로
   // 토글해도 화면엔 안 남아요(상태를 들고 있는 쪽이 없으니까). 진짜로
@@ -150,6 +154,18 @@ export default function BlockEditor({
   // 찾아 그려요 — 하위 페이지 제목을 바꿔도 부모 쪽 블록이 따로 갱신될
   // 필요가 없게.
   const pagesById = Object.fromEntries(pages.map((p) => [p.id, p]));
+  // 데이터베이스 행도 임시 페이지 id를 들고 있을 수 있어서, 같은 별칭 항목(id는 임시 id 그대로)을 목록에 더해 줘요.
+  let pagesForDb = pages;
+  if (pageIdMap) {
+    const aliases = [];
+    for (const [tempId, realId] of Object.entries(pageIdMap)) {
+      if (pagesById[realId] && !pagesById[tempId]) {
+        pagesById[tempId] = pagesById[realId];
+        aliases.push({ ...pagesById[realId], id: Number(tempId) });
+      }
+    }
+    if (aliases.length > 0) pagesForDb = [...pages, ...aliases];
+  }
 
   // 하위 페이지를 만들 수 없는 컨텍스트(onCreateChildPage 미전달)에서는
   // "하위 페이지" 메뉴 항목 자체를 숨겨요.
@@ -335,6 +351,8 @@ export default function BlockEditor({
 
   // id는 Date.now()로 충분해요(같은 브라우저 세션 안에서만 구분되면
   // 되는 로컬 상태라 충돌 걱정이 없어요).
+  const me = useAuth()?.user ?? null;
+
   const addComment = (blockId, text) => {
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -345,7 +363,7 @@ export default function BlockEditor({
               ...b,
               comments: [
                 ...(b.comments || []),
-                { id: Date.now(), author: CURRENT_USER_NAME, text: trimmed, createdAt: new Date().toISOString() },
+                { id: Date.now(), userId: me?.id, author: me?.nickname || CURRENT_USER_NAME, text: trimmed, createdAt: new Date().toISOString() },
               ],
             }
           : b,
@@ -2121,7 +2139,7 @@ export default function BlockEditor({
             }
             pageLink={block.pageId ? pagesById[block.pageId] : null}
             // pages는 키 입력마다 새 배열이 돼서 모든 줄이 다시 그려지게 만들어요 — 데이터베이스 블록만 필요로 해요.
-            pages={block.type === "DATABASE" ? pages : NO_PAGES}
+            pages={block.type === "DATABASE" ? pagesForDb : NO_PAGES}
             onCreateChildPage={onCreateChildPage}
             blockTypeOptions={blockTypeOptions}
             isSlashOpen={slashMenu?.blockId === block.id}

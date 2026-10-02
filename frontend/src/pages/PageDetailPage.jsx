@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { Camera, ChevronRight, ImagePlus, Smile, X } from "lucide-react";
 
-import BlockEditor from "../components/page/BlockEditor";
+import PageBlocks from "../components/page/PageBlocks";
 import PopoverPortal from "../components/page/PopoverPortal";
 import { useWorkspace } from "../context/WorkspaceContext";
 import "../styles/page-detail.css";
@@ -266,10 +266,8 @@ const COVER_GROUPS = [
 ];
 
 export default function PageDetailPage() {
-  // 실제로는 pages/{pageId} + pages/{pageId}/blocks API로 교체.
-  // 지금은 WorkspaceProvider가 들고 있는 세션 상태(pages/setPages)를
-  // MainLayout의 Outlet context로 받아서 씁니다 — 여러 페이지를 오가도, 새 페이지를
-  // 만들어도 사이드바와 바로 동기화돼요.
+  // 제목·아이콘·커버는 WorkspaceProvider의 페이지 목록(MainLayout의 Outlet context)에서 읽고,
+  // 본문 블록은 PageBlocks가 페이지 상세 API로 따로 불러와 저장해요.
   const { pageId } = useParams();
   const navigate = useNavigate();
   const {
@@ -277,9 +275,11 @@ export default function PageDetailPage() {
     pagesLoading,
     pagesError,
     reloadPages,
-    createLocalPage,
+    createChildPage,
+    pageIdMap,
     duplicatePage,
     updatePage: updatePageById,
+    updateCover,
     deletePage,
     restorePage,
     renamePage,
@@ -298,11 +298,13 @@ export default function PageDetailPage() {
   // 정수로 딱 떨어지는 값만 페이지 id로 보고, 아니면 찾지 못한 걸로 처리해요.
   // 지금 워크스페이스에 속한 페이지만 보여줘요 — 주소창에 다른 워크스페이스의 페이지
   // id가 남아 있어도(뒤로가기 등) 이전 워크스페이스의 내용이 그대로 뜨지 않게요.
+  // 서버에 만들던 임시 페이지(음수 id)의 주소로 들어와도 실제 페이지를 찾아요.
   const numericId = Number(pageId);
-  const page = Number.isInteger(numericId)
+  const resolvedId = pageIdMap?.[numericId] ?? numericId;
+  const page = Number.isInteger(resolvedId)
     ? pages.find(
         (p) =>
-          p.id === numericId && (p.workspaceId ?? 1) === currentWorkspaceId,
+          p.id === resolvedId && (p.workspaceId ?? 1) === currentWorkspaceId,
       )
     : undefined;
 
@@ -364,7 +366,18 @@ export default function PageDetailPage() {
     );
   }
 
-  // 제목·아이콘은 서버에도 저장되고(잠깐 기다렸다가 한 번), 블록·커버는 서버 저장 연결(M5) 전까지 화면에만 있어요.
+  // 아직 서버에 만드는 중인 임시 페이지는 만들어질 때까지 기다려요.
+  if (page.id <= 0) {
+    return (
+      <div className="page-detail-page">
+        <p className="page-detail__missing" role="status">
+          페이지를 만드는 중이에요…
+        </p>
+      </div>
+    );
+  }
+
+  // 제목·아이콘은 잠깐 기다렸다가 한 번에 서버에 저장되고, 커버는 고르는 즉시 저장돼요.
   const updatePage = (patch) => updatePageById(page.id, patch);
 
   // breadcrumb: 바로 위 부모만이 아니라 최상위까지 전체 경로를 보여줘요.
@@ -377,9 +390,7 @@ export default function PageDetailPage() {
 
   const handleCoverSelect = (file) => {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => updatePage({ cover: reader.result });
-    reader.readAsDataURL(file);
+    updateCover(page.id, { file });
   };
 
   // 페이지 삭제 버튼은 일단 화면에서 뺐어요(요청으로 임시 제거) —
@@ -466,7 +477,7 @@ export default function PageDetailPage() {
                   className="page-detail__cover-thumb"
                   title={choice.label}
                   onClick={() => {
-                    updatePage({ cover: choice.url });
+                    updateCover(page.id, { defaultUrl: choice.url });
                     setCoverPickerOpen(false);
                   }}
                 >
@@ -517,7 +528,7 @@ export default function PageDetailPage() {
               <Camera size={13} />
               변경
             </button>
-            <button type="button" onClick={() => updatePage({ cover: null })}>
+            <button type="button" onClick={() => updateCover(page.id, null)}>
               <X size={13} />
               삭제
             </button>
@@ -575,7 +586,10 @@ export default function PageDetailPage() {
         type="file"
         accept="image/*"
         hidden
-        onChange={(e) => handleCoverSelect(e.target.files?.[0])}
+        onChange={(e) => {
+          handleCoverSelect(e.target.files?.[0]);
+          e.target.value = ""; // 같은 파일을 다시 골라도 반응하게 비워요.
+        }}
       />
 
       <div
@@ -611,12 +625,12 @@ export default function PageDetailPage() {
           />
         </div>
 
-        <BlockEditor
+        <PageBlocks
           key={page.id}
-          blocks={page.blocks}
-          onChange={(blocks) => updatePage({ blocks })}
+          pageId={page.id}
           pages={pages}
-          onCreateChildPage={() => createLocalPage(page.id)}
+          pageIdMap={pageIdMap}
+          onCreateChildPage={() => createChildPage(page.id)}
           onDuplicatePage={(pageId) => duplicatePage(pageId, page.id)}
           onRenameRowPage={renamePage}
           onDeleteRowPage={deletePage}

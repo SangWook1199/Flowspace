@@ -27,7 +27,7 @@ import {
 
 import ColumnResizeHandle from "./ColumnResizeHandle";
 import PopoverPortal from "./PopoverPortal";
-import { members } from "../../mock/dashboard";
+import { useWorkspace } from "../../context/WorkspaceContext";
 import { getAvatarTone } from "../../utils/avatarColor";
 
 // 컬럼에 width가 없으면(예전 목데이터, 새로 만든 컬럼) 쓰는 기본값이에요.
@@ -1377,13 +1377,13 @@ function StatusCell({ value, options, onChoose }) {
 }
 
 /* ================= PersonCell =================
-   담당자 지정 — 이 앱엔 아직 실제 "팀원" API/목데이터가 대시보드의
-   members뿐이라, 옵션을 직접 관리하지 않고 그 목록을 그대로 선택지로
-   써요. 값은 이름 배열(여러 명 지정 가능)이에요. 아바타 색은 member.tone
+   담당자 지정 — 옵션을 직접 관리하지 않고, 지금 워크스페이스의 팀원
+   목록(WorkspaceProvider의 members)을 그대로 선택지로 써요. 값은 이름 배열(여러 명 지정 가능)이에요. 아바타 색은 member.tone
    같은 값을 직접 두지 않고 getAvatarTone(member.id)로 계산해요(id가
    없는 경우, 즉 목록에 없는 이름이면 중립색인 gray로 빠져요). */
 
 function PersonCell({ values, onToggle }) {
+  const { members } = useWorkspace();
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef(null);
 

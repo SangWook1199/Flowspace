@@ -28,6 +28,7 @@ import { BlockImage, BlockFile } from "./blocks/MediaBlocks";
 import { BLOCK_COLORS, BLOCK_TEXT_COLORS, CALLOUT_ICON_PRESETS, placeholderFor } from "./lib/blockTypes.js";
 import { formatListNumber } from "./lib/blockTree.js";
 import { CURRENT_USER_NAME, formatCommentTime } from "./lib/comments.js";
+import { useAuth } from "../../context/useAuth";
 
 /* ================= BlockRow ================= */
 
@@ -119,6 +120,10 @@ function BlockRowImpl({
   // ⋯ 메뉴처럼 이 블록 하나에만 속한 UI 상태라 BlockRow 로컬에 둬요.
   const [calloutPickerOpen, setCalloutPickerOpen] = useState(false);
   const calloutIconRef = useRef(null);
+
+  // 댓글에 "본인" 표시(수정·삭제 메뉴)를 하려고 로그인한 사람을 알아야 해요.
+  const me = useAuth()?.user ?? null;
+  const myName = me?.nickname || CURRENT_USER_NAME;
 
   const [commentDraft, setCommentDraft] = useState("");
   // 댓글별 ⋯ 메뉴(수정/삭제)가 열려있는 댓글 id, 지금 수정 중인 댓글
@@ -753,7 +758,7 @@ function BlockRowImpl({
                 <p className="block-comment-empty">아직 댓글이 없어요.</p>
               ) : (
                 block.comments.map((c) => {
-                  const isMine = c.author === CURRENT_USER_NAME;
+                  const isMine = c.userId != null && me ? c.userId === me.id : c.author === myName;
                   const isEditingThis = editingCommentId === c.id;
 
                   return (
@@ -880,7 +885,7 @@ function BlockRowImpl({
               }}
             >
               <span className="block-comment-avatar" aria-hidden="true">
-                {CURRENT_USER_NAME.slice(0, 1)}
+                {myName.slice(0, 1)}
               </span>
               <input
                 type="text"

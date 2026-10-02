@@ -10,7 +10,7 @@ import { useSprintData } from "./useSprintData";
 
 // 사이드바 메뉴 목록은 아직 목데이터예요(대시보드 연결 M4에서 정리해요).
 import { navigation as navigationMock } from "../mock/dashboard";
-// workspaceId가 없는 페이지(로컬 임시 페이지 등)는 1번 워크스페이스 소속으로 봐요.
+// workspaceId가 없는 페이지(서버에 만드는 중인 임시 페이지 등)는 1번 워크스페이스 소속으로 봐요.
 const DEFAULT_WORKSPACE_ID = 1;
 const DEFAULT_CREATOR = "상욱"; // 로그인 정보가 없을 때만 쓰는 예전 기본값이에요.
 
@@ -20,8 +20,8 @@ const PAGE_SAVE_DELAY_MS = 600;
 const inWorkspace = (item, workspaceId) =>
   (item.workspaceId ?? DEFAULT_WORKSPACE_ID) === workspaceId;
 
-// 서버에 있는 페이지는 양수 id예요. 블록 에디터가 서버 저장(M5) 전까지 임시로 만드는
-// 로컬 페이지는 음수 id를 써서 서로 섞이지 않게 해요.
+// 서버에 있는 페이지는 양수 id예요. 서버에 만드는 동안 화면에 먼저 보여주는 임시 페이지는
+// 음수 id를 써서 서로 섞이지 않게 해요(서버가 id를 주면 실제 id로 바뀌어요).
 const isServerId = (id) => typeof id === "number" && id > 0;
 
 // 삭제할 페이지 + 그 아래 모든 하위 페이지(재귀)의 id를 모아요.
@@ -43,100 +43,20 @@ function collectWithDescendants(pages, rootId) {
   return ids;
 }
 
-// 데이터베이스는 "행 = 페이지"라서, 어떤 페이지가 지워지면 그 페이지를
-// 가리키던 다른 페이지의 데이터베이스 행도 같이 없어져야 해요. 행 자체의
-// 휴지통 버튼으로 지울 때는 DatabaseBlock의 deleteRow가 페이지→행을
-// 같이 지우지만, 페이지 상세 화면 자체의 "삭제" 버튼으로 지울 땐
-// deletePage만 호출돼서 이 정리가 빠져 있었어요 — 그러면 그 행이
-// "삭제된 페이지"로 계속 남아 있었죠(TitleCell이 우아하게 처리는 하지만,
-// 고아 행이에요). 페이지가 진짜로 없어질 때 모든 페이지의 DATABASE 블록을
-// 훑어 그 페이지를 가리키던 행(과 그 행의 셀)을 같이 걷어내요.
-function pruneRowsForDeletedPages(pages, deletedIds) {
-  return pages.map((page) => {
-    if (!page.blocks?.length) return page;
-
-    let changed = false;
-    const blocks = page.blocks.map((block) => {
-      if (block.type !== "DATABASE" || block.database?.kind !== "DATABASE") return block;
-
-      const db = block.database;
-      const removedRowIds = new Set(
-        db.rows.filter((r) => r.pageId && deletedIds.has(r.pageId)).map((r) => r.id),
-      );
-      if (removedRowIds.size === 0) return block;
-
-      changed = true;
-      return {
-        ...block,
-        database: {
-          ...db,
-          rows: db.rows.filter((r) => !removedRowIds.has(r.id)),
-          cells: db.cells.filter((c) => !removedRowIds.has(c.rowId)),
-        },
-      };
-    });
-
-    return changed ? { ...page, blocks } : page;
-  });
-}
-
-// 하위 페이지 링크 블록(content는 비어있고 pageId만 있는 TEXT 블록)이 완전히
-// 삭제된 페이지를 계속 가리키면 클릭해도 갈 곳이 없는 깨진 링크가 돼요. 블록
-// 자체를 지우면 사용자가 쓴 흐름이 흐트러질 수 있어서, 블록은 그대로 두고
-// pageId만 null로 풀어줘요(그러면 평범한 빈 텍스트 블록이 돼요).
-function detachLinksToDeletedPages(pages, deletedIds) {
-  return pages.map((page) => {
-    if (!page.blocks?.length) return page;
-
-    let changed = false;
-    const blocks = page.blocks.map((block) => {
-      if (block.type === "TEXT" && block.pageId != null && deletedIds.has(block.pageId)) {
-        changed = true;
-        return { ...block, pageId: null };
-      }
-      return block;
-    });
-
-    return changed ? { ...page, blocks } : page;
-  });
-}
-
-// 페이지가 진짜로 없어질 때(완전 삭제 · 휴지통 비우기)의 뒷정리를 한 곳에 모아요.
-function cleanupAfterPermanentDelete(pages, deletedIds) {
-  const remaining = pages.filter((p) => !deletedIds.has(p.id));
-  return detachLinksToDeletedPages(pruneRowsForDeletedPages(remaining, deletedIds), deletedIds);
-}
-
 // 서버에서 새로 받은 페이지 목록을 현재 상태에 합쳐요.
-// - 블록(내용)과 커버는 서버 저장 연결(M5) 전이라 화면에 있는 값을 유지해요.
 // - 제목·아이콘을 고치는 중(저장 대기)인 페이지는 화면 값을 유지해요.
-// - 서버에서 사라진 페이지(영구 삭제됨)는 연결된 데이터베이스 행·링크도 같이 정리해요.
-// - 로컬 임시 페이지(음수 id)는 그대로 남겨요.
+// - 서버에 만드는 중인 임시 페이지(음수 id)는 그대로 남겨요.
 function mergeServerPages(prev, serverPages, workspaceId, dirtyIds) {
   const prevById = new Map(prev.map((p) => [p.id, p]));
-  const serverIds = new Set(serverPages.map((p) => p.id));
 
   const merged = serverPages.map((page) => {
     const old = prevById.get(page.id);
-    if (!old) return page;
-
-    const keepLocalMeta = dirtyIds.has(page.id);
-    return {
-      ...page,
-      blocks: old.blocks ?? page.blocks,
-      cover: page.cover ?? old.cover ?? null,
-      title: keepLocalMeta ? old.title : page.title,
-      icon: keepLocalMeta ? old.icon : page.icon,
-    };
+    if (!old || !dirtyIds.has(page.id)) return page;
+    return { ...page, title: old.title, icon: old.icon };
   });
 
   const locals = prev.filter((p) => !isServerId(p.id) && inWorkspace(p, workspaceId));
-  const removedIds = new Set(
-    prev.filter((p) => isServerId(p.id) && inWorkspace(p, workspaceId) && !serverIds.has(p.id)).map((p) => p.id),
-  );
-
-  const next = [...merged, ...locals];
-  return removedIds.size > 0 ? cleanupAfterPermanentDelete(next, removedIds) : next;
+  return [...merged, ...locals];
 }
 
 // "홍길동", "Human EXE", "😀 팀" 같은 이름에서 이니셜을 뽑지 않고 쓰는 쪽(생성 화면)이
@@ -190,7 +110,7 @@ export function WorkspaceProvider({ children }) {
 
   /* ---------- 페이지 · 팀원 ---------- */
 
-  // 서버 목록에는 블록이 없어서(M5에서 상세 조회로 연결) 화면의 pages는 서버 목록 + 로컬 블록을 합친 값이에요.
+  // 화면의 pages는 서버 목록에 "서버에 만드는 중인 임시 페이지"를 더한 값이에요(블록은 페이지 상세에서 따로 받아요).
   const [pages, setPages] = useState([]);
   const [members, setMembers] = useState([]);
   // 어느 워크스페이스의 페이지까지 불러왔는지. 현재 워크스페이스와 다르면 "불러오는 중"이에요.
@@ -264,8 +184,11 @@ export function WorkspaceProvider({ children }) {
     membersRequestId.current++;
     saveTimers.current.forEach((timer) => clearTimeout(timer));
     saveTimers.current.clear();
+    pendingCreates.current.clear();
+    pageIdMapRef.current = {};
 
     /* eslint-disable react-hooks/set-state-in-effect */
+    setPageIdMap({});
     setWorkspaces([]);
     setCurrentWorkspaceId(null);
     setWorkspaceError(null);
@@ -309,13 +232,31 @@ export function WorkspaceProvider({ children }) {
   // 워크스페이스가 바뀌면 훅이 알아서 비우고 다시 불러와요.
   const sprintData = useSprintData({ userId, workspaceId: currentWorkspaceId });
 
-  /* ---------- 로컬 임시 페이지 (블록 저장 연결 M5 전까지) ---------- */
+  /* ---------- 페이지 (서버 연결) ---------- */
 
-  // 블록 에디터(하위 페이지 링크·데이터베이스 행·복제)는 페이지를 "즉시" 받아서 블록에 넣어야 해서
-  // 서버 응답을 기다릴 수 없어요. M5에서 블록 저장과 함께 서버로 옮기기 전까지, 이 흐름이 만드는
-  // 페이지는 화면에만 있는 임시 페이지(음수 id)예요 — 새로고침하면 사라져요.
+  // 블록 에디터(하위 페이지 링크 · 복제)는 페이지를 "즉시" 받아서 블록에 넣어야 해서 서버 응답을 기다릴 수 없어요.
+  // 그래서 화면에는 임시 페이지(음수 id)를 먼저 보여주고, 서버가 실제 페이지를 만들어 주면 그 자리를 실제 페이지로
+  // 바꿔요. 임시 id → 실제 id는 pageIdMap에 남겨서, 임시 id를 들고 있는 블록도 실제 페이지를 찾을 수 있게 해요.
   const localId = useRef(0);
   const nextLocalId = () => --localId.current;
+
+  const [pageIdMap, setPageIdMap] = useState({});
+  const pageIdMapRef = useRef(pageIdMap);
+  // 임시 id → 서버 생성이 끝나면 실제 id를 주는 Promise
+  const pendingCreates = useRef(new Map());
+
+  const resolvePageId = (id) => pageIdMapRef.current[id] ?? id;
+
+  // 서버 페이지에 할 일을 그 페이지의 실제 id로 실행해요. 임시 페이지면 생성이 끝나길 기다렸다가 실행하고,
+  // 실행할 수 없는 id면 null을 돌려줘요.
+  const runOnServerPage = (pageId, fn) => {
+    const id = resolvePageId(pageId);
+    if (isServerId(id)) return fn(id);
+    const pending = pendingCreates.current.get(id);
+    return pending ? pending.then(fn) : null;
+  };
+
+  const waitForServerId = (pageId) => runOnServerPage(pageId, (id) => id) ?? Promise.reject(new Error("page not found"));
 
   // 휴지통 시각(trashedAt)은 "같이 삭제된 묶음"을 구분하는 표지로도 써요(복원할 때
   // 같은 값인 하위 페이지만 같이 되돌리거든요). 서로 다른 삭제가 같은 밀리초에
@@ -337,61 +278,88 @@ export function WorkspaceProvider({ children }) {
     createdBy: creatorName,
     // 데이터베이스의 CREATED_TIME 속성(생성 일시)이 이 값을 그대로 읽어요.
     createdAt: new Date().toISOString(),
-    blocks: [{ id: 1, type: "TEXT", content: "" }],
   });
 
-  // 블록 에디터용: 즉시 돌려주는 로컬 임시 페이지(위 설명 참고).
-  const createLocalPage = (parentPageId = null) => {
-    const parent = parentPageId == null ? null : pages.find((p) => p.id === parentPageId);
-    const workspaceId = parent
-      ? (parent.workspaceId ?? DEFAULT_WORKSPACE_ID)
-      : currentWorkspaceId;
-    const newPage = buildBlankPage(workspaceId, parentPageId);
+  // 임시 페이지를 화면에 넣고, request()가 서버 페이지를 만들어 주면 그 자리를 실제 페이지로 바꿔요.
+  // 실패하면 임시 페이지를 걷어내고 안내해요. 임시 페이지를 바로 돌려줘요.
+  const registerTempPage = (temp, request, { refreshAfter = false, errorMessage } = {}) => {
+    setPages((prev) => [...prev, temp]);
 
-    setPages((prev) => [...prev, newPage]);
-    return newPage;
+    const promise = request()
+      .then((real) => {
+        // 서버 응답을 기다리는 동안 사용자가 제목·아이콘을 고쳤다면 그 값을 서버에도 보내요.
+        const local = pagesRef.current.find((p) => p.id === temp.id);
+        const edited = local && (local.title !== temp.title || local.icon !== temp.icon);
+        const page = edited ? { ...real, title: local.title, icon: local.icon } : real;
+
+        pageIdMapRef.current = { ...pageIdMapRef.current, [temp.id]: real.id };
+        setPageIdMap(pageIdMapRef.current);
+        setPages((prev) => prev.map((p) => (p.id === temp.id ? page : p)));
+        pendingCreates.current.delete(temp.id);
+
+        if (edited) pageApi.updatePage(page).catch((err) => console.error("페이지 저장 실패", err));
+        if (refreshAfter) refreshPages();
+        return real.id;
+      })
+      .catch((err) => {
+        pendingCreates.current.delete(temp.id);
+        setPages((prev) => prev.filter((p) => p.id !== temp.id));
+        notifyError(err, errorMessage ?? "페이지를 만들지 못했어요.");
+        throw err;
+      });
+
+    promise.catch(() => {}); // 기다리는 쪽이 없어도 "처리 안 된 오류"가 뜨지 않게 해요.
+    pendingCreates.current.set(temp.id, promise);
+    return temp;
   };
 
-  // 노션처럼 페이지를 통째로 복제해요 — 그 페이지와 모든 하위 페이지를 새 id로 복사하고, 복사된 블록 안의
-  // 하위 페이지 링크(pageId, 데이터베이스 행의 pageId)도 새로 만든 복사본을 가리키게 바꿔요. 그래서 하위 페이지를
-  // 가리키는 블록을 복제/붙여넣기 해도 원본과 같은 페이지를 공유하지 않고(한쪽을 지우면 다른 쪽도 사라지던 문제),
-  // 서로 독립된 페이지가 돼요. 복사본 루트 페이지를 돌려줘요.
+  // 블록 에디터용: 하위 페이지를 만들어요. 임시 페이지를 바로 돌려주고 서버에는 뒤에서 만들어요.
+  const createChildPage = (parentPageId = null) => {
+    const parent = parentPageId == null ? null : pages.find((p) => p.id === resolvePageId(parentPageId));
+    const workspaceId = parent ? (parent.workspaceId ?? DEFAULT_WORKSPACE_ID) : currentWorkspaceId;
+    const temp = buildBlankPage(workspaceId, parentPageId == null ? null : resolvePageId(parentPageId));
+
+    return registerTempPage(temp, async () => {
+      const parentId = parentPageId == null ? null : await waitForServerId(parentPageId);
+      return pageApi.createPage(workspaceId, { parentPageId: parentId });
+    });
+  };
+
+  // 페이지를 통째로 복제해요(하위 페이지 · 블록 · 데이터베이스까지 서버가 복사하고, 블록 안의 하위 페이지 링크도
+  // 복제본을 가리키게 바꿔줘요). 복제본의 임시 페이지를 바로 돌려줘요.
   const duplicatePage = (pageId, parentPageId) => {
-    const sourceIds = collectWithDescendants(pages, pageId);
-    const sources = pages.filter((p) => sourceIds.has(p.id) && !p.trashedAt);
-    const root = sources.find((p) => p.id === pageId);
-    if (!root) return null;
-    const idMap = new Map(sources.map((p) => [p.id, nextLocalId()]));
-    const remapId = (id) => (idMap.has(id) ? idMap.get(id) : id);
-    const remapBlocks = (blocks) =>
-      (blocks || []).map((b) => ({
-        ...b,
-        ...(b.pageId != null ? { pageId: remapId(b.pageId) } : {}),
-        ...(b.database?.rows
-          ? { database: { ...b.database, rows: b.database.rows.map((r) => (r.pageId != null ? { ...r, pageId: remapId(r.pageId) } : r)) } }
-          : {}),
-      }));
-    const now = new Date().toISOString();
-    const copies = sources.map((p) => ({
-      ...p,
-      id: idMap.get(p.id),
-      parentPageId: p.id === pageId ? (parentPageId ?? p.parentPageId) : remapId(p.parentPageId),
-      createdAt: now,
-      blocks: remapBlocks(p.blocks),
-    }));
-    setPages((prev) => [...prev, ...copies]);
-    return copies.find((c) => c.id === idMap.get(pageId));
-  };
+    const sourceId = resolvePageId(pageId);
+    const source = pagesRef.current.find((p) => p.id === sourceId);
+    if (!source) return null;
 
-  /* ---------- 페이지 (서버 연결) ---------- */
+    const temp = {
+      ...source,
+      id: nextLocalId(),
+      parentPageId: parentPageId == null ? source.parentPageId : resolvePageId(parentPageId),
+      createdAt: new Date().toISOString(),
+      trashedAt: null,
+    };
+
+    return registerTempPage(
+      temp,
+      async () => {
+        const [fromId, toId] = await Promise.all([
+          waitForServerId(pageId),
+          parentPageId == null ? null : waitForServerId(parentPageId),
+        ]);
+        return pageApi.duplicatePage(fromId, toId);
+      },
+      { refreshAfter: true, errorMessage: "페이지를 복제하지 못했어요." },
+    );
+  };
 
   // 사이드바의 "새 페이지"처럼 서버에 만드는 페이지예요. 서버가 준 id로 상태에 넣고 그 페이지를 돌려줘요.
   // 실패하면 안내하고 null을 돌려줘요.
   const createPage = async (parentPageId = null) => {
     const parent = parentPageId == null ? null : pages.find((p) => p.id === parentPageId);
 
-    // 로컬 임시 페이지 아래에는 서버에 만들 수 없어서 같은 로컬 방식으로 만들어요.
-    if (parent && !isServerId(parent.id)) return createLocalPage(parentPageId);
+    // 아직 서버에 만드는 중인 임시 페이지 아래에는 같은 임시 방식으로 만들어요.
+    if (parent && !isServerId(parent.id)) return createChildPage(parentPageId);
 
     try {
       const page = await pageApi.createPage(parent ? parent.workspaceId : currentWorkspaceId, {
@@ -406,8 +374,9 @@ export function WorkspaceProvider({ children }) {
   };
 
   // 제목·아이콘 같은 페이지 정보를 고쳐요. 화면에는 바로 반영하고, 서버에는 잠깐 기다렸다가
-  // (타이핑 중 요청 폭주 방지) 한 번만 보내요. 블록·커버는 M5에서 서버에 연결해요.
+  // (타이핑 중 요청 폭주 방지) 한 번만 보내요. 블록은 usePageBlocks, 커버는 updateCover가 따로 저장해요.
   const updatePage = (pageId, patch) => {
+    pageId = resolvePageId(pageId);
     setPages((prev) => prev.map((p) => (p.id === pageId ? { ...p, ...patch } : p)));
 
     if (!isServerId(pageId) || !("title" in patch || "icon" in patch)) return;
@@ -430,6 +399,33 @@ export function WorkspaceProvider({ children }) {
     );
   };
 
+  // 커버 바꾸기: change는 { defaultUrl: "/covers/beach.png" }(기본 커버) · { file }(업로드) · null(지우기).
+  // 화면에는 바로 미리 보여주고, 서버에 저장되면 서버 주소로 바꿔요. 실패하면 원래대로 돌려요.
+  const updateCover = async (pageId, change) => {
+    const id = resolvePageId(pageId);
+    if (!isServerId(id)) return;
+
+    const before = pagesRef.current.find((p) => p.id === id)?.cover ?? null;
+    const preview = change == null ? null : change.file ? URL.createObjectURL(change.file) : change.defaultUrl;
+    const setCover = (cover) => setPages((prev) => prev.map((p) => (p.id === id ? { ...p, cover } : p)));
+
+    setCover(preview);
+
+    try {
+      let saved;
+      if (change == null) saved = await pageApi.deleteCover(id);
+      else if (change.file) saved = await pageApi.uploadCover(id, change.file);
+      else saved = await pageApi.applyDefaultCover(id, change.defaultUrl.split("/").pop().replace(/\.[^.]+$/, ""));
+
+      setCover(saved.cover);
+    } catch (err) {
+      setCover(before);
+      notifyError(err, "커버를 저장하지 못했어요.");
+    } finally {
+      if (change?.file) URL.revokeObjectURL(preview);
+    }
+  };
+
   // 데이터베이스의 TITLE 열이 "행 = 페이지"의 제목을 그대로 읽고 쓸 수 있게 하는 제목 변경 함수예요.
   // 지금 보고 있는 페이지가 아니라 임의의 pageId를 바꿀 수 있어야 해서 따로 둬요.
   const renamePage = (pageId, title) => updatePage(pageId, { title });
@@ -437,74 +433,37 @@ export function WorkspaceProvider({ children }) {
   // 삭제 = 휴지통으로 이동이에요. 화면에는 바로 반영하고(trashedAt만 채움, 이미 휴지통에 있던
   // 하위 페이지는 시각을 덮어쓰지 않아요), 서버에 알린 뒤 서버 상태와 다시 맞춰요.
   const deletePage = (pageId) => {
+    pageId = resolvePageId(pageId);
     const trashedAt = nextStamp();
     setPages((prev) => {
       const idsToTrash = collectWithDescendants(prev, pageId);
       return prev.map((p) => (idsToTrash.has(p.id) && !p.trashedAt ? { ...p, trashedAt } : p));
     });
 
-    if (!isServerId(pageId)) return;
-
-    pageApi
-      .deletePage(pageId)
-      .catch((err) => notifyError(err, "페이지를 삭제하지 못했어요."))
+    runOnServerPage(pageId, (id) => pageApi.deletePage(id))
+      ?.catch((err) => notifyError(err, "페이지를 삭제하지 못했어요."))
       .finally(refreshPages);
   };
 
   // 휴지통에서 "복원" — 이 페이지와 "같은 시각에 같이 휴지통으로 간" 하위 페이지만 되돌려요.
   // 부모가 아직 휴지통에 있으면 최상위로 올려서 바로 보이게 해요(서버가 같은 규칙으로 처리해요).
-  const restorePage = (pageId) => {
-    if (isServerId(pageId)) {
-      return pageApi
-        .restorePage(pageId)
-        .catch((err) => notifyError(err, "페이지를 복원하지 못했어요."))
-        .finally(refreshPages);
-    }
+  const restorePage = (pageId) =>
+    (
+      runOnServerPage(pageId, (id) => pageApi.restorePage(id)) ?? Promise.resolve()
+    )
+      .catch((err) => notifyError(err, "페이지를 복원하지 못했어요."))
+      .finally(refreshPages);
 
-    setPages((prev) => {
-      const root = prev.find((p) => p.id === pageId);
-      if (!root || !root.trashedAt) return prev;
-
-      const stamp = root.trashedAt;
-      const idsToRestore = collectWithDescendants(prev, pageId);
-      const parent = root.parentPageId == null ? null : prev.find((p) => p.id === root.parentPageId);
-      const parentUnavailable = root.parentPageId != null && (!parent || !!parent.trashedAt);
-
-      return prev.map((p) => {
-        if (!idsToRestore.has(p.id) || p.trashedAt !== stamp) return p;
-        const restored = { ...p, trashedAt: null };
-        if (p.id === pageId && parentUnavailable) restored.parentPageId = null;
-        return restored;
-      });
-    });
-    return Promise.resolve();
-  };
-
-  // 휴지통에서 "완전히 삭제" — 서버에서 지워지면 목록을 다시 맞추면서 그 페이지를 가리키던
-  // 데이터베이스 행과 하위 페이지 링크 블록도 같이 정리해요.
-  const permanentlyDeletePage = (pageId) => {
-    if (isServerId(pageId)) {
-      return pageApi
-        .deletePagePermanently(pageId)
-        .catch((err) => notifyError(err, "페이지를 완전히 삭제하지 못했어요."))
-        .finally(refreshPages);
-    }
-
-    setPages((prev) => cleanupAfterPermanentDelete(prev, collectWithDescendants(prev, pageId)));
-    return Promise.resolve();
-  };
+  // 휴지통에서 "완전히 삭제" — 서버에서 지워지면 목록을 다시 맞춰요.
+  const permanentlyDeletePage = (pageId) =>
+    (
+      runOnServerPage(pageId, (id) => pageApi.deletePagePermanently(id)) ?? Promise.resolve()
+    )
+      .catch((err) => notifyError(err, "페이지를 완전히 삭제하지 못했어요."))
+      .finally(refreshPages);
 
   // 휴지통 비우기 — 지금 워크스페이스의 휴지통만 비워요. 회고 페이지는 서버가 남겨둬요.
   const emptyTrash = () => {
-    setPages((prev) => {
-      const localIds = new Set(
-        prev
-          .filter((p) => p.trashedAt && !isServerId(p.id) && inWorkspace(p, currentWorkspaceId))
-          .map((p) => p.id),
-      );
-      return localIds.size === 0 ? prev : cleanupAfterPermanentDelete(prev, localIds);
-    });
-
     if (currentWorkspaceId == null) return Promise.resolve();
 
     return pageApi
@@ -626,9 +585,11 @@ export function WorkspaceProvider({ children }) {
     pagesError,
     reloadPages,
     createPage,
-    createLocalPage,
+    createChildPage,
+    pageIdMap,
     duplicatePage,
     updatePage,
+    updateCover,
     deletePage,
     restorePage,
     permanentlyDeletePage,
