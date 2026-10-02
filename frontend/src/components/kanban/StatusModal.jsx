@@ -3,7 +3,7 @@ import { X } from "lucide-react";
 
 import useModalA11y from "./hooks/useModalA11y";
 
-const COLORS = ["GRAY", "BLUE", "PURPLE", "GREEN", "RED", "ORANGE", "PINK"];
+const COLORS = ["WHITE", "GRAY", "BLUE", "PURPLE", "GREEN", "RED", "ORANGE", "PINK"];
 
 const CATEGORIES = [
   { value: "TODO", label: "할 일 (TODO)" },

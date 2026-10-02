@@ -172,6 +172,90 @@
   font-size: 15px;
 }
 
+/* 워크스페이스 아이콘(이모지) 선택: 버튼 아래에 EmojiPicker가 떠요(absolute 기준이 이 래퍼). */
+/* 미리보기의 아이콘 버튼: 누르면 EmojiPicker가 아래에 떠요(absolute 기준이 이 래퍼). */
+.workspace-preview-icon {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 14px;
+}
+
+.workspace-preview-btn {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.workspace-preview-btn .workspace-preview-avatar {
+  margin: 0;
+}
+
+/* 눌러서 바꿀 수 있다는 표시(오른쪽 아래 작은 배지) */
+.workspace-preview-badge {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 이모지 아이콘은 이니셜(글자)보다 크게 보여야 해서 따로 키워요. */
+.workspace-preview-avatar.workspace-icon--emoji {
+  font-size: 58px;
+  line-height: 1;
+  box-sizing: border-box;
+  padding-bottom: 0.12em;
+}
+
+/* 이름과 안내 문구는 각각 한 줄씩 */
+.workspace-appearance-preview > strong,
+.workspace-appearance-preview > span {
+  display: block;
+}
+
+.workspace-appearance-preview > strong {
+  margin-bottom: 4px;
+}
+
+.workspace-appearance-preview > span {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.workspace-preview-tip {
+  display: block;
+  margin-top: 10px;
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.workspace-icon-clear {
+  margin-top: 10px;
+  border: none;
+  background: none;
+  color: #4f46e5;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* EmojiPicker는 미리보기 가운데 아래로 띄워요. */
+.workspace-preview-icon .page-detail__icon-picker {
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: left;
+}
+
 .workspace-tip {
   display: flex;
   gap: 12px;
@@ -194,9 +278,12 @@
 
 /* ---------- Preview ---------- */
 
+/* 이름 짓는 단계의 안내 이미지: 화면을 다 채우지 않게 폭을 줄여 가운데에 둬요. */
 .workspace-preview-image {
+  display: block;
   width: 100%;
-  margin-bottom: 28px;
+  max-width: 520px;
+  margin: 0 auto 28px;
 }
 
 .workspace-preview-image img {
@@ -292,10 +379,11 @@
   margin: 0 auto 14px;
 }
 
+/* 색 동그라미를 칸(1fr)에 늘어놓지 않고 가까이 붙여서 줄바꿈해요. */
 .workspace-color-grid {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .color-chip {
@@ -308,6 +396,11 @@
 
 .color-chip.selected {
   border-color: #111827;
+}
+
+/* 흰색 칩은 배경과 안 보여서 얇은 테두리를 줘요. */
+.color-chip.light {
+  box-shadow: inset 0 0 0 1px #cbd5e1;
 }
 
 /* ---------- Members ---------- */
@@ -422,10 +515,6 @@
 
   .workspace-create-card {
     padding: 28px;
-  }
-
-  .workspace-color-grid {
-    grid-template-columns: repeat(4, 1fr);
   }
 
   .workspace-actions.between {

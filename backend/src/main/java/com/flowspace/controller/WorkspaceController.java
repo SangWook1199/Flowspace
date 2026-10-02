@@ -1,6 +1,7 @@
 package com.flowspace.controller;
 
 import com.flowspace.dto.workspace.WorkspaceCreateRequest;
+import com.flowspace.dto.workspace.WorkspaceUpdateRequest;
 import com.flowspace.dto.workspace.WorkspaceResponse;
 import com.flowspace.dto.workspace.WorkspaceInviteRequest;
 import com.flowspace.dto.workspace.WorkspaceInviteResponse;
@@ -47,6 +48,13 @@ public class WorkspaceController {
         return workspaceService.getWorkspace(workspaceId, userDetails.getUsername());
     }
 
+    @Operation(summary = "워크스페이스 수정", description = "소유자만 이름·이니셜·색·아이콘을 수정할 수 있습니다. icon을 비우면 아이콘이 지워집니다.")
+    @PatchMapping("/{workspaceId}")
+    public WorkspaceResponse updateWorkspace(@PathVariable Long workspaceId,
+        @Valid @RequestBody WorkspaceUpdateRequest request, @AuthenticationPrincipal UserDetails userDetails) {
+        return workspaceService.updateWorkspace(workspaceId, request, userDetails.getUsername());
+    }
+
     @Operation(summary = "워크스페이스 멤버 초대")
     @PostMapping("/{workspaceId}/invites")
     public WorkspaceInviteResponse inviteMember(@PathVariable Long workspaceId,
@@ -86,7 +94,7 @@ public class WorkspaceController {
         workspaceService.transferOwnership(workspaceId, request, userDetails.getUsername());
     }
 
-    @Operation(summary = "워크스페이스 삭제")
+    @Operation(summary = "워크스페이스 삭제", description = "소유자만 가능하며, 내가 속한 마지막 워크스페이스는 삭제할 수 없습니다.")
     @DeleteMapping("/{workspaceId}")
     public void deleteWorkspace(@PathVariable Long workspaceId, @AuthenticationPrincipal UserDetails userDetails) {
         workspaceService.deleteWorkspace(workspaceId, userDetails.getUsername());
@@ -99,7 +107,7 @@ public class WorkspaceController {
         workspaceService.removeMember(workspaceId, userId, userDetails.getUsername());
     }
 
-    @Operation(summary = "워크스페이스 나가기")
+    @Operation(summary = "워크스페이스 나가기", description = "소유자는 나갈 수 없고, 내가 속한 마지막 워크스페이스에서도 나갈 수 없습니다.")
     @DeleteMapping("/{workspaceId}/leave")
     public void leaveWorkspace(@PathVariable Long workspaceId, @AuthenticationPrincipal UserDetails userDetails) {
         workspaceService.leaveWorkspace(workspaceId, userDetails.getUsername());

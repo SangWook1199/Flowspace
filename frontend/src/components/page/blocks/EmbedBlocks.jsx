@@ -14,6 +14,9 @@ const EVENT_COLOR_CLASS = {
   GREEN: "green",
   BLUE: "blue",
   PURPLE: "purple",
+  PINK: "pink",
+  GRAY: "gray",
+  WHITE: "white",
 };
 
 /* ================= TaskEmbed / EventEmbed =================

@@ -761,6 +761,15 @@
   background: #64748b;
 }
 
+.colorCircle.white {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.colorCircle.white.active {
+  border-color: #111827;
+}
+
 /* Responsive */
 
 @media (max-width: 1200px) {

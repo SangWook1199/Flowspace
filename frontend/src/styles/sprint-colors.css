@@ -176,6 +176,34 @@
   background: #8b97a8;
 }
 
+.sprintCard.white {
+  border-left-color: #cbd5e1;
+}
+.white .sprintIcon {
+  background: #f8fafc;
+  color: #64748b;
+}
+.sprintProgress strong.white {
+  color: #64748b;
+}
+.sprintProgress i.white {
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px #cbd5e1;
+}
+.sidebarSprints > button > i.white,
+.currentSprint i.white {
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px #cbd5e1;
+}
+.detailIcon.white {
+  background: #f8fafc;
+  color: #64748b;
+}
+.embed-sprint-card--white .embed-sprint-card__bar {
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px #cbd5e1;
+}
+
 /* 대시보드 "오늘의 일정" 타임라인 막대 — 일정 색(WorkspaceColor) 중 기존 css에 없던 색이에요. */
 .timelineBar.red {
   background: #ef4444;
@@ -185,4 +213,8 @@
 }
 .timelineBar.gray {
   background: #64748b;
+}
+.timelineBar.white {
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px #cbd5e1;
 }

@@ -2460,6 +2460,19 @@ span.block-number {
   background: #8b5cf6;
 }
 
+.embed-event-card--pink .embed-event-card__bar {
+  background: #ec4899;
+}
+
+.embed-event-card--gray .embed-event-card__bar {
+  background: #64748b;
+}
+
+.embed-event-card--white .embed-event-card__bar {
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px #cbd5e1;
+}
+
 .embed-event-card__body {
   flex: 1;
   min-width: 0;

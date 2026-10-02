@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
 import { toDateKey, diffDays } from "../../utils/date";
+import { swatchStyle, tintStyle } from "../../utils/color";
 import { isEventOnDate, sortEventsByStart } from "../../utils/calendarRange";
 
 const STATUS_COLOR = {
@@ -11,6 +12,7 @@ const STATUS_COLOR = {
   RED: "#EF4444",
   ORANGE: "#F59E0B",
   PINK: "#EC4899",
+  WHITE: "#FFFFFF",
 };
 
 const EVENT_COLOR = {
@@ -21,6 +23,7 @@ const EVENT_COLOR = {
   ORANGE: "#F59E0B",
   PINK: "#EC4899",
   GRAY: "#64748B",
+  WHITE: "#FFFFFF",
 };
 
 const ROW_HEIGHT = 22;
@@ -127,9 +130,7 @@ export default function CalendarGrid({
                           <div key={task.id} className="tooltipTask">
                             <span
                               className="tooltipDot"
-                              style={{
-                                background: STATUS_COLOR[task.status?.color],
-                              }}
+                              style={swatchStyle(STATUS_COLOR[task.status?.color])}
                             />
                             {task.title}
                           </div>
@@ -147,10 +148,7 @@ export default function CalendarGrid({
                       <div
                         key={event.event_id}
                         className="eventBar"
-                        style={{
-                          background: `${EVENT_COLOR[event.color]}22`,
-                          color: EVENT_COLOR[event.color],
-                        }}
+                        style={tintStyle(EVENT_COLOR[event.color])}
                       >
                         {event.title}
                       </div>
@@ -173,9 +171,7 @@ export default function CalendarGrid({
                             <div key={event.event_id} className="tooltipEvent">
                               <span
                                 className="tooltipDot"
-                                style={{
-                                  background: EVENT_COLOR[event.color],
-                                }}
+                                style={swatchStyle(EVENT_COLOR[event.color])}
                               />
                               {event.title}
                             </div>
@@ -197,7 +193,7 @@ export default function CalendarGrid({
                     left: `calc(${(bar.start / 7) * 100}% + 4px)`,
                     width: `calc(${((bar.end - bar.start + 1) / 7) * 100}% - 8px)`,
                     top: `${bar.row * ROW_HEIGHT}px`, // + 10 제거
-                    background: STATUS_COLOR[bar.color],
+                    ...swatchStyle(STATUS_COLOR[bar.color]),
                   }}
                 >
                   {bar.title}

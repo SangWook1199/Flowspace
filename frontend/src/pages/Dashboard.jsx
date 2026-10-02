@@ -38,6 +38,7 @@ const STATUS_HEX = {
   RED: "#EF4444",
   ORANGE: "#F59E0B",
   PINK: "#EC4899",
+  WHITE: "#FFFFFF",
 };
 
 // "2026-06-17T14:00" → "14:00"

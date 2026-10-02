@@ -15,6 +15,7 @@ import { pickCurrentSprint } from "../utils/sprintRange";
 import { isEventOnDate, sortEventsByStart } from "../utils/calendarRange";
 
 const EVENT_COLORS = [
+  "WHITE",
   "BLUE",
   "PURPLE",
   "GREEN",
@@ -33,6 +34,7 @@ const COLOR_LABEL = {
   ORANGE: "주황",
   PINK: "분홍",
   GRAY: "회색",
+  WHITE: "흰색",
 };
 
 // 그 달 1일의 Date. setMonth로 달을 옮기면 31일 같은 날짜가 다음 달로 넘쳐서(1/31 + 1달 = 3/3),

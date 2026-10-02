@@ -37,10 +37,12 @@ import com.flowspace.entity.BlockDatabaseRow;
 import com.flowspace.entity.File;
 import com.flowspace.entity.Page;
 import com.flowspace.entity.User;
+import com.flowspace.entity.WorkspaceMember;
 import com.flowspace.entity.Workspace;
 import com.flowspace.entity.enums.ActivityTargetType;
 import com.flowspace.entity.enums.ActivityType;
 import com.flowspace.entity.enums.BlockType;
+import com.flowspace.entity.enums.WorkspaceRole;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.repository.BlockDatabaseCellRepository;
@@ -262,8 +264,13 @@ public class PageService {
         Page page = pageRepository.findByPageIdAndIsDeletedTrue(pageId)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND));
 
-        workspaceMemberRepository.findByWorkspaceAndUser(page.getWorkspace(), user)
+        // 되돌릴 수 없는 작업이라 OWNER만 할 수 있어요. (복원·조회는 멤버 모두 가능)
+        WorkspaceMember member = workspaceMemberRepository.findByWorkspaceAndUser(page.getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        if (member.getRole() != WorkspaceRole.OWNER) {
+            throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
+        }
 
         List<Page> subtree = collectSubtree(page);
 
@@ -292,10 +299,31 @@ public class PageService {
         Workspace workspace = workspaceRepository.findById(workspaceId)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
 
-        workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
+        // 되돌릴 수 없는 작업이라 OWNER만 할 수 있어요.
+        WorkspaceMember member = workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        List<Page> trashed = pageRepository.findByWorkspaceAndIsDeletedTrueOrderByDeletedAtDesc(workspace);
+        if (member.getRole() != WorkspaceRole.OWNER) {
+            throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
+        }
+
+        purgeTrashed(pageRepository.findByWorkspaceAndIsDeletedTrueOrderByDeletedAtDesc(workspace));
+    }
+
+    // 휴지통에 들어간 지 retentionDays일이 지난 페이지를 모든 워크스페이스에서 영구 삭제 (스케줄러가 호출)
+    // 반환값: 삭제를 시도한 대상 수
+    public int purgeExpiredTrash(int retentionDays) {
+
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(retentionDays);
+        List<Page> expired = pageRepository.findByIsDeletedTrueAndDeletedAtBefore(cutoff);
+
+        purgeTrashed(expired);
+
+        return expired.size();
+    }
+
+    // 주어진 휴지통 페이지들을 실제로 삭제해요 (회고 페이지와 그 상위 페이지는 남겨둠)
+    private void purgeTrashed(List<Page> trashed) {
 
         Map<Long, Page> trashedById = new HashMap<>();
         for (Page page : trashed) {

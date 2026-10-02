@@ -24,8 +24,9 @@ CREATE TABLE workspaces (
     owner_id BIGINT NOT NULL,
     name VARCHAR(100) NOT NULL,
     initials VARCHAR(4) NOT NULL,
-    color ENUM('BLUE','PURPLE','GREEN','RED','ORANGE','PINK', 'GRAY')
+    color ENUM('BLUE','PURPLE','GREEN','RED','ORANGE','PINK', 'GRAY','WHITE')
           NOT NULL DEFAULT 'BLUE',
+    icon VARCHAR(20) NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_workspace_owner
         FOREIGN KEY (owner_id) REFERENCES users(user_id)
@@ -101,7 +102,7 @@ CREATE TABLE sprints (
     name VARCHAR(100) NOT NULL,
     goal TEXT,
     description TEXT NULL,
-    color ENUM('BLUE','PURPLE','GREEN','RED','ORANGE','PINK', 'GRAY')
+    color ENUM('BLUE','PURPLE','GREEN','RED','ORANGE','PINK', 'GRAY','WHITE')
           NOT NULL DEFAULT 'BLUE',
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
@@ -116,7 +117,7 @@ CREATE TABLE task_statuses (
     status_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(50) NOT NULL,
     category ENUM('TODO','IN_PROGRESS','DONE') NOT NULL,
-    color ENUM('BLUE','PURPLE','GREEN','RED','ORANGE','PINK', 'GRAY')
+    color ENUM('BLUE','PURPLE','GREEN','RED','ORANGE','PINK', 'GRAY','WHITE')
           NOT NULL DEFAULT 'BLUE',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -184,7 +185,7 @@ CREATE TABLE events (
     created_by BIGINT NOT NULL,
     title VARCHAR(200) NOT NULL,
     description TEXT,
-    color ENUM('BLUE','PURPLE','GREEN', 'RED','ORANGE','PINK','GRAY') NOT NULL DEFAULT 'PURPLE',
+    color ENUM('BLUE','PURPLE','GREEN', 'RED','ORANGE','PINK','GRAY','WHITE') NOT NULL DEFAULT 'PURPLE',
     start_datetime DATETIME NOT NULL,
     end_datetime DATETIME NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -266,7 +267,7 @@ CREATE TABLE block_database_column_options (
     option_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     column_id BIGINT NOT NULL,
     value VARCHAR(100) NOT NULL,
-    color ENUM('BLUE','PURPLE','GREEN','RED','ORANGE','PINK','GRAY')
+    color ENUM('BLUE','PURPLE','GREEN','RED','ORANGE','PINK','GRAY','WHITE')
           NOT NULL DEFAULT 'GRAY',
 	status_group ENUM('TODO','IN_PROGRESS','DONE') NULL,
     position INT NOT NULL DEFAULT 0,

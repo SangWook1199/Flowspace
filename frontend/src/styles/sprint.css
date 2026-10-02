@@ -191,6 +191,11 @@
 .colorPicker button.picked {
   box-shadow: 0 0 0 3px #e4e8ff;
 }
+.colorPicker button[style*="rgb(255, 255, 255)"],
+.colorPicker button[style*="#ffffff"] {
+  border: 1px solid #cbd5e1;
+  color: #334155;
+}
 .colorPicker small {
   display: block;
   margin-top: 16px;

@@ -23,6 +23,8 @@ const INITIAL_WORKSPACE = {
   name: "",
   initials: DEFAULT_INITIALS,
   color: "#4F46E5",
+  // 이모지 아이콘(선택). 비어 있으면 이니셜을 보여줘요.
+  icon: "",
   invitedMembers: [],
   // 서버 WorkspaceColor 7종과 같아요(utils/color.js).
   colorPalette: WORKSPACE_COLORS.map((c) => c.hex),
@@ -70,6 +72,8 @@ export default function WorkspaceCreatePage() {
     setInitialsTouched(initials.length > 0);
     setWorkspace((prev) => ({ ...prev, initials }));
   };
+
+  const updateIcon = (icon) => setWorkspace((prev) => ({ ...prev, icon }));
 
   const updateColor = (color) =>
     setWorkspace((prev) => ({
@@ -132,6 +136,7 @@ export default function WorkspaceCreatePage() {
         name,
         initials: workspace.initials,
         color: workspace.color,
+        icon: workspace.icon,
         invitedMembers,
       });
 
@@ -198,6 +203,7 @@ export default function WorkspaceCreatePage() {
             colors={workspace.colorPalette}
             onInitialsChange={updateInitials}
             onColorChange={updateColor}
+            onIconChange={updateIcon}
             onPrev={() => setStep(1)}
             onNext={() => setStep(3)}
           />

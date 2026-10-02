@@ -33,7 +33,7 @@ public class WorkspaceService {
                         .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
                 Workspace workspace = Workspace.builder().owner(user).name(request.name()).initials(request.initials())
-                        .color(request.color()).build();
+                        .color(request.color()).icon(normalizeIcon(request.icon())).build();
 
                 workspaceRepository.save(workspace);
 
@@ -48,6 +48,33 @@ public class WorkspaceService {
                 user.updateLastWorkspace(workspace);
 
                 return WorkspaceResponse.from(workspace, WorkspaceRole.OWNER);
+        }
+
+        // 아이콘 값 정리: 비어 있으면 null(아이콘 없음), 아니면 앞뒤 공백을 지워요.
+        private String normalizeIcon(String icon) {
+                return icon == null || icon.isBlank() ? null : icon.trim();
+        }
+
+        // 워크스페이스 수정 (소유자만 가능)
+        public WorkspaceResponse updateWorkspace(Long workspaceId, WorkspaceUpdateRequest request, String email) {
+
+                User user = userRepository.findByEmail(email)
+                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+                Workspace workspace = workspaceRepository.findById(workspaceId)
+                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+
+                WorkspaceMember member = workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
+                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+                if (member.getRole() != WorkspaceRole.OWNER) {
+                        throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
+                }
+
+                workspace.update(request.name().trim(), request.initials().trim(), request.color(),
+                        normalizeIcon(request.icon()));
+
+                return WorkspaceResponse.from(workspace, member.getRole());
         }
 
         // 개인 워크스페이스 생성 (회원가입 전용)
@@ -270,6 +297,11 @@ public class WorkspaceService {
                         throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
                 }
 
+                // 내가 속한 워크스페이스가 이것 하나뿐이면 삭제할 수 없어요(앱을 쓸 곳이 없어져요).
+                if (workspaceMemberRepository.findByUser(user).size() <= 1) {
+                        throw new FlowSpaceException(ErrorCode.LAST_WORKSPACE);
+                }
+
                 workspaceRepository.delete(workspace);
         }
 
@@ -316,6 +348,11 @@ public class WorkspaceService {
 
                 if (member.getRole() == WorkspaceRole.OWNER) {
                         throw new FlowSpaceException(ErrorCode.OWNER_CANNOT_LEAVE);
+                }
+
+                // 내가 속한 워크스페이스가 이것 하나뿐이면 나갈 수 없어요.
+                if (workspaceMemberRepository.findByUser(user).size() <= 1) {
+                        throw new FlowSpaceException(ErrorCode.LAST_WORKSPACE);
                 }
 
                 workspaceMemberRepository.delete(member);

@@ -7,8 +7,8 @@ import com.flowspace.entity.enums.WorkspaceColor;
 
 // @formatter:off
 
-// 워크스페이스 생성 요청 DTO
-public record WorkspaceCreateRequest(
+// 워크스페이스 수정 요청 DTO (소유자 전용, 이름·이니셜·색·아이콘을 한 번에 바꿔요)
+public record WorkspaceUpdateRequest(
 
         @NotBlank(message = "워크스페이스 이름은 필수입니다.")
         @Size(max = 100, message = "워크스페이스 이름은 100자 이하입니다.")
@@ -21,8 +21,10 @@ public record WorkspaceCreateRequest(
         @NotNull(message = "색상은 필수입니다.")
         WorkspaceColor color,
 
-        // 아이콘(이모지)은 선택이에요. 비우면 이니셜을 보여줘요.
+        // 비우면(null 또는 공백) 아이콘을 지우고 이니셜을 보여줘요.
         @Size(max = 20, message = "아이콘은 20자 이하입니다.")
         String icon
 ) {
 }
+
+// @formatter:on

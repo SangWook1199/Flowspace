@@ -13,6 +13,7 @@ public record WorkspaceResponse(
         String name,
         String initials,
         WorkspaceColor color,
+        String icon,
         Long ownerId,
         WorkspaceRole role
 ) {
@@ -26,6 +27,7 @@ public record WorkspaceResponse(
                 workspace.getName(),
                 workspace.getInitials(),
                 workspace.getColor(),
+                workspace.getIcon(),
                 workspace.getOwner().getUserId(),
                 role
         );
