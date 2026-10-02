@@ -1,0 +1,224 @@
+/* ===========================
+   Member Profile Card (popover)
+=========================== */
+
+.memberCard {
+  position: fixed;
+  z-index: 1100;
+  box-sizing: border-box;
+  padding: 18px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
+  color: #16192b;
+}
+
+.memberCard__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.memberCard__avatar {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  font-size: 20px;
+}
+
+.memberCard__avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.memberCard__who {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.memberCard__who strong {
+  font-size: 16px;
+  word-break: break-all;
+}
+
+.memberCard__who em {
+  margin-left: 6px;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 600;
+  color: #4f46e5;
+}
+
+.memberCard__role {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.memberCard__role.owner {
+  background: #eef0ff;
+  color: #4f46e5;
+}
+
+.memberCard__bio {
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #475569;
+  word-break: break-word;
+}
+
+.memberCard__info {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+.memberCard__info li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  word-break: break-all;
+}
+
+.memberCard__dot {
+  width: 8px;
+  height: 8px;
+  margin: 0 3px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  flex-shrink: 0;
+}
+
+.memberCard__dot.on {
+  background: #22c55e;
+}
+
+.memberCard__tasks {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #eef0f4;
+}
+
+.memberCard__tasksHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.memberCard__tasksHead small {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.memberCard__hint {
+  margin: 0;
+  font-size: 12.5px;
+  color: #94a3b8;
+}
+
+.memberCard__hint.error {
+  color: #dc2626;
+}
+
+.memberCard__taskList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.memberCard__taskList button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.memberCard__taskList button:hover {
+  background: #f1f5f9;
+}
+
+.memberCard__taskTitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.memberCard__prio {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #94a3b8;
+  flex-shrink: 0;
+}
+
+.memberCard__prio.high {
+  background: #ef4444;
+}
+
+.memberCard__prio.medium {
+  background: #f59e0b;
+}
+
+.memberCard__prio.low {
+  background: #22c55e;
+}
+
+.memberCard__due {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11.5px;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.memberCard__more {
+  padding: 4px 8px 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* 헤더의 멤버 아바타: 눌러서 프로필 카드를 열 수 있다는 표시는 손가락 커서뿐이에요(밑줄 없음) */
+.memberAvatarLink {
+  cursor: pointer;
+}
+
+/* 멤버를 눌러 프로필 카드를 여는 곳(이름)에 쓰는 공통 모양 */
+.memberLink {
+  cursor: pointer;
+}
+
+.memberLink:hover {
+  text-decoration: underline;
+}

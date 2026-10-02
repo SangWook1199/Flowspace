@@ -30,6 +30,11 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     @Query("update Notification n set n.isRead = true where n.user = :user and n.isRead = false")
     int markAllRead(@Param("user") User user);
 
+    // 탈퇴할 때 사용자가 받은 알림을 모두 지워요.
+    @Modifying
+    @Query("delete from Notification n where n.user = :user")
+    int deleteByUser(@Param("user") User user);
+
     @Modifying
     @Query("delete from Notification n where n.createdAt < :before")
     int deleteOlderThan(@Param("before") LocalDateTime before);

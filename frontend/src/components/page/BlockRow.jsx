@@ -32,6 +32,7 @@ import { useAuth } from "../../context/useAuth";
 import WorkspaceContext from "../../context/WorkspaceContext";
 import MentionInput from "../common/MentionInput";
 import MentionText from "../common/MentionText";
+import { useMemberProfile } from "../../context/MemberProfileContext";
 
 /* ================= BlockRow ================= */
 
@@ -126,6 +127,7 @@ function BlockRowImpl({
 
   // 댓글에 "본인" 표시(수정·삭제 메뉴)를 하려고 로그인한 사람을 알아야 해요.
   const me = useAuth()?.user ?? null;
+  const openMemberProfile = useMemberProfile();
   const myName = me?.nickname || CURRENT_USER_NAME;
   // 댓글에서 @로 멘션할 수 있는 워크스페이스 멤버들(알림은 서버가 보내요)
   const workspaceMembers = useContext(WorkspaceContext)?.members ?? [];
@@ -776,7 +778,17 @@ function BlockRowImpl({
 
                       <div className="block-comment-body">
                         <div className="block-comment-item__head">
-                          <strong>{c.author}</strong>
+                          <strong
+                            className="memberLink"
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => c.userId != null && openMemberProfile(c.userId, e.currentTarget)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && c.userId != null) openMemberProfile(c.userId, e.currentTarget);
+                            }}
+                          >
+                            {c.author}
+                          </strong>
                           <span>
                             {formatCommentTime(c.createdAt)}
                             {c.editedAt && " · 수정됨"}

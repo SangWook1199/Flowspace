@@ -6,6 +6,7 @@ import com.flowspace.dto.auth.LoginRequest;
 import com.flowspace.dto.auth.LoginResponse;
 import com.flowspace.dto.auth.MicrosoftLoginRequest;
 import com.flowspace.dto.auth.MicrosoftUserInfo;
+import com.flowspace.dto.auth.PasswordChangeRequest;
 import com.flowspace.dto.auth.ProfileUpdateRequest;
 import com.flowspace.dto.auth.RefreshRequest;
 import com.flowspace.dto.auth.SignupRequest;
@@ -40,6 +41,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Collections;
 
@@ -54,6 +56,9 @@ public class AuthService {
     private final JwtProvider jwtProvider;
     private final WorkspaceService workspaceService;
     private final FileService fileService;
+
+    // 로그인 상태를 유지하지 않을 때 리프레시 토큰이 살아 있는 시간
+    private static final Duration SESSION_REFRESH_TTL = Duration.ofDays(1);
 
     @Value("${google.client-id}")
     private String googleClientId;
@@ -77,10 +82,7 @@ public class AuthService {
         Workspace workspace = workspaceService.createPersonalWorkspace(user);
 
         String accessToken = jwtProvider.createAccessToken(user);
-        String refreshToken = jwtProvider.createRefreshToken(user);
-
-        refreshTokenRepository.save(
-            RefreshToken.builder().user(user).token(refreshToken).expiredAt(LocalDateTime.now().plusDays(14)).build());
+        String refreshToken = issueRefreshToken(user, true);
 
         return LoginResponse.from(user, accessToken, refreshToken, workspace.getWorkspaceId());
     }
@@ -96,14 +98,7 @@ public class AuthService {
         }
 
         String accessToken = jwtProvider.createAccessToken(user);
-        String refreshToken = jwtProvider.createRefreshToken(user);
-
-        refreshTokenRepository.deleteByUser(user);
-
-        RefreshToken token = RefreshToken.builder().user(user).token(refreshToken)
-            .expiredAt(LocalDateTime.now().plusDays(14)).build();
-
-        refreshTokenRepository.save(token);
+        String refreshToken = issueRefreshToken(user, request.remember());
 
         return LoginResponse.from(user, accessToken, refreshToken, user.getLastWorkspace().getWorkspaceId());
     }
@@ -145,14 +140,7 @@ public class AuthService {
         }
 
         String accessToken = jwtProvider.createAccessToken(user);
-        String refreshToken = jwtProvider.createRefreshToken(user);
-
-        refreshTokenRepository.deleteByUser(user);
-
-        RefreshToken token = RefreshToken.builder().user(user).token(refreshToken)
-            .expiredAt(LocalDateTime.now().plusDays(14)).build();
-
-        refreshTokenRepository.save(token);
+        String refreshToken = issueRefreshToken(user, true);
 
         return TokenResponse.of(accessToken, refreshToken);
     }
@@ -193,9 +181,68 @@ public class AuthService {
             profileFile = fileService.upload(image, user.getLastWorkspace(), email);
         }
 
-        user.updateProfile(request.nickname(), profileFile);
+        // 한 줄 소개는 앞뒤 공백을 지우고, 비어 있으면 소개를 지운 것으로 봐요.
+        String bio = request.bio() == null ? null : request.bio().trim();
+
+        user.updateProfile(request.nickname().trim(), bio == null || bio.isEmpty() ? null : bio, profileFile);
 
         return UserResponse.from(user);
+    }
+
+    // 비밀번호 변경
+    // 다른 기기의 로그인은 풀리고(리프레시 토큰을 새로 발급), 지금 쓰는 기기는 새 토큰을 받아 그대로 이어가요.
+    public LoginResponse changePassword(PasswordChangeRequest request, String email) {
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+        // 구글·마이크로소프트 계정은 비밀번호가 없어요.
+        if (user.getPassword() == null) {
+            throw new FlowSpaceException(ErrorCode.PASSWORD_NOT_SET);
+        }
+
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+            throw new FlowSpaceException(ErrorCode.INVALID_CURRENT_PASSWORD);
+        }
+
+        if (passwordEncoder.matches(request.newPassword(), user.getPassword())) {
+            throw new FlowSpaceException(ErrorCode.SAME_PASSWORD);
+        }
+
+        user.changePassword(passwordEncoder.encode(request.newPassword()));
+
+        // 로그인 상태 유지 여부는 지금 로그인의 남은 기간을 그대로 이어받아요.
+        Duration remaining = refreshTokenRepository.findByUser(user)
+            .map(saved -> Duration.between(LocalDateTime.now(), saved.getExpiredAt())).filter(d -> !d.isNegative())
+            .orElse(SESSION_REFRESH_TTL);
+
+        String accessToken = jwtProvider.createAccessToken(user);
+        String refreshToken = issueRefreshToken(user, remaining);
+
+        Long workspaceId = user.getLastWorkspace() == null ? null : user.getLastWorkspace().getWorkspaceId();
+
+        return LoginResponse.from(user, accessToken, refreshToken, workspaceId);
+    }
+
+    // 리프레시 토큰 발급: 기존 토큰은 지우고 새로 저장해요(계정당 하나).
+    // 로그인 상태 유지면 설정된 기간, 아니면 하루 동안 쓸 수 있어요.
+    private String issueRefreshToken(User user, boolean remember) {
+
+        Duration ttl = remember ? Duration.ofMillis(jwtProvider.getRefreshTokenExpiration()) : SESSION_REFRESH_TTL;
+
+        return issueRefreshToken(user, ttl);
+    }
+
+    private String issueRefreshToken(User user, Duration ttl) {
+
+        String refreshToken = jwtProvider.createRefreshToken(user, ttl.toMillis());
+
+        refreshTokenRepository.deleteByUser(user);
+
+        refreshTokenRepository.save(
+            RefreshToken.builder().user(user).token(refreshToken).expiredAt(LocalDateTime.now().plus(ttl)).build());
+
+        return refreshToken;
     }
 
     // 프로필 이미지 삭제
@@ -221,12 +268,7 @@ public class AuthService {
             .orElseGet(() -> createGoogleUser(googleUser));
 
         String accessToken = jwtProvider.createAccessToken(user);
-        String refreshToken = jwtProvider.createRefreshToken(user);
-
-        refreshTokenRepository.deleteByUser(user);
-
-        refreshTokenRepository.save(
-            RefreshToken.builder().user(user).token(refreshToken).expiredAt(LocalDateTime.now().plusDays(14)).build());
+        String refreshToken = issueRefreshToken(user, true);
 
         return LoginResponse.from(user, accessToken, refreshToken, user.getLastWorkspace().getWorkspaceId());
     }
@@ -302,12 +344,7 @@ public class AuthService {
             .orElseGet(() -> createMicrosoftUser(microsoftUser, request.accessToken()));
 
         String accessToken = jwtProvider.createAccessToken(user);
-        String refreshToken = jwtProvider.createRefreshToken(user);
-
-        refreshTokenRepository.deleteByUser(user);
-
-        refreshTokenRepository.save(
-            RefreshToken.builder().user(user).token(refreshToken).expiredAt(LocalDateTime.now().plusDays(14)).build());
+        String refreshToken = issueRefreshToken(user, true);
 
         return LoginResponse.from(user, accessToken, refreshToken, user.getLastWorkspace().getWorkspaceId());
     }

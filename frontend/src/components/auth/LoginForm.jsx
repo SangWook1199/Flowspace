@@ -21,12 +21,11 @@ export default function LoginForm() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false);
+  // 켜 두면 브라우저를 닫아도 로그인이 이어지고, 끄면 이 탭을 닫을 때 로그아웃돼요.
+  const [remember, setRemember] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const isValid = email.trim() !== "" && password.trim() !== "";
 
-  // "로그인 상태 유지" 체크박스는 아직 백엔드에 별도 옵션이 없어서(항상
-  // accessToken/refreshToken을 localStorage에 저장) UI상으로만 존재해요.
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -44,7 +43,7 @@ export default function LoginForm() {
     setError("");
 
     try {
-      await login(email.trim(), password);
+      await login(email.trim(), password, remember);
 
       // ProtectedRoute가 기억해둔 "원래 가려던 곳"이 있으면 거기로, 없거나
       // 외부/위험한 주소면 홈으로 보내요.
@@ -115,9 +114,10 @@ export default function LoginForm() {
           로그인 상태 유지
         </label>
 
+        {/* "비밀번호 찾기"는 메일 발송 기능을 넣을 때 다시 보여줘요(지금은 동작이 없어서 숨겨뒀어요).
         <button type="button" className="forgot-password">
           비밀번호 찾기
-        </button>
+        </button> */}
       </div>
 
       {error && (

@@ -110,6 +110,24 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
+    // 사용자의 모든 연결을 끊어요(회원 탈퇴 직후처럼 더 이상 이 계정으로 접속하면 안 될 때).
+    public void disconnectUser(Long userId) {
+
+        Set<WebSocketSession> set = sessions.get(userId);
+
+        if (set == null) {
+            return;
+        }
+
+        for (WebSocketSession session : set) {
+            try {
+                session.close(CloseStatus.POLICY_VIOLATION);
+            } catch (IOException e) {
+                log.debug("WebSocket 연결을 끊지 못했어요: {}", e.getMessage());
+            }
+        }
+    }
+
     // 지금 연결돼 있는 사용자인지
     public boolean isOnline(Long userId) {
         Set<WebSocketSession> set = sessions.get(userId);

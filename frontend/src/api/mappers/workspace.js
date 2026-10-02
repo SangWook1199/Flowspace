@@ -22,6 +22,30 @@ export const toWorkspaceRequest = ({ name, initials, color, icon }) => ({
   icon: icon?.trim() || null,
 });
 
+// 서버 MemberProfileResponse → 프로필 카드용. 담당 작업은 최대 5개만 와요(openTaskCount는 전체 개수).
+export const toMemberProfile = (dto) => ({
+  id: dto.userId,
+  name: dto.nickname,
+  initial: getInitial(dto.nickname),
+  email: dto.email,
+  bio: dto.bio ?? "",
+  profileImageUrl: fileUrl(dto.profileImageUrl),
+  role: dto.role,
+  joinedAt: dto.joinedAt ?? null,
+  online: Boolean(dto.online),
+  lastActiveAt: dto.lastActiveAt ?? null,
+  openTaskCount: dto.openTaskCount ?? 0,
+  doneTaskCount: dto.doneTaskCount ?? 0,
+  tasks: (dto.tasks ?? []).map((task) => ({
+    id: task.taskId,
+    title: task.title,
+    endDate: task.endDate ?? null,
+    priority: task.priority,
+    statusName: task.statusName,
+    link: task.link,
+  })),
+});
+
 // 서버 WorkspaceMemberResponse → 헤더/담당자 목록의 팀원.
 // online은 서버가 알려주는 접속 상태(WebSocket 연결 여부)예요. 지금 이 화면을 보는 나는 항상 온라인이에요.
 export const toMember = (dto, currentUserId) => ({

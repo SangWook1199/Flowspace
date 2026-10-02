@@ -82,6 +82,7 @@
   background: #eef0ff;
   color: #4f46e5;
   font-weight: 600;
+  cursor: pointer;
 }
 .mention--me {
   background: #fff1c2;

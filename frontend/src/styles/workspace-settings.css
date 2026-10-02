@@ -539,3 +539,17 @@
     padding: 22px 20px;
   }
 }
+
+/* 멤버 이름을 눌러 프로필 카드를 열어요(버튼이지만 글자처럼 보이게) */
+.wsSettings__memberLink {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.wsSettings__memberLink:hover {
+  text-decoration: underline;
+}

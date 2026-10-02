@@ -3,10 +3,25 @@ import { useNavigate } from "react-router-dom";
 import * as Icons from "lucide-react";
 import styles from "../styles/classes.js";
 import { getAvatarTone } from "../utils/avatarColor.js";
-import { getInitial } from "../utils/initial.js";
 import { toRelativeTime } from "../api/mappers";
 import { useAuth } from "../context/useAuth";
 import NotificationBell from "./NotificationBell";
+import AccountSettingsModal from "./AccountSettingsModal";
+import { useMemberProfile } from "../context/MemberProfileContext";
+
+// 헤더에 아바타로 바로 보여주는 최대 인원(넘으면 "+N명")
+const MAX_VISIBLE_MEMBERS = 5;
+
+// 아바타 안쪽: 프로필 사진이 있으면 사진, 없거나 불러오지 못하면 이니셜
+function HeaderAvatarContent({ member }) {
+  const [failed, setFailed] = useState(false);
+
+  if (member.profileImageUrl && !failed) {
+    return <img src={member.profileImageUrl} alt="" onError={() => setFailed(true)} />;
+  }
+
+  return member.initial;
+}
 
 // 검색창은 아직 실제로 입력이 안 되는 장식용이에요(진짜 검색은 API
 // 연결 때). 예전엔 오른쪽에 단축키 힌트("⌘K" → "Ctrl K" → "검색")가
@@ -18,6 +33,7 @@ import NotificationBell from "./NotificationBell";
 // 대신 들어감). 순서는 벨 다음, 프로필 앞이에요.
 export default function Header({ members = [] }) {
   const onlineCount = members.filter((member) => member.online).length;
+  const openMemberProfile = useMemberProfile();
 
   // "마지막 접속 3시간 전"이 시간이 지나면서 낡아 보이지 않게 1분마다 현재 시각을 갱신해요.
   const [now, setNow] = useState(() => Date.now());
@@ -42,6 +58,10 @@ export default function Header({ members = [] }) {
     [members],
   );
 
+  // 헤더에는 5명까지만 아바타로 보여주고 나머지는 "+N명"으로 묶어요.
+  const visibleMembers = sortedMembers.slice(0, MAX_VISIBLE_MEMBERS);
+  const hiddenMembers = sortedMembers.slice(MAX_VISIBLE_MEMBERS);
+
   // 오른쪽 프로필은 "지금 로그인한 사람"이라서 members(워크스페이스 팀원
   // 목록)에서 찾지 않고 AuthContext의 user를 그대로 써요. members는 위의
   // 온라인 팀원 표시에만 쓰여요.
@@ -49,16 +69,8 @@ export default function Header({ members = [] }) {
   const navigate = useNavigate();
 
   const nickname = user?.nickname ?? "";
-  // 서버 응답 필드명이 확정되기 전이라 흔한 이름 몇 가지를 같이 받아줘요.
-  const profileImage =
-    user?.profileImageUrl ?? user?.profileImage ?? user?.profileUrl ?? null;
-
-  // 이미지 주소가 깨져 있으면(만료/삭제) 빈 원이 되니까, 로드에 실패한
-  // 주소를 기억해뒀다가 그땐 이니셜로 대신 보여줘요.
-  const [failedImage, setFailedImage] = useState(null);
-  const showImage = profileImage && failedImage !== profileImage;
-
   const [menuOpen, setMenuOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const menuRef = useRef(null);
   const triggerRef = useRef(null);
 
@@ -109,15 +121,58 @@ export default function Header({ members = [] }) {
           </small>
 
           <div>
-            {sortedMembers.map((member) => (
+            {visibleMembers.map((member) => (
               <span
                 key={member.id}
-                className={`${styles.avatar} ${member.online ? styles[getAvatarTone(member.id)] : styles.offline}`}
+                className={`${styles.avatar} ${member.online ? styles[getAvatarTone(member.id)] : styles.offline} memberAvatarLink`}
                 data-tip={presenceTip(member)}
+                role="button"
+                tabIndex={0}
+                aria-label={`${member.name ?? "멤버"} 프로필 보기`}
+                onClick={(e) => openMemberProfile(member.id, e.currentTarget)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openMemberProfile(member.id, e.currentTarget);
+                  }
+                }}
               >
-                {member.initial}
+                <HeaderAvatarContent member={member} />
               </span>
             ))}
+
+            {/* 5명이 넘으면 나머지는 "+N명"으로 줄이고, 마우스를 올리면(키보드는 포커스) 그 멤버들이 보여요. */}
+            {hiddenMembers.length > 0 && (
+              <div className="headerMembersMore">
+                <button type="button" className="headerMembersMore__btn" aria-haspopup="true">
+                  +{hiddenMembers.length}명
+                </button>
+
+                <div className="headerMembersMore__pop">
+                  <ul className="headerMembersMore__box">
+                    {hiddenMembers.map((member) => (
+                      <li key={member.id}>
+                        <button type="button" onClick={(e) => openMemberProfile(member.id, e.currentTarget)}>
+                          <span
+                            className={`${styles.avatar} ${member.online ? styles[getAvatarTone(member.id)] : styles.offline}`}
+                          >
+                            <HeaderAvatarContent member={member} />
+                          </span>
+                          <span className="headerMembersMore__name">{member.name}</span>
+                          <small>
+                            {member.online
+                              ? "온라인"
+                              : member.lastActiveAt
+                                ? toRelativeTime(member.lastActiveAt, now)
+                                : "접속 기록 없음"}
+                          </small>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -133,19 +188,6 @@ export default function Header({ members = [] }) {
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((open) => !open)}
           >
-            <span
-              className={`${styles.avatar} ${styles[getAvatarTone(user?.userId ?? user?.id)]}`}
-            >
-              {showImage ? (
-                <img
-                  src={profileImage}
-                  alt=""
-                  onError={() => setFailedImage(profileImage)}
-                />
-              ) : (
-                getInitial(nickname)
-              )}
-            </span>
             <b>{nickname}</b>
             <Icons.ChevronDown size={16} />
           </button>
@@ -154,6 +196,19 @@ export default function Header({ members = [] }) {
             <div className="workspaceDropdown profileMenu" role="menu">
               <strong>{nickname}</strong>
               {user?.email && <p>{user.email}</p>}
+
+              <button
+                type="button"
+                role="menuitem"
+                className="workspaceItem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setAccountOpen(true);
+                }}
+              >
+                <Icons.Settings size={16} />
+                계정 설정
+              </button>
 
               <button
                 type="button"
@@ -168,6 +223,8 @@ export default function Header({ members = [] }) {
           )}
         </div>
       </div>
+
+      {accountOpen && <AccountSettingsModal onClose={() => setAccountOpen(false)} />}
     </header>
   );
 }

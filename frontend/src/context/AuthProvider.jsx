@@ -81,10 +81,11 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener(AUTH_LOGOUT_EVENT, onForcedLogout);
   }, [loadMe]);
 
-  const login = useCallback(async (email, password) => {
-    const { data } = await authApi.login({ email, password });
+  // remember: 로그인 상태 유지 여부(켜면 브라우저를 닫아도 로그인이 이어져요).
+  const login = useCallback(async (email, password, remember = true) => {
+    const { data } = await authApi.login({ email, password, rememberMe: remember });
     bootId.current++;
-    saveTokens(data);
+    saveTokens(data, { remember });
     setUser(toUser(data.user));
     setAuthError(false);
     return data;
@@ -93,7 +94,7 @@ export function AuthProvider({ children }) {
   const signup = useCallback(async (payload) => {
     const { data } = await authApi.signup(payload);
     bootId.current++;
-    saveTokens(data);
+    saveTokens(data, { remember: true });
     setUser(toUser(data.user));
     setAuthError(false);
     return data;
@@ -109,6 +110,13 @@ export function AuthProvider({ children }) {
     setAuthError(false);
   }, []);
 
+  // 비밀번호를 바꾸면 서버가 이 기기용 새 토큰을 줘요. 저장 위치(로그인 유지 여부)는 그대로 둬요.
+  const changePassword = useCallback(async (currentPassword, newPassword) => {
+    const { data } = await authApi.changePassword({ currentPassword, newPassword });
+    saveTokens(data);
+    setUser(toUser(data.user));
+  }, []);
+
   // 프로필 수정 응답처럼 서버 user를 그대로 넘겨도 화면 모양으로 바꿔서 저장해요.
   const updateUser = useCallback((dto) => setUser(toUser(dto)), []);
 
@@ -120,10 +128,11 @@ export function AuthProvider({ children }) {
       login,
       signup,
       logout,
+      changePassword,
       setUser: updateUser,
       retryAuth: loadMe,
     }),
-    [user, loading, authError, login, signup, logout, updateUser, loadMe],
+    [user, loading, authError, login, signup, logout, changePassword, updateUser, loadMe],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

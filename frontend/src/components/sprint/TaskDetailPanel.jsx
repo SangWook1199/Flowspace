@@ -5,6 +5,7 @@ import { useAuth } from "../../context/useAuth";
 import WorkspaceContext from "../../context/WorkspaceContext";
 import MentionInput from "../common/MentionInput";
 import MentionText from "../common/MentionText";
+import { useMemberProfile } from "../../context/MemberProfileContext";
 import { useTaskComments } from "../../hooks/useTaskComments";
 import { toRelativeTime } from "../../api/mappers";
 import { isRangeReversed, parseDateKey, percentOf, toDateKey } from "../../utils/date";
@@ -191,6 +192,7 @@ function TaskComments({ taskId }) {
   const me = useAuth()?.user ?? null;
   // 댓글에서 @로 멘션할 수 있는 워크스페이스 멤버들(알림은 서버가 보내요)
   const workspaceMembers = useContext(WorkspaceContext)?.members ?? [];
+  const openMemberProfile = useMemberProfile();
   const { comments, loading, saving, error, add, remove } = useTaskComments(taskId);
   const [draft, setDraft] = useState("");
 
@@ -243,7 +245,17 @@ function TaskComments({ taskId }) {
         const isMine = me?.id != null && comment.userId === me.id;
         return (
           <p key={comment.id}>
-            <b>{comment.author}</b>　<small>{toRelativeTime(comment.createdAt)}</small>
+            <b
+              className="memberLink"
+              role="button"
+              tabIndex={0}
+              onClick={(e) => comment.userId != null && openMemberProfile(comment.userId, e.currentTarget)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && comment.userId != null) openMemberProfile(comment.userId, e.currentTarget);
+              }}
+            >
+              {comment.author}
+            </b>　<small>{toRelativeTime(comment.createdAt)}</small>
             {comment.editedAt && <small> (수정됨)</small>}
             {isMine && (
               <Trash2

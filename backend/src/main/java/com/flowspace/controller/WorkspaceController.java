@@ -6,6 +6,7 @@ import com.flowspace.dto.workspace.WorkspaceResponse;
 import com.flowspace.dto.workspace.WorkspaceInviteRequest;
 import com.flowspace.dto.workspace.WorkspaceInviteResponse;
 import com.flowspace.dto.workspace.InviteResponse;
+import com.flowspace.dto.workspace.MemberProfileResponse;
 import com.flowspace.dto.workspace.WorkspaceMemberResponse;
 import com.flowspace.dto.workspace.WorkspaceOwnerTransferRequest;
 import com.flowspace.service.WorkspaceService;
@@ -85,6 +86,13 @@ public class WorkspaceController {
     public List<WorkspaceMemberResponse> getMembers(@PathVariable Long workspaceId,
         @AuthenticationPrincipal UserDetails userDetails) {
         return workspaceService.getMembers(workspaceId, userDetails.getUsername());
+    }
+
+    @Operation(summary = "멤버 프로필 카드 조회", description = "같은 워크스페이스 멤버만 볼 수 있고, 이 워크스페이스 안에서 맡은 작업 요약을 함께 반환합니다.")
+    @GetMapping("/{workspaceId}/members/{userId}")
+    public MemberProfileResponse getMemberProfile(@PathVariable Long workspaceId, @PathVariable Long userId,
+        @AuthenticationPrincipal UserDetails userDetails) {
+        return workspaceService.getMemberProfile(workspaceId, userId, userDetails.getUsername());
     }
 
     @Operation(summary = "워크스페이스 소유권 이전")

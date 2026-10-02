@@ -1,5 +1,5 @@
 import client from "./client";
-import { toWorkspace, toWorkspaceRequest, toMember } from "./mappers";
+import { toWorkspace, toWorkspaceRequest, toMember, toMemberProfile } from "./mappers";
 
 // 내 워크스페이스 목록
 export const getWorkspaces = async () => {
@@ -50,3 +50,9 @@ export const removeMember = (workspaceId, userId) =>
 export const leaveWorkspace = (workspaceId) => client.delete(`/workspaces/${workspaceId}/leave`);
 
 export const deleteWorkspace = (workspaceId) => client.delete(`/workspaces/${workspaceId}`);
+
+// 멤버 프로필 카드: 같은 워크스페이스 멤버의 소개와 맡고 있는 작업 요약
+export const getMemberProfile = async (workspaceId, userId) => {
+  const { data } = await client.get(`/workspaces/${workspaceId}/members/${userId}`);
+  return toMemberProfile(data);
+};

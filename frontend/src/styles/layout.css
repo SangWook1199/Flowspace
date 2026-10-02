@@ -464,7 +464,7 @@
   border: 2px solid #fff;
 }
 .headerMembers .avatar {
-  margin-left: -5px;
+  margin-left: -8px;
 }
 .headerMembers .avatar:first-child {
   margin-left: 0;
@@ -472,7 +472,7 @@
 /* 팀원 아이콘에 마우스를 올리면 바로 뜨는 안내(이름 + 온라인 / 마지막 접속 n시간 전) */
 .headerMembers .avatar[data-tip] {
   position: relative;
-  cursor: default;
+  cursor: pointer;
 }
 .headerMembers .avatar[data-tip]:hover {
   z-index: 5;
@@ -515,6 +515,94 @@
 }
 .headerMembers > div {
   display: flex;
+}
+/* 프로필 사진이 있는 팀원은 사진으로 보여요 */
+.headerMembers .avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+/* 5명이 넘으면 나머지를 묶은 "+N명" — 올리면 그 멤버들이 목록으로 보여요 */
+.headerMembersMore {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-left: 8px;
+}
+.headerMembersMore__btn {
+  padding: 4px 2px;
+  border: 0;
+  background: transparent;
+  color: #708098;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.headerMembersMore__btn:hover,
+.headerMembersMore:focus-within .headerMembersMore__btn {
+  color: #2a3951;
+}
+/* 버튼과 목록 사이 틈(padding)까지 호버 영역이라, 마우스를 내려도 목록이 사라지지 않아요 */
+.headerMembersMore__pop {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  padding-top: 8px;
+  z-index: 20;
+}
+.headerMembersMore:hover .headerMembersMore__pop,
+.headerMembersMore:focus-within .headerMembersMore__pop {
+  display: block;
+}
+.headerMembersMore__box {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  width: 230px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.14);
+}
+.headerMembersMore__box button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.headerMembersMore__box button:hover {
+  background: #f1f5f9;
+}
+.headerMembers .headerMembersMore__box .avatar {
+  width: 30px;
+  height: 30px;
+  margin-left: 0;
+  flex-shrink: 0;
+  font-size: 13px;
+}
+.headerMembersMore__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+  color: #1e293b;
+}
+.headerMembersMore__box small {
+  color: #94a3b8;
+  font-size: 11.5px;
 }
 /* 아바타 배경색은 이제 유저마다 값을 직접 넣는 게 아니라
    utils/avatarColor.js의 getAvatarTone(userId)가 고정 팔레트(6가지)

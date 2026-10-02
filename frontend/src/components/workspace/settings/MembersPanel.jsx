@@ -6,6 +6,7 @@ import { getAvatarTone } from "../../../utils/avatarColor";
 import { getErrorMessage } from "../../../utils/apiError";
 import { useEmailSuggest } from "../../../hooks/useEmailSuggest";
 import EmailSuggestList from "../../common/EmailSuggestList";
+import { useMemberProfile } from "../../../context/MemberProfileContext";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -34,6 +35,7 @@ export default function MembersPanel({
   onRemove,
   onTransfer,
 }) {
+  const openMemberProfile = useMemberProfile();
   const emailId = useId();
   const [email, setEmail] = useState("");
   const [inviting, setInviting] = useState(false);
@@ -152,7 +154,13 @@ export default function MembersPanel({
               <MemberAvatar member={member} />
 
               <span className="wsSettings__memberName">
-                {member.name}
+                <button
+                  type="button"
+                  className="wsSettings__memberLink"
+                  onClick={(e) => openMemberProfile(member.id, e.currentTarget)}
+                >
+                  {member.name}
+                </button>
                 {isMe && <em>나</em>}
               </span>
 

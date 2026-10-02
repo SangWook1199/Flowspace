@@ -12,6 +12,8 @@ CREATE TABLE users (
     provider ENUM('LOCAL','GOOGLE','MICROSOFT', 'APPLE') DEFAULT 'LOCAL',
     provider_id VARCHAR(255),
     last_active_at DATETIME,
+    bio VARCHAR(100) NULL,
+    deleted_at DATETIME NULL,
     profile_file_id BIGINT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

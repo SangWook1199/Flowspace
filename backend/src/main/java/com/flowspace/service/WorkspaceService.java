@@ -9,6 +9,7 @@ import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.repository.*;
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +20,9 @@ import java.util.List;
 @Transactional
 public class WorkspaceService {
 
+        // 프로필 카드에 보여줄 담당 작업 최대 개수
+        private static final int PROFILE_TASK_LIMIT = 5;
+
         private final WorkspaceRepository workspaceRepository;
         private final WorkspaceMemberRepository workspaceMemberRepository;
         private final UserRepository userRepository;
@@ -27,6 +31,7 @@ public class WorkspaceService {
         private final WorkspaceTaskStatusRepository workspaceTaskStatusRepository;
         private final NotificationService notificationService;
         private final PresenceService presenceService;
+        private final TaskAssigneeRepository taskAssigneeRepository;
 
         // 워크스페이스 생성
         public WorkspaceResponse createWorkspace(WorkspaceCreateRequest request, String email) {
@@ -273,6 +278,38 @@ public class WorkspaceService {
                         .map(member -> WorkspaceMemberResponse.from(member,
                                 presenceService.isOnline(member.getUser().getUserId())))
                         .toList();
+        }
+
+        // 멤버 프로필 카드 조회 (같은 워크스페이스 멤버끼리만 볼 수 있고, 이 워크스페이스 안의 정보만 보여줘요)
+        @Transactional(readOnly = true)
+        public MemberProfileResponse getMemberProfile(Long workspaceId, Long userId, String email) {
+
+                User viewer = userRepository.findByEmail(email)
+                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+                Workspace workspace = workspaceRepository.findById(workspaceId)
+                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
+
+                workspaceMemberRepository.findByWorkspaceAndUser(workspace, viewer)
+                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+                User target = userRepository.findById(userId)
+                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
+
+                WorkspaceMember member = workspaceMemberRepository.findByWorkspaceAndUser(workspace, target)
+                        .orElseThrow(() -> new FlowSpaceException(ErrorCode.MEMBER_NOT_FOUND));
+
+                List<MemberProfileResponse.TaskItem> tasks = taskAssigneeRepository
+                        .findOpenTasks(target, workspace, TaskStatusCategory.DONE, PageRequest.of(0, PROFILE_TASK_LIMIT))
+                        .stream().map(MemberProfileResponse.TaskItem::from).toList();
+
+                return new MemberProfileResponse(target.getUserId(), target.getNickname(), target.getEmail(),
+                        target.getBio(),
+                        target.getProfileFile() == null ? null : target.getProfileFile().getFileUrl(),
+                        member.getRole(), member.getJoinedAt(), presenceService.isOnline(target.getUserId()),
+                        target.getLastActiveAt(),
+                        taskAssigneeRepository.countOpen(target, workspace, TaskStatusCategory.DONE),
+                        taskAssigneeRepository.countDone(target, workspace, TaskStatusCategory.DONE), tasks);
         }
 
         // 워크스페이스 소유권 이전
