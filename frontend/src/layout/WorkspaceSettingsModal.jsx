@@ -169,6 +169,7 @@ export default function WorkspaceSettingsModal({ onClose }) {
 
           {tab === "members" && (
             <MembersPanel
+              workspaceId={currentWorkspace?.id}
               members={members}
               currentUserId={currentUserId}
               isOwner={isOwner}

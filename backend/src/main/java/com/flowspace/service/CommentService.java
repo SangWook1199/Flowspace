@@ -1,7 +1,9 @@
 package com.flowspace.service;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,7 +71,10 @@ public class CommentService {
         activityService.log(task.getWorkspace(), user, ActivityType.COMMENT_CREATED, ActivityTargetType.COMMENT,
             comment.getCommentId());
 
-        notifyTaskComment(task, comment, parent, user);
+        Set<Long> mentioned = notifyMentions(comment, task.getWorkspace(), Set.of(), user, task.getTaskId(),
+            NotificationService.taskLink(task));
+
+        notifyTaskComment(task, comment, parent, user, mentioned);
 
         return CommentResponse.from(comment, List.of());
     }
@@ -101,7 +106,10 @@ public class CommentService {
         activityService.log(block.getPage().getWorkspace(), user, ActivityType.COMMENT_CREATED,
             ActivityTargetType.COMMENT, comment.getCommentId());
 
-        notifyBlockComment(block, comment, parent, user);
+        Set<Long> mentioned = notifyMentions(comment, block.getPage().getWorkspace(), Set.of(), user,
+            block.getPage().getPageId(), "/pages/" + block.getPage().getPageId());
+
+        notifyBlockComment(block, comment, parent, user, mentioned);
 
         return CommentResponse.from(comment, List.of());
     }
@@ -152,7 +160,20 @@ public class CommentService {
             throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
         }
 
+        // 수정하면서 새로 멘션된 사람에게만 알려요(원래 멘션돼 있던 사람에게 또 보내지 않아요).
+        Set<Long> alreadyMentioned = MentionParser.extractUserIds(comment.getContent());
+
         comment.update(request.content());
+
+        if (comment.getTask() != null) {
+            Task task = comment.getTask();
+            notifyMentions(comment, task.getWorkspace(), alreadyMentioned, user, task.getTaskId(),
+                NotificationService.taskLink(task));
+        } else if (comment.getBlock() != null) {
+            var page = comment.getBlock().getPage();
+            notifyMentions(comment, page.getWorkspace(), alreadyMentioned, user, page.getPageId(),
+                "/pages/" + page.getPageId());
+        }
 
         return CommentResponse.from(comment, List.of());
     }
@@ -174,12 +195,13 @@ public class CommentService {
     }
 
     // 작업 댓글 알림: 답글이면 원 댓글 작성자에게, 그 외엔 담당자 + 작업 만든 사람에게
-    private void notifyTaskComment(Task task, Comment comment, Comment parent, User actor) {
+    // 이미 멘션 알림을 받은 사람(mentioned)에게는 같은 댓글의 다른 알림을 또 보내지 않아요.
+    private void notifyTaskComment(Task task, Comment comment, Comment parent, User actor, Set<Long> mentioned) {
 
         String link = NotificationService.taskLink(task);
         String preview = preview(comment.getContent());
 
-        if (parent != null) {
+        if (parent != null && !mentioned.contains(parent.getUser().getUserId())) {
             notificationService.send(parent.getUser(), actor, task.getWorkspace(), NotificationType.COMMENT_CREATED,
                 actor.getNickname() + "님이 내 댓글에 답글을 남겼어요: " + preview, task.getTaskId(), link);
         }
@@ -194,28 +216,65 @@ public class CommentService {
             recipients.removeIf(u -> u != null && u.getUserId().equals(parent.getUser().getUserId()));
         }
 
+        // 멘션 알림을 받은 사람 제외
+        recipients.removeIf(u -> u != null && mentioned.contains(u.getUserId()));
+
         notificationService.sendAll(recipients, actor, task.getWorkspace(), NotificationType.COMMENT_CREATED,
             actor.getNickname() + "님이 '" + task.getTitle() + "' 작업에 댓글을 남겼어요: " + preview, task.getTaskId(),
             link);
     }
 
     // 페이지 블록 댓글 알림: 답글이면 원 댓글 작성자에게, 그 외엔 페이지 만든 사람에게
-    private void notifyBlockComment(Block block, Comment comment, Comment parent, User actor) {
+    private void notifyBlockComment(Block block, Comment comment, Comment parent, User actor, Set<Long> mentioned) {
 
         var page = block.getPage();
         String link = "/pages/" + page.getPageId();
         String preview = preview(comment.getContent());
 
-        if (parent != null) {
+        if (parent != null && !mentioned.contains(parent.getUser().getUserId())) {
             notificationService.send(parent.getUser(), actor, page.getWorkspace(), NotificationType.COMMENT_CREATED,
                 actor.getNickname() + "님이 내 댓글에 답글을 남겼어요: " + preview, page.getPageId(), link);
         }
 
-        if (parent == null || !page.getCreatedBy().getUserId().equals(parent.getUser().getUserId())) {
+        boolean creatorAlreadyNotified = mentioned.contains(page.getCreatedBy().getUserId())
+            || (parent != null && page.getCreatedBy().getUserId().equals(parent.getUser().getUserId()));
+
+        if (!creatorAlreadyNotified) {
             notificationService.send(page.getCreatedBy(), actor, page.getWorkspace(), NotificationType.COMMENT_CREATED,
                 actor.getNickname() + "님이 '" + page.getTitle() + "' 페이지에 댓글을 남겼어요: " + preview,
                 page.getPageId(), link);
         }
+    }
+
+    // 댓글에서 멘션된 워크스페이스 멤버에게 알림을 보내고, 알림을 보낸 대상(본인 제외 여부와 무관하게 멘션된 멤버)의 id를 돌려줘요.
+    // skip: 이미 멘션돼 있던 사람(수정할 때) — 알리지 않아요. 워크스페이스 멤버가 아닌 id는 무시해요.
+    private Set<Long> notifyMentions(Comment comment, com.flowspace.entity.Workspace workspace, Set<Long> skip,
+        User actor, Long refId, String link) {
+
+        Set<Long> ids = new HashSet<>(MentionParser.extractUserIds(comment.getContent()));
+
+        if (ids.isEmpty()) {
+            return ids;
+        }
+
+        Set<Long> mentionedMembers = new HashSet<>();
+        String preview = preview(comment.getContent());
+
+        for (User target : userRepository.findAllById(ids)) {
+
+            if (!workspaceMemberRepository.existsByWorkspaceAndUser(workspace, target)) {
+                continue;
+            }
+
+            mentionedMembers.add(target.getUserId());
+
+            if (!skip.contains(target.getUserId())) {
+                notificationService.send(target, actor, workspace, NotificationType.COMMENT_MENTION,
+                    actor.getNickname() + "님이 댓글에서 회원님을 언급했어요: " + preview, refId, link);
+            }
+        }
+
+        return mentionedMembers;
     }
 
     // 알림에 보여줄 댓글 미리보기
@@ -225,7 +284,8 @@ public class CommentService {
             return "";
         }
 
-        String oneLine = content.replaceAll("\\s+", " ").trim();
+        // 멘션은 "@[이름](id)" 대신 "@이름"으로 풀어서 보여줘요.
+        String oneLine = MentionParser.toPlain(content).replaceAll("\\s+", " ").trim();
 
         return oneLine.length() > 40 ? oneLine.substring(0, 40) + "…" : oneLine;
     }

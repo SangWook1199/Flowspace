@@ -1,5 +1,7 @@
 import { useId, useState } from "react";
 import { ArrowLeft, Mail, Plus, X } from "lucide-react";
+import { useEmailSuggest } from "../../hooks/useEmailSuggest";
+import EmailSuggestList from "../common/EmailSuggestList";
 
 export default function WorkspaceInviteStep({
   members,
@@ -15,10 +17,12 @@ export default function WorkspaceInviteStep({
   const [error, setError] = useState("");
   const emailId = useId();
   const errorId = useId();
+  // 이메일을 쓰는 동안 메일 주소를 추천하고, 끝까지 쓰면 그 이메일의 가입자를 보여줘요.
+  const suggest = useEmailSuggest(email);
 
   // onAdd는 성공하면 null, 실패하면 안내 문구를 돌려줘요(검증은 부모가 목록을 알고 있어서 거기서 해요).
-  const handleAdd = () => {
-    const value = email.trim();
+  const handleAdd = (override) => {
+    const value = (typeof override === "string" ? override : email).trim();
 
     if (!value) return;
 
@@ -31,7 +35,19 @@ export default function WorkspaceInviteStep({
     setEmail("");
   };
 
+  // 추천을 고르면: 메일 주소 추천은 입력칸에 채우고, 가입자 카드는 바로 초대 목록에 추가해요.
+  const pickSuggestion = (item) => {
+    if (item.kind === "user") {
+      handleAdd(item.user.email);
+      return;
+    }
+    setEmail(item.email);
+    setError("");
+  };
+
   const handleKeyDown = (e) => {
+    if (suggest.onKeyDown(e, pickSuggestion)) return;
+
     if (e.key === "Enter") {
       e.preventDefault();
       handleAdd();
@@ -64,26 +80,37 @@ export default function WorkspaceInviteStep({
       <div className="workspace-field">
         <label htmlFor={emailId}>팀원 이메일</label>
 
-        <div className="workspace-email-input">
-          <Mail size={18} />
+        <div className="emailSuggestWrap">
+          <div className="workspace-email-input">
+            <Mail size={18} />
 
-          <input
-            id={emailId}
-            type="email"
-            placeholder="example@email.com"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              setError("");
-            }}
-            onKeyDown={handleKeyDown}
-            aria-invalid={error ? true : undefined}
-            aria-describedby={error ? errorId : undefined}
-          />
+            <input
+              id={emailId}
+              type="email"
+              placeholder="example@email.com"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setError("");
+              }}
+              onKeyDown={handleKeyDown}
+              {...suggest.inputProps}
+              autoComplete="off"
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? errorId : undefined}
+            />
 
-          <button type="button" onClick={handleAdd} aria-label="팀원 이메일 추가">
-            <Plus size={18} />
-          </button>
+            <button
+              type="button"
+              onClick={() => handleAdd()}
+              disabled={!email.trim()}
+              aria-label="팀원 이메일 추가"
+            >
+              <Plus size={18} />
+            </button>
+          </div>
+
+          <EmailSuggestList suggest={suggest} onPick={pickSuggestion} />
         </div>
 
         {error && (

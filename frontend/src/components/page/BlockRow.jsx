@@ -1,4 +1,4 @@
-import { memo, useRef, useState } from "react";
+import { memo, useContext, useRef, useState } from "react";
 import {
   Plus,
   ChevronRight,
@@ -29,6 +29,9 @@ import { BLOCK_COLORS, BLOCK_TEXT_COLORS, CALLOUT_ICON_PRESETS, placeholderFor }
 import { formatListNumber } from "./lib/blockTree.js";
 import { CURRENT_USER_NAME, formatCommentTime } from "./lib/comments.js";
 import { useAuth } from "../../context/useAuth";
+import WorkspaceContext from "../../context/WorkspaceContext";
+import MentionInput from "../common/MentionInput";
+import MentionText from "../common/MentionText";
 
 /* ================= BlockRow ================= */
 
@@ -124,6 +127,8 @@ function BlockRowImpl({
   // 댓글에 "본인" 표시(수정·삭제 메뉴)를 하려고 로그인한 사람을 알아야 해요.
   const me = useAuth()?.user ?? null;
   const myName = me?.nickname || CURRENT_USER_NAME;
+  // 댓글에서 @로 멘션할 수 있는 워크스페이스 멤버들(알림은 서버가 보내요)
+  const workspaceMembers = useContext(WorkspaceContext)?.members ?? [];
 
   const [commentDraft, setCommentDraft] = useState("");
   // 댓글별 ⋯ 메뉴(수정/삭제)가 열려있는 댓글 id, 지금 수정 중인 댓글
@@ -789,10 +794,12 @@ function BlockRowImpl({
                               setEditingCommentId(null);
                             }}
                           >
-                            <input
+                            <MentionInput
                               type="text"
                               value={editDraft}
-                              onChange={(e) => setEditDraft(e.target.value)}
+                              members={workspaceMembers}
+                              onChange={setEditDraft}
+                              placement="top"
                               autoFocus
                               onKeyDown={(e) => {
                                 if (e.key === "Escape") setEditingCommentId(null);
@@ -808,7 +815,9 @@ function BlockRowImpl({
                             </div>
                           </form>
                         ) : (
-                          <p>{c.text}</p>
+                          <p>
+                            <MentionText text={c.text} members={workspaceMembers} meId={me?.id ?? null} />
+                          </p>
                         )}
                       </div>
 
@@ -887,11 +896,13 @@ function BlockRowImpl({
               <span className="block-comment-avatar" aria-hidden="true">
                 {myName.slice(0, 1)}
               </span>
-              <input
+              <MentionInput
                 type="text"
                 value={commentDraft}
-                onChange={(e) => setCommentDraft(e.target.value)}
-                placeholder="댓글 추가…"
+                members={workspaceMembers}
+                onChange={setCommentDraft}
+                placement="top"
+                placeholder="댓글 추가… (@로 멤버 멘션)"
                 autoFocus
               />
               <button type="submit" disabled={!commentDraft.trim()}>

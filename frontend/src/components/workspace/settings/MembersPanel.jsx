@@ -4,6 +4,8 @@ import { UserPlus } from "lucide-react";
 import styles from "../../../styles/classes.js";
 import { getAvatarTone } from "../../../utils/avatarColor";
 import { getErrorMessage } from "../../../utils/apiError";
+import { useEmailSuggest } from "../../../hooks/useEmailSuggest";
+import EmailSuggestList from "../../common/EmailSuggestList";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -24,6 +26,7 @@ function MemberAvatar({ member }) {
 
 // 멤버 탭: 멤버 목록·이메일 초대는 누구나, 소유권 이전·추방은 소유자만 할 수 있어요(서버도 똑같이 막아요).
 export default function MembersPanel({
+  workspaceId,
   members,
   currentUserId,
   isOwner,
@@ -38,9 +41,11 @@ export default function MembersPanel({
   const [busyId, setBusyId] = useState(null);
   const [actionError, setActionError] = useState(null);
 
-  const handleInvite = async (e) => {
-    e.preventDefault();
-    const target = email.trim();
+  // 이메일을 쓰는 동안 메일 주소를 추천하고, 끝까지 쓰면 그 이메일의 가입자(이미 멤버인지·초대했는지 포함)를 보여줘요.
+  const suggest = useEmailSuggest(email, { workspaceId });
+
+  const sendInvite = async (value) => {
+    const target = value.trim();
     if (!EMAIL_PATTERN.test(target)) {
       setInviteMessage({ type: "error", text: "이메일 형식을 확인해주세요." });
       return;
@@ -57,6 +62,21 @@ export default function MembersPanel({
     } finally {
       setInviting(false);
     }
+  };
+
+  const handleInvite = (e) => {
+    e.preventDefault();
+    sendInvite(email);
+  };
+
+  // 추천을 고르면: 메일 주소 추천은 입력칸에 채우고, 가입자 카드는 바로 초대해요.
+  const pickSuggestion = (item) => {
+    if (item.kind === "user") {
+      sendInvite(item.user.email);
+      return;
+    }
+    setEmail(item.email);
+    setInviteMessage(null);
   };
 
   const runAction = async (member, confirmText, action) => {
@@ -91,12 +111,16 @@ export default function MembersPanel({
               setEmail(e.target.value);
               setInviteMessage(null);
             }}
+            onKeyDown={(e) => suggest.onKeyDown(e, pickSuggestion)}
+            {...suggest.inputProps}
+            autoComplete="off"
           />
           <button type="submit" className="wsSettings__primary" disabled={!email.trim() || inviting}>
             <UserPlus size={15} />
             {inviting ? "보내는 중…" : "초대"}
           </button>
         </div>
+        <EmailSuggestList suggest={suggest} onPick={pickSuggestion} inline />
         {inviteMessage && (
           <p
             className={`wsSettings__msg ${inviteMessage.type}`}

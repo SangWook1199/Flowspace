@@ -1,7 +1,10 @@
-import { useRef, useState } from "react";
+import { useContext, useRef, useState } from "react";
 import { CalendarDays, Plus, Send, Trash2, X } from "lucide-react";
 import styles from "./TaskWorkspace.module.css";
 import { useAuth } from "../../context/useAuth";
+import WorkspaceContext from "../../context/WorkspaceContext";
+import MentionInput from "../common/MentionInput";
+import MentionText from "../common/MentionText";
 import { useTaskComments } from "../../hooks/useTaskComments";
 import { toRelativeTime } from "../../api/mappers";
 import { isRangeReversed, parseDateKey, percentOf, toDateKey } from "../../utils/date";
@@ -186,6 +189,8 @@ export default function TaskDetailPanel({
 // 작업 댓글: 서버에서 불러오고, 입력창에서 Enter(또는 보내기 버튼)로 남겨요. 내가 쓴 댓글만 삭제할 수 있어요.
 function TaskComments({ taskId }) {
   const me = useAuth()?.user ?? null;
+  // 댓글에서 @로 멘션할 수 있는 워크스페이스 멤버들(알림은 서버가 보내요)
+  const workspaceMembers = useContext(WorkspaceContext)?.members ?? [];
   const { comments, loading, saving, error, add, remove } = useTaskComments(taskId);
   const [draft, setDraft] = useState("");
 
@@ -199,12 +204,13 @@ function TaskComments({ taskId }) {
         댓글 <small>{comments.length}</small>
       </h3>
       <label>
-        <input
-          placeholder="댓글을 입력하세요..."
+        <MentionInput
+          placeholder="댓글을 입력하세요... (@로 멤버 멘션)"
           value={draft}
+          members={workspaceMembers}
           maxLength={1000}
           disabled={saving}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={setDraft}
           onKeyDown={(e) => {
             // 한글 조합 중 Enter는 글자를 확정하는 키라서 보내지 않아요.
             if (e.key === "Enter" && !e.nativeEvent.isComposing) {
@@ -249,7 +255,7 @@ function TaskComments({ taskId }) {
               />
             )}
             <br />
-            {comment.text}
+            <MentionText text={comment.text} members={workspaceMembers} meId={me?.id ?? null} />
           </p>
         );
       })}

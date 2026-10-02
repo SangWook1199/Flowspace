@@ -1,4 +1,4 @@
-import { Bell, ClipboardCheck, Clock3, Flag, ListChecks, LogOut, Mail, MessageSquare, Target, UserPlus, Users, X } from "lucide-react";
+import { AtSign, Bell, ClipboardCheck, Clock3, Flag, ListChecks, LogOut, Mail, MessageSquare, Target, UserPlus, Users, X } from "lucide-react";
 
 // 알림 종류마다 아이콘과 색 톤을 달리해서 한눈에 구분되게 해요.
 const TYPE_STYLE = {
@@ -12,7 +12,7 @@ const TYPE_STYLE = {
   TASK_STATUS_CHANGED: { Icon: ListChecks, tone: "green" },
   TASK_DUE_SOON: { Icon: Clock3, tone: "orange" },
   COMMENT_CREATED: { Icon: MessageSquare, tone: "purple" },
-  COMMENT_MENTION: { Icon: MessageSquare, tone: "purple" },
+  COMMENT_MENTION: { Icon: AtSign, tone: "orange" },
   SPRINT_STARTED: { Icon: Target, tone: "blue" },
   SPRINT_COMPLETED: { Icon: Flag, tone: "green" },
 };
