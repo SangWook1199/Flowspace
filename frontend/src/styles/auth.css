@@ -265,6 +265,41 @@
   transition: 0.2s;
 }
 
+/* Google 공식 버튼(투명)을 우리 버튼 위에 겹치기 위한 틀 */
+.social-slot {
+  position: relative;
+  flex: 1;
+  display: flex;
+}
+
+.social-google-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  opacity: 0.01;
+  /* 공식 버튼은 높이가 40px이라, 48px 버튼을 덮도록 세로로 키워요. */
+  transform-origin: center;
+}
+
+.social-google-overlay > div {
+  transform: scaleY(1.25);
+}
+
+.social-error {
+  margin: 12px 0 0;
+  text-align: center;
+  font-size: 13px;
+  color: #dc2626;
+}
+
+.social-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .social-button:hover {
   background: #f8fafc;
 }

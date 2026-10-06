@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>로그인 중…</title>
+  </head>
+  <body>
+    <p style="font-family: sans-serif; color: #64748b; text-align: center; margin-top: 40px">로그인 중이에요…</p>
+    <script>
+      // Microsoft 로그인 팝업이 돌아오는 곳이에요. 주소에 실려온 결과(code/state/error)를 원래 창에 넘기고 닫아요.
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        var message = {
+          type: "flowspace-oauth",
+          code: params.get("code"),
+          state: params.get("state"),
+          error: params.get("error"),
+          errorDescription: params.get("error_description"),
+        };
+        // Microsoft 로그인 창은 원래 창과 연결이 끊겨서(window.opener가 없어요) 같은 주소끼리 통하는 채널로 보내요.
+        if (typeof BroadcastChannel === "function") {
+          var channel = new BroadcastChannel("flowspace-oauth");
+          channel.postMessage(message);
+          channel.close();
+        }
+        if (window.opener) {
+          window.opener.postMessage(message, window.location.origin);
+        }
+        setTimeout(function () {
+          window.close();
+        }, 100);
+      })();
+    </script>
+  </body>
+</html>

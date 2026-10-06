@@ -9,6 +9,7 @@ import Calendar from "./pages/Calendar";
 import RetrospectiveList from "./pages/RetrospectiveList";
 import RetrospectiveDetailPage from "./pages/RetrospectiveDetailPage";
 import PageDetailPage from "./pages/PageDetailPage";
+import ActivityPage from "./pages/ActivityPage";
 import WorkspaceCreatePage from "./pages/WorkspaceCreatePage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
@@ -50,6 +51,7 @@ function App() {
                   element={<RetrospectiveDetailPage />}
                 />
                 <Route path="pages/:pageId" element={<PageDetailPage />} />
+                <Route path="activities" element={<ActivityPage />} />
               </Route>
               <Route
                 path="/workspace/create"

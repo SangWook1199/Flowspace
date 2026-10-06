@@ -9,6 +9,7 @@ import {
 import { useState } from "react";
 
 import { formatDateDots, percentOf } from "../../utils/date";
+import { useMemberProfile } from "../../context/MemberProfileContext";
 
 // tasks는 공용 작업 모델(assignees 객체 배열, startDate/dueDate, subtasks {text, checked})에
 // 상태 카테고리 status("TODO" | "IN_PROGRESS" | "DONE")를 얹은 모양이에요.
@@ -61,6 +62,7 @@ export default function SprintTaskTable({ tasks = [], onAdd }) {
 }
 
 function TaskGroup({ task, open, onToggle }) {
+  const openMemberProfile = useMemberProfile();
   const assignees = task.assignees ?? [];
   const subtasks = task.subtasks ?? [];
   const complete = subtasks.filter((subtask) => subtask?.checked).length;
@@ -109,8 +111,27 @@ function TaskGroup({ task, open, onToggle }) {
         <div className="assigneeStack">
           {assignees.map((assignee, index) => {
             const name = typeof assignee === "string" ? assignee : assignee?.name;
+            const assigneeId = typeof assignee === "string" ? null : (assignee?.id ?? null);
             return (
-              <span key={`${name}-${index}`} className="assigneeAvatar" title={name}>
+              <span
+                key={`${name}-${index}`}
+                className={`assigneeAvatar${assigneeId != null ? " memberAvatarLink" : ""}`}
+                title={name}
+                role={assigneeId != null ? "button" : undefined}
+                tabIndex={assigneeId != null ? 0 : undefined}
+                onClick={(e) => {
+                  if (assigneeId == null) return;
+                  e.stopPropagation();
+                  openMemberProfile(assigneeId, e.currentTarget);
+                }}
+                onKeyDown={(e) => {
+                  if (assigneeId != null && (e.key === "Enter" || e.key === " ")) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openMemberProfile(assigneeId, e.currentTarget);
+                  }
+                }}
+              >
                 {typeof assignee === "string" ? assignee[0] : (assignee?.initial ?? name?.[0])}
               </span>
             );

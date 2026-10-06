@@ -35,6 +35,7 @@ import { selectionTextBounds } from "./lib/selectionMove.js";
 // 기본값으로 매 렌더마다 새 배열([])을 만들면 memo된 BlockRow의 props가 항상 "달라져" 보여요.
 const NO_PAGES = [];
 const NO_TASKS = [];
+const NO_REMOTE_EDITORS = {};
 
 export default function BlockEditor({
   blocks: initialBlocks,
@@ -51,6 +52,10 @@ export default function BlockEditor({
   // 작업 상태를 들고 있다가 내려줘요. 안 넘어오면 빈 목록이라 작업 블록은 선택할 게 없어요.
   sprintTasks = NO_TASKS,
   onToggleSubtask,
+  // 같은 페이지의 다른 멤버가 편집 중인 블록: { 블록 id: [{ userId, name, initial }] } — 그 줄에 이름표만 보여줘요.
+  remoteEditors = NO_REMOTE_EDITORS,
+  // 다른 멤버가 저장한 내용을 합친 블록 배열을 통째로 화면에 넣는 함수를 여기에 등록해 둬요(usePageBlocks가 불러요).
+  applyRef,
 }) {
   // pages/{pageId}/blocks API로 교체 예정. onChange가 있으면 상위(페이지 목록
   // 상태)로 변경 사항을 올려서 다른 화면에서도 최신 블록이 보이게 해요.
@@ -266,6 +271,20 @@ export default function BlockEditor({
   historyApiRef.current = history;
 
   const nextId = () => idCounter.current++;
+
+  // 다른 멤버의 변경을 합친 결과를 받아 화면에 넣어요. 서버 id를 그대로 받아온 새 블록과 id가 겹치지 않게 카운터도 올려요.
+  useEffect(() => {
+    if (!applyRef) return undefined;
+
+    applyRef.current = (next) => {
+      idCounter.current = Math.max(idCounter.current, ...next.map((b) => Number(b.id) || 0)) + 1;
+      setBlocks(() => next);
+    };
+
+    return () => {
+      applyRef.current = null;
+    };
+  });
 
   const openLinkPopover = (blocksForLink) => {
     const sel = window.getSelection();
@@ -2118,6 +2137,7 @@ export default function BlockEditor({
             isFirst={index === 0}
             isLast={index === blocks.length - 1}
             isFocused={focusedBlockId === block.id}
+            remoteEditors={remoteEditors[block.id] ?? null}
             isDragging={draggedGroupIds.has(block.id)}
             isSelected={selectedBlockIds.has(block.id)}
             isGroupHighlighted={!!(openMenuRange && index > openMenuRange.start && index < openMenuRange.end)}

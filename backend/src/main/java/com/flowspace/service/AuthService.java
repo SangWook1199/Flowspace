@@ -23,6 +23,10 @@ import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.repository.RefreshTokenRepository;
 import com.flowspace.repository.UserRepository;
 import com.flowspace.security.JwtProvider;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.javanet.NetHttpTransport;
@@ -44,6 +48,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -64,6 +69,11 @@ public class AuthService {
     private String googleClientId;
     @Value("${microsoft.client-id}")
     private String microsoftClientId;
+
+    private static final String MICROSOFT_JWK_SET_URI = "https://login.microsoftonline.com/common/discovery/v2.0/keys";
+    private static final String MICROSOFT_ISSUER_PREFIX = "https://login.microsoftonline.com/";
+
+    private volatile JwtDecoder microsoftJwtDecoder;
 
     // 회원가입
     @Transactional
@@ -276,6 +286,12 @@ public class AuthService {
     // Google 회원 생성
     private User createGoogleUser(GoogleUserInfo googleUser) {
 
+        // 같은 이메일로 이미 가입한 계정(이메일 가입 또는 다른 소셜)이 있으면 새로 만들지 않고 안내해요.
+        // 이메일만 보고 계정을 합치면 남의 계정을 가로챌 수 있어서, 처음 가입한 방식으로 로그인하게 해요.
+        if (userRepository.existsByEmail(googleUser.email())) {
+            throw new FlowSpaceException(ErrorCode.SOCIAL_EMAIL_CONFLICT);
+        }
+
         User user = User.builder().email(googleUser.email()).password(null).nickname(googleUser.nickname())
             .provider(Provider.GOOGLE).providerId(googleUser.providerId()).build();
 
@@ -352,6 +368,12 @@ public class AuthService {
     // Microsoft 회원 생성
     private User createMicrosoftUser(MicrosoftUserInfo microsoftUser, String accessToken) {
 
+        // 같은 이메일로 이미 가입한 계정(이메일 가입 또는 다른 소셜)이 있으면 새로 만들지 않고 안내해요.
+        // 이메일만 보고 계정을 합치면 남의 계정을 가로챌 수 있어서, 처음 가입한 방식으로 로그인하게 해요.
+        if (userRepository.existsByEmail(microsoftUser.email())) {
+            throw new FlowSpaceException(ErrorCode.SOCIAL_EMAIL_CONFLICT);
+        }
+
         User user = User.builder().email(microsoftUser.email()).password(null).nickname(microsoftUser.nickname())
             .provider(Provider.MICROSOFT).providerId(microsoftUser.providerId()).build();
 
@@ -392,25 +414,58 @@ public class AuthService {
     }
 
     // Microsoft ID Token 검증
+    //  - Google용 검증기로는 Microsoft 토큰을 확인할 수 없어서(발급처·서명 키가 달라요), Microsoft가 공개한 서명 키로 직접 확인해요.
+    //  - 서명·만료는 디코더가 확인하고, 이 앱(client-id)용으로 발급됐는지와 Microsoft가 발급했는지는 아래에서 확인해요.
     private MicrosoftUserInfo verifyMicrosoftToken(String idToken) {
 
         try {
 
-            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(),
-                GsonFactory.getDefaultInstance()).setAudience(Collections.singletonList(microsoftClientId)).build();
+            Jwt jwt = microsoftDecoder().decode(idToken);
 
-            GoogleIdToken token = verifier.verify(idToken);
+            List<String> audience = jwt.getAudience();
+            String issuer = jwt.getClaimAsString("iss");
 
-            if (token == null) {
+            if (audience == null || !audience.contains(microsoftClientId) || issuer == null
+                || !issuer.startsWith(MICROSOFT_ISSUER_PREFIX) || !issuer.endsWith("/v2.0")) {
                 throw new FlowSpaceException(ErrorCode.INVALID_LOGIN);
             }
 
-            GoogleIdToken.Payload payload = token.getPayload();
+            // 개인 계정은 email 클레임이 없을 수 있어서 preferred_username(로그인 이름)으로 대신해요.
+            String email = jwt.getClaimAsString("email");
 
-            return new MicrosoftUserInfo(payload.getSubject(), payload.getEmail(), (String) payload.get("name"));
+            if (email == null || email.isBlank()) {
+                email = jwt.getClaimAsString("preferred_username");
+            }
 
+            if (email == null || email.isBlank() || !email.contains("@")) {
+                throw new FlowSpaceException(ErrorCode.INVALID_LOGIN);
+            }
+
+            String name = jwt.getClaimAsString("name");
+
+            if (name == null || name.isBlank()) {
+                name = email.substring(0, email.indexOf('@'));
+            }
+
+            return new MicrosoftUserInfo(jwt.getSubject(), email, name);
+
+        } catch (FlowSpaceException e) {
+            throw e;
         } catch (Exception e) {
             throw new FlowSpaceException(ErrorCode.INVALID_LOGIN);
         }
+    }
+
+    // Microsoft이 공개한 서명 키(JWKS)로 ID Token을 확인하는 디코더 — 처음 쓸 때 한 번만 만들어요(키는 알아서 캐시돼요).
+    private JwtDecoder microsoftDecoder() {
+
+        JwtDecoder decoder = microsoftJwtDecoder;
+
+        if (decoder == null) {
+            decoder = NimbusJwtDecoder.withJwkSetUri(MICROSOFT_JWK_SET_URI).build();
+            microsoftJwtDecoder = decoder;
+        }
+
+        return decoder;
     }
 }

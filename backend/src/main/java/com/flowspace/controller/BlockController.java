@@ -15,6 +15,7 @@ import com.flowspace.dto.block.BlockSyncRequest;
 import com.flowspace.dto.block.BlockSyncResponse;
 import com.flowspace.dto.block.BlockUpdateRequest;
 import com.flowspace.service.BlockService;
+import com.flowspace.service.PagePresenceService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -28,6 +29,9 @@ import lombok.RequiredArgsConstructor;
 public class BlockController {
 
     private final BlockService blockService;
+
+    // 저장이 끝나면 같은 페이지를 보는 다른 멤버 화면이 새로 받아가게 알려요.
+    private final PagePresenceService pagePresenceService;
 
     @Operation(summary = "블록 생성")
     @PostMapping("/pages/{pageId}/blocks")
@@ -46,7 +50,9 @@ public class BlockController {
     @PutMapping("/pages/{pageId}/blocks")
     public BlockSyncResponse syncBlocks(@PathVariable Long pageId, @Valid @RequestBody BlockSyncRequest request,
         @AuthenticationPrincipal UserDetails userDetails) {
-        return blockService.syncBlocks(pageId, request, userDetails.getUsername());
+        BlockSyncResponse response = blockService.syncBlocks(pageId, request, userDetails.getUsername());
+        pagePresenceService.notifyContentChanged(pageId, userDetails.getUsername());
+        return response;
     }
 
     @Operation(summary = "블록 수정")
@@ -80,12 +86,16 @@ public class BlockController {
     @PostMapping("/blocks/{blockId}/image")
     public BlockResponse uploadImage(@PathVariable Long blockId, @RequestParam("file") MultipartFile file,
         @AuthenticationPrincipal UserDetails userDetails) {
-        return blockService.uploadImage(blockId, file, userDetails.getUsername());
+        BlockResponse response = blockService.uploadImage(blockId, file, userDetails.getUsername());
+        pagePresenceService.notifyContentChanged(response.pageId(), userDetails.getUsername());
+        return response;
     }
 
     @Operation(summary = "블록 이미지 삭제")
     @DeleteMapping("/blocks/{blockId}/image")
     public BlockResponse deleteImage(@PathVariable Long blockId, @AuthenticationPrincipal UserDetails userDetails) {
-        return blockService.deleteImage(blockId, userDetails.getUsername());
+        BlockResponse response = blockService.deleteImage(blockId, userDetails.getUsername());
+        pagePresenceService.notifyContentChanged(response.pageId(), userDetails.getUsername());
+        return response;
     }
 }

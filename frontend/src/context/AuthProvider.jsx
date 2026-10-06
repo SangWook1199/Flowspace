@@ -91,6 +91,17 @@ export function AuthProvider({ children }) {
     return data;
   }, []);
 
+  // 소셜 로그인: provider는 "google"(payload = ID 토큰 문자열) | "microsoft"(payload = { idToken, accessToken }).
+  // 소셜 로그인은 로그인 상태를 유지해요(저장 위치는 이메일 로그인의 "로그인 유지"를 켠 것과 같아요).
+  const socialLogin = useCallback(async (provider, payload) => {
+    const { data } = provider === "google" ? await authApi.googleLogin(payload) : await authApi.microsoftLogin(payload);
+    bootId.current++;
+    saveTokens(data, { remember: true });
+    setUser(toUser(data.user));
+    setAuthError(false);
+    return data;
+  }, []);
+
   const signup = useCallback(async (payload) => {
     const { data } = await authApi.signup(payload);
     bootId.current++;
@@ -126,13 +137,14 @@ export function AuthProvider({ children }) {
       loading,
       authError,
       login,
+      socialLogin,
       signup,
       logout,
       changePassword,
       setUser: updateUser,
       retryAuth: loadMe,
     }),
-    [user, loading, authError, login, signup, logout, changePassword, updateUser, loadMe],
+    [user, loading, authError, login, socialLogin, signup, logout, changePassword, updateUser, loadMe],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

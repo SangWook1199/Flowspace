@@ -114,7 +114,7 @@ export default function MainLayout() {
         onOpenSettings={() => setSettingsOpen(true)}
       />
       <main className={styles.main}>
-        <Header members={members} />
+        <Header members={members} workspaceId={currentWorkspace.id} />
         <Outlet
           context={{
             workspaceId: currentWorkspace.id,

@@ -10,6 +10,7 @@ public enum ErrorCode {
 
     // Auth
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
+    SOCIAL_EMAIL_CONFLICT(HttpStatus.CONFLICT, "이미 이 이메일로 가입된 계정이 있어요. 처음 가입했던 방식(이메일 또는 다른 소셜 계정)으로 로그인해주세요."),
     NICKNAME_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 사용 중인 닉네임입니다."),
     INVALID_LOGIN(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "리프레시 토큰이 유효하지 않습니다."),

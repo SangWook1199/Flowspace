@@ -1,3 +1,4 @@
+import { fileUrl } from "../../utils/fileUrl";
 import { getInitial } from "../../utils/initial";
 
 // 서버 ActivityResponse → 대시보드 "최근 활동" 항목.
@@ -8,7 +9,8 @@ const ACTION_LABEL = {
   PAGE_CREATED: { noun: "페이지", particle: "를", verb: "만들었습니다" },
   TASK_CREATED: { noun: "작업", particle: "을", verb: "만들었습니다" },
   TASK_COMPLETED: { noun: "작업", particle: "을", verb: "완료했습니다" },
-  COMMENT_CREATED: { noun: "댓글", particle: "을", verb: "남겼습니다" },
+  // 댓글은 "‘작업 이름’에 댓글을 남겼습니다"처럼 어디에 남겼는지로 말해요.
+  COMMENT_CREATED: { noun: "댓글", particle: "을", verb: "남겼습니다", onTarget: true },
   SPRINT_CREATED: { noun: "스프린트", particle: "를", verb: "만들었습니다" },
   SPRINT_COMPLETED: { noun: "스프린트", particle: "를", verb: "완료했습니다" },
 };
@@ -17,15 +19,23 @@ const TARGET_LOOKUP = { PAGE: "page", TASK: "task", SPRINT: "sprint" };
 
 export const toActivity = (dto, lookup = {}, now = Date.now()) => {
   const label = ACTION_LABEL[dto.type] ?? { noun: "항목", particle: "을", verb: "변경했습니다" };
-  const targetName = lookup[TARGET_LOOKUP[dto.targetType]]?.(dto.targetId);
-  const object = `${targetName ? `‘${targetName}’ ` : ""}${label.noun}${label.particle}`;
+  // 서버가 준 대상 이름(targetName)을 먼저 쓰고, 없으면 화면이 가진 목록에서 찾아요.
+  const targetName = dto.targetName ?? lookup[TARGET_LOOKUP[dto.targetType]]?.(dto.targetId);
+  const object =
+    label.onTarget && targetName
+      ? `‘${targetName}’에 ${label.noun}${label.particle}`
+      : `${targetName ? `‘${targetName}’ ` : ""}${label.noun}${label.particle}`;
 
   return {
     id: dto.activityId,
     userId: dto.userId,
     initial: getInitial(dto.userName),
+    profileImageUrl: fileUrl(dto.profileImageUrl),
     text: `${dto.userName}님이 ${object} ${label.verb}.`,
     time: toRelativeTime(dto.createdAt, now),
+    createdAt: dto.createdAt,
+    type: dto.type,
+    link: dto.targetLink ?? null,
   };
 };
 

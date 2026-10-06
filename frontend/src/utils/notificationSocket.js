@@ -79,6 +79,14 @@ export function createNotificationSocket({ onMessage, onOpen, beforeConnect }) {
   connect();
 
   return {
+    // JSON 메시지를 보내요. 연결이 열려 있지 않으면 false(다시 열리면 호출한 쪽이 상태를 다시 알려줘야 해요).
+    send(message) {
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify(message));
+        return true;
+      }
+      return false;
+    },
     close() {
       closed = true;
       clearTimeout(retryTimer);
