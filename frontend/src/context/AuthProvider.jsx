@@ -102,6 +102,16 @@ export function AuthProvider({ children }) {
     return data;
   }, []);
 
+  // 소셜 계정 연결(같은 이메일의 기존 계정 비밀번호로 확인): 연결에 성공하면 그대로 로그인돼요.
+  const linkSocialAccount = useCallback(async (payload) => {
+    const { data } = await authApi.linkSocialAccount(payload);
+    bootId.current++;
+    saveTokens(data, { remember: true });
+    setUser(toUser(data.user));
+    setAuthError(false);
+    return data;
+  }, []);
+
   const signup = useCallback(async (payload) => {
     const { data } = await authApi.signup(payload);
     bootId.current++;
@@ -138,13 +148,14 @@ export function AuthProvider({ children }) {
       authError,
       login,
       socialLogin,
+      linkSocialAccount,
       signup,
       logout,
       changePassword,
       setUser: updateUser,
       retryAuth: loadMe,
     }),
-    [user, loading, authError, login, socialLogin, signup, logout, changePassword, updateUser, loadMe],
+    [user, loading, authError, login, socialLogin, linkSocialAccount, signup, logout, changePassword, updateUser, loadMe],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

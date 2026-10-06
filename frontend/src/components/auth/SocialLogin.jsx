@@ -5,7 +5,8 @@ import googleIcon from "../../assets/login/google-icon.png";
 import microsoftIcon from "../../assets/login/microsoft-icon.png";
 import { useAuth } from "../../context/useAuth";
 import { getSafeRedirect } from "../../utils/authRedirect";
-import { getErrorMessage } from "../../utils/apiError";
+import { getErrorCode, getErrorMessage } from "../../utils/apiError";
+import SocialLinkModal from "./SocialLinkModal";
 import {
   GOOGLE_CLIENT_ID,
   MICROSOFT_CLIENT_ID,
@@ -21,6 +22,8 @@ export default function SocialLogin() {
 
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  // 같은 이메일의 기존 계정이 있어서 비밀번호 확인이 필요할 때: { provider, payload }
+  const [linkTarget, setLinkTarget] = useState(null);
   const busyRef = useRef(false);
   const googleSlotRef = useRef(null);
 
@@ -35,7 +38,10 @@ export default function SocialLogin() {
       await socialLogin(provider, payload);
       navigate(getSafeRedirect(location.state?.from) ?? "/", { replace: true });
     } catch (err) {
-      if (!(err instanceof SocialLoginCancelled)) {
+      if (getErrorCode(err) === "SOCIAL_LINK_REQUIRED") {
+        // 같은 이메일로 가입한 계정이 있어요 — 그 계정의 비밀번호로 확인하고 연결할지 물어봐요.
+        setLinkTarget({ provider, payload });
+      } else if (!(err instanceof SocialLoginCancelled)) {
         setError(getErrorMessage(err, "소셜 로그인에 실패했어요. 다시 시도해주세요."));
       }
     } finally {
@@ -152,6 +158,15 @@ export default function SocialLogin() {
         <p className="social-error" role="alert">
           {error}
         </p>
+      )}
+
+      {linkTarget && (
+        <SocialLinkModal
+          provider={linkTarget.provider}
+          payload={linkTarget.payload}
+          onClose={() => setLinkTarget(null)}
+          onLinked={() => navigate(getSafeRedirect(location.state?.from) ?? "/", { replace: true })}
+        />
       )}
     </div>
   );

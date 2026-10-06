@@ -13,6 +13,16 @@ export const googleLogin = (idToken) =>
 // Microsoft 로그인
 export const microsoftLogin = (data) => client.post("/auth/microsoft", data);
 
+// 소셜 계정 연결: 같은 이메일의 기존 계정(이메일 가입) 비밀번호로 확인하고 연결해요.
+// data = { provider: "GOOGLE" | "MICROSOFT", idToken, accessToken?, password }. 성공하면 로그인 응답이 와요.
+export const linkSocialAccount = (data) => client.post("/auth/social/link", data, { skipAuth: true });
+
+// 비밀번호 찾기: 가입된 이메일이면 재설정 링크를 보내요(없는 이메일이어도 똑같이 성공으로 답해요).
+export const forgotPassword = (email) => client.post("/auth/password/forgot", { email }, { skipAuth: true });
+
+// 비밀번호 재설정: 메일 링크의 token으로 새 비밀번호를 정해요.
+export const resetPassword = (data) => client.post("/auth/password/reset", data, { skipAuth: true });
+
 // access token 재발급. 만료된 access token을 실어 보내봐야 의미가 없고
 // 오히려 헷갈리니까 Authorization 헤더는 붙이지 않도록(skipAuth) 표시해요.
 // 401이 나도 또 refresh를 시도하지 않는 건 client.js의 인터셉터가

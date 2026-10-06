@@ -10,18 +10,21 @@ import com.flowspace.dto.auth.PasswordChangeRequest;
 import com.flowspace.dto.auth.ProfileUpdateRequest;
 import com.flowspace.dto.auth.RefreshRequest;
 import com.flowspace.dto.auth.SignupRequest;
+import com.flowspace.dto.auth.SocialLinkRequest;
 import com.flowspace.dto.auth.UserResponse;
 import com.flowspace.dto.auth.TokenResponse;
 import com.flowspace.dto.auth.TokenRequest;
 import com.flowspace.entity.File;
 import com.flowspace.entity.RefreshToken;
 import com.flowspace.entity.User;
+import com.flowspace.entity.UserSocialAccount;
 import com.flowspace.entity.Workspace;
 import com.flowspace.entity.enums.Provider;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.repository.RefreshTokenRepository;
 import com.flowspace.repository.UserRepository;
+import com.flowspace.repository.UserSocialAccountRepository;
 import com.flowspace.security.JwtProvider;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -49,6 +52,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -56,6 +60,7 @@ import java.util.List;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final UserSocialAccountRepository socialAccountRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
@@ -269,12 +274,94 @@ public class AuthService {
         return UserResponse.from(user);
     }
 
+
+    // 소셜 계정으로 로그인할 사용자를 찾아요. 연결된 소셜 계정을 먼저 보고, 없으면 예전 방식(users.provider)으로 가입한 계정을 봐요.
+    private Optional<User> findSocialUser(Provider provider, String providerId) {
+
+        return socialAccountRepository.findByProviderAndProviderId(provider, providerId).map(UserSocialAccount::getUser)
+            .or(() -> userRepository.findByProviderAndProviderId(provider, providerId));
+    }
+
+    // 소셜 계정을 사용자에게 연결해요.
+    private void linkSocial(User user, Provider provider, String providerId) {
+
+        socialAccountRepository
+            .save(UserSocialAccount.builder().user(user).provider(provider).providerId(providerId).build());
+    }
+
+    // 같은 이메일의 계정이 이미 있을 때 새 계정을 만들지 못하게 막아요.
+    //  - 비밀번호가 있는 계정(이메일 가입): 그 비밀번호로 본인임을 확인하면 연결할 수 있다고 알려요(SOCIAL_LINK_REQUIRED).
+    //    이메일만 보고 합치면 남의 계정을 가로챌 수 있어서, 꼭 비밀번호로 확인해요.
+    //  - 그 밖(다른 소셜로 가입한 계정 등): 처음 가입한 방식으로 로그인하게 안내해요(SOCIAL_EMAIL_CONFLICT).
+    private void rejectExistingEmail(String email, Provider provider) {
+
+        User existing = userRepository.findByEmail(email).orElse(null);
+
+        if (existing == null) {
+            return;
+        }
+
+        if (existing.getPassword() != null && !existing.isWithdrawn()
+            && !socialAccountRepository.existsByUserAndProvider(existing, provider)) {
+            throw new FlowSpaceException(ErrorCode.SOCIAL_LINK_REQUIRED);
+        }
+
+        throw new FlowSpaceException(ErrorCode.SOCIAL_EMAIL_CONFLICT);
+    }
+
+    // 소셜 계정 연결: 같은 이메일의 기존 계정(비밀번호가 있는 계정)에 소셜 계정을 연결하고 로그인해요.
+    // 소셜 토큰이 그 이메일의 주인임을, 비밀번호가 기존 계정의 주인임을 각각 증명해요.
+    public LoginResponse linkSocialAccount(SocialLinkRequest request) {
+
+        Provider provider = request.provider();
+        String providerId;
+        String email;
+
+        if (provider == Provider.GOOGLE) {
+            GoogleUserInfo info = verifyGoogleToken(request.idToken());
+            providerId = info.providerId();
+            email = info.email();
+        } else if (provider == Provider.MICROSOFT) {
+            MicrosoftUserInfo info = verifyMicrosoftToken(request.idToken());
+            providerId = info.providerId();
+            email = info.email();
+        } else {
+            throw new FlowSpaceException(ErrorCode.INVALID_LOGIN);
+        }
+
+        User user = findSocialUser(provider, providerId).orElse(null);
+
+        // 이미 연결된 소셜 계정이면 그대로 로그인해요.
+        if (user == null) {
+
+            User existing = userRepository.findByEmail(email)
+                .orElseThrow(() -> new FlowSpaceException(ErrorCode.INVALID_LOGIN));
+
+            if (existing.isWithdrawn() || existing.getPassword() == null
+                || socialAccountRepository.existsByUserAndProvider(existing, provider)) {
+                throw new FlowSpaceException(ErrorCode.SOCIAL_EMAIL_CONFLICT);
+            }
+
+            if (!passwordEncoder.matches(request.password(), existing.getPassword())) {
+                throw new FlowSpaceException(ErrorCode.SOCIAL_LINK_PASSWORD_MISMATCH);
+            }
+
+            linkSocial(existing, provider, providerId);
+            user = existing;
+        }
+
+        String accessToken = jwtProvider.createAccessToken(user);
+        String refreshToken = issueRefreshToken(user, true);
+
+        return LoginResponse.from(user, accessToken, refreshToken, user.getLastWorkspace().getWorkspaceId());
+    }
+
     // Google 로그인
     public LoginResponse googleLogin(GoogleLoginRequest request) {
 
         GoogleUserInfo googleUser = verifyGoogleToken(request.idToken());
 
-        User user = userRepository.findByProviderAndProviderId(Provider.GOOGLE, googleUser.providerId())
+        User user = findSocialUser(Provider.GOOGLE, googleUser.providerId())
             .orElseGet(() -> createGoogleUser(googleUser));
 
         String accessToken = jwtProvider.createAccessToken(user);
@@ -286,16 +373,14 @@ public class AuthService {
     // Google 회원 생성
     private User createGoogleUser(GoogleUserInfo googleUser) {
 
-        // 같은 이메일로 이미 가입한 계정(이메일 가입 또는 다른 소셜)이 있으면 새로 만들지 않고 안내해요.
-        // 이메일만 보고 계정을 합치면 남의 계정을 가로챌 수 있어서, 처음 가입한 방식으로 로그인하게 해요.
-        if (userRepository.existsByEmail(googleUser.email())) {
-            throw new FlowSpaceException(ErrorCode.SOCIAL_EMAIL_CONFLICT);
-        }
+        // 같은 이메일로 이미 가입한 계정이 있으면 새로 만들지 않아요(연결 확인 또는 안내).
+        rejectExistingEmail(googleUser.email(), Provider.GOOGLE);
 
         User user = User.builder().email(googleUser.email()).password(null).nickname(googleUser.nickname())
             .provider(Provider.GOOGLE).providerId(googleUser.providerId()).build();
 
         userRepository.save(user);
+        linkSocial(user, Provider.GOOGLE, googleUser.providerId());
 
         Workspace workspace = workspaceService.createPersonalWorkspace(user);
 
@@ -356,7 +441,7 @@ public class AuthService {
 
         MicrosoftUserInfo microsoftUser = verifyMicrosoftToken(request.idToken());
 
-        User user = userRepository.findByProviderAndProviderId(Provider.MICROSOFT, microsoftUser.providerId())
+        User user = findSocialUser(Provider.MICROSOFT, microsoftUser.providerId())
             .orElseGet(() -> createMicrosoftUser(microsoftUser, request.accessToken()));
 
         String accessToken = jwtProvider.createAccessToken(user);
@@ -368,16 +453,14 @@ public class AuthService {
     // Microsoft 회원 생성
     private User createMicrosoftUser(MicrosoftUserInfo microsoftUser, String accessToken) {
 
-        // 같은 이메일로 이미 가입한 계정(이메일 가입 또는 다른 소셜)이 있으면 새로 만들지 않고 안내해요.
-        // 이메일만 보고 계정을 합치면 남의 계정을 가로챌 수 있어서, 처음 가입한 방식으로 로그인하게 해요.
-        if (userRepository.existsByEmail(microsoftUser.email())) {
-            throw new FlowSpaceException(ErrorCode.SOCIAL_EMAIL_CONFLICT);
-        }
+        // 같은 이메일로 이미 가입한 계정이 있으면 새로 만들지 않아요(연결 확인 또는 안내).
+        rejectExistingEmail(microsoftUser.email(), Provider.MICROSOFT);
 
         User user = User.builder().email(microsoftUser.email()).password(null).nickname(microsoftUser.nickname())
             .provider(Provider.MICROSOFT).providerId(microsoftUser.providerId()).build();
 
         userRepository.save(user);
+        linkSocial(user, Provider.MICROSOFT, microsoftUser.providerId());
 
         Workspace workspace = workspaceService.createPersonalWorkspace(user);
 

@@ -393,11 +393,32 @@ CREATE TABLE notifications (
     CONSTRAINT fk_notifications_actor FOREIGN KEY (actor_id) REFERENCES users(user_id) ON DELETE SET NULL,
     CONSTRAINT fk_notifications_workspace FOREIGN KEY (workspace_id) REFERENCES workspaces(workspace_id) ON DELETE CASCADE
 );
+
+-- 소셜 계정 연결 (alter_social_accounts_password_reset.sql과 같아요)
+CREATE TABLE user_social_accounts (
+    social_account_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    provider ENUM('LOCAL','GOOGLE','MICROSOFT', 'APPLE') NOT NULL,
+    provider_id VARCHAR(255) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (provider, provider_id),
+    CONSTRAINT fk_social_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+-- 비밀번호 재설정 링크
+CREATE TABLE password_reset_tokens (
+    reset_token_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    token_hash VARCHAR(64) NOT NULL UNIQUE,
+    expires_at DATETIME NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_reset_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
 CREATE INDEX idx_notifications_user_created
 ON notifications(user_id, created_at DESC);
 CREATE INDEX idx_notifications_user_unread
 ON notifications(user_id, is_read);
-
 CREATE INDEX idx_pages_workspace
 ON pages(workspace_id);
 CREATE INDEX idx_blocks_page
@@ -428,3 +449,5 @@ CREATE INDEX idx_snapshot_assignees_snapshot
 ON task_snapshot_assignees(snapshot_id);
 CREATE INDEX idx_subtask_snapshots_snapshot
 ON subtask_snapshots(snapshot_id, position);
+
+

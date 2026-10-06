@@ -13,6 +13,18 @@ export class SocialLoginCancelled extends Error {
   }
 }
 
+// ID 토큰(JWT)에 들어 있는 이메일을 화면에 보여주려고 읽어요(검증은 서버가 해요).
+export function emailFromIdToken(idToken) {
+  try {
+    const part = String(idToken).split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const bytes = Uint8Array.from(atob(part), (c) => c.charCodeAt(0));
+    const claims = JSON.parse(new TextDecoder().decode(bytes));
+    return claims.email || claims.preferred_username || "";
+  } catch {
+    return "";
+  }
+}
+
 /* ---------------- Google ---------------- */
 
 let googleScript = null;

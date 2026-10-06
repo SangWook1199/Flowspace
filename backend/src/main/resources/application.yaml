@@ -16,6 +16,24 @@ spring:
   jackson:
     time-zone: Asia/Seoul
 
+  # 비밀번호 찾기 메일(Gmail SMTP). 계정(username)과 앱 비밀번호(password)는 application-secret.yaml에 넣어요.
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+app:
+  # 메일 링크가 가리킬 프런트 주소(배포하면 실제 주소로 바꿔요)
+  frontend-url: http://localhost:5173
+
 server:
   port: 8080
 

@@ -114,10 +114,9 @@ export default function LoginForm() {
           로그인 상태 유지
         </label>
 
-        {/* "비밀번호 찾기"는 메일 발송 기능을 넣을 때 다시 보여줘요(지금은 동작이 없어서 숨겨뒀어요).
-        <button type="button" className="forgot-password">
+        <button type="button" className="forgot-password" onClick={() => navigate("/forgot-password")}>
           비밀번호 찾기
-        </button> */}
+        </button>
       </div>
 
       {error && (

@@ -20,6 +20,8 @@ import { WorkspaceProvider } from "./context/WorkspaceProvider";
 import { NotificationProvider } from "./context/NotificationProvider";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import GuestRoute from "./components/auth/GuestRoute";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 function App() {
   return (
@@ -77,6 +79,10 @@ function App() {
                   </GuestRoute>
                 }
               />
+              {/* 비밀번호 찾기·재설정은 로그인 여부와 상관없이 열려요(메일 링크로 들어와요). */}
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
+
               {/* 없는 주소는 홈으로 보내요(로그인 안 한 상태면 ProtectedRoute가 로그인으로 다시 보내요). */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
