@@ -419,14 +419,20 @@
   padding-bottom: 0.12em;
 }
 .workspaceSettingsBtn__name {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.workspaceSettingsBtn__suffix {
+  margin-left: -6px; /* 이름과 "설정" 사이를 gap(10px)보다 좁게 붙여요 */
+  flex-shrink: 0;
+  white-space: nowrap;
+}
 .workspaceSettingsBtn__badge {
   flex-shrink: 0;
+  margin-left: auto;
   padding: 1px 6px;
   border-radius: 5px;
   background: #fdf1d8;
