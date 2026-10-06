@@ -418,7 +418,9 @@ export default function Sidebar({
               className="workspaceSettingsBtn__icon"
             />
           )}
+          {/* 이름이 길면 이름만 "…"으로 줄이고, 뒤의 "설정"은 항상 보여요. */}
           <span className="workspaceSettingsBtn__name">{currentWorkspace?.name}</span>
+          <span className="workspaceSettingsBtn__suffix">설정</span>
           {currentWorkspace?.role === "MEMBER" && (
             <em className="workspaceSettingsBtn__badge">멤버</em>
           )}

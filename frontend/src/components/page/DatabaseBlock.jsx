@@ -329,6 +329,9 @@ export default function DatabaseBlock({
     // 지탱하는 자리라서요.
     if (target?.type === "TITLE") return;
     if (columns.length <= 1) return;
+    // 열을 지우면 그 열의 값도 모두 사라져요 — 값이 있을 때만 한 번 물어봐요.
+    const hasData = cells.some((c) => c.columnId === columnId && (Array.isArray(c.value) ? c.value.length > 0 : c.value != null && c.value !== "" && c.value !== false));
+    if (hasData && !window.confirm(`'${target?.name || "이름 없음"}' 열을 삭제할까요? 열에 입력된 값도 모두 사라져요.`)) return;
     onChange({
       ...database,
       columns: columns.filter((c) => c.id !== columnId),

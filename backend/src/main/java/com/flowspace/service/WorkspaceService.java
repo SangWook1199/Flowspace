@@ -32,6 +32,7 @@ public class WorkspaceService {
         private final NotificationService notificationService;
         private final PresenceService presenceService;
         private final TaskAssigneeRepository taskAssigneeRepository;
+        private final TaskRepository taskRepository;
 
         // 워크스페이스 생성
         public WorkspaceResponse createWorkspace(WorkspaceCreateRequest request, String email) {
@@ -364,6 +365,9 @@ public class WorkspaceService {
                 if (workspaceMemberRepository.findByUser(user).size() <= 1) {
                         throw new FlowSpaceException(ErrorCode.LAST_WORKSPACE);
                 }
+
+                // 작업이 남아 있으면 FK 때문에 삭제가 실패하므로 작업부터 지워요.
+                taskRepository.deleteAllByWorkspace(workspace);
 
                 workspaceRepository.delete(workspace);
         }

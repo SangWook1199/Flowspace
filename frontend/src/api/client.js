@@ -40,7 +40,7 @@ client.interceptors.request.use((config) => {
 // 이 주소들에서 난 401은 "토큰 만료"가 아니라 "이메일/비밀번호가 틀렸어요"
 // 같은 정상적인 실패 응답이에요. 여기서 refresh를 시도하면 로그인 화면에서
 // 오류 메시지 대신 엉뚱한 재시도가 돌거나 무한 루프가 될 수 있어서 제외해요.
-const NO_REFRESH_URL = /^\/?auth\/(login|signup|refresh|google|microsoft)(\?|$)/;
+const NO_REFRESH_URL = /^\/?auth\/(login|signup|refresh|google|microsoft|social\/link|password\/(forgot|reset))(\?|$)/;
 
 // 동시에 여러 요청이 401을 받아도 refresh는 딱 한 번만 보내요. refresh
 // token이 1회용(rotation)인 서버에선 동시에 두 번 보내면 두 번째가

@@ -1,4 +1,4 @@
-import { MessageSquare, MoreVertical } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import CircleProgress from "./CircleProgress";
 
@@ -103,9 +103,7 @@ export default function RetroCard({ retrospective }) {
           >
             열기
           </button>
-          <button className="retro-more-btn" aria-label={`${sprint} 회고 메뉴`}>
-            <MoreVertical size={18} />
-          </button>
+          {/* 회고 메뉴 버튼은 기능이 없어서 뺐어요. */}
         </div>
       </div>
     </article>

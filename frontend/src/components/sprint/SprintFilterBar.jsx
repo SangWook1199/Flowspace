@@ -1,4 +1,4 @@
-import { Filter, Search } from "lucide-react";
+import { Search } from "lucide-react";
 const filters = [
   ["ALL", "전체"],
   ["ACTIVE", "진행 중"],
@@ -30,9 +30,7 @@ export default function SprintFilterBar({ value, query, onFilter, onQuery }) {
           onChange={(e) => onQuery(e.target.value)}
         />
       </label>
-      <button type="button" className="filterButton">
-        <Filter size={16} /> 필터
-      </button>
+      {/* "필터" 버튼은 기능이 없어서 뺐어요(상태 탭과 검색으로 걸러요). */}
     </section>
   );
 }

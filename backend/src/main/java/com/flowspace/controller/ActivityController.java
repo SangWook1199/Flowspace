@@ -27,10 +27,11 @@ public class ActivityController {
         return activityService.getRecentActivities(workspaceId, userDetails.getUsername());
     }
 
-    @Operation(summary = "활동 전체 조회")
+    @Operation(summary = "활동 전체 조회", description = "category(PAGE·TASK·COMMENT·SPRINT)와 userId로 걸러 볼 수 있습니다. 한 페이지에 20개씩, page는 0부터 시작합니다.")
     @GetMapping("/workspaces/{workspaceId}/activities")
     public ActivityPageResponse getActivities(@PathVariable Long workspaceId,
-        @RequestParam(defaultValue = "0") Integer page, @AuthenticationPrincipal UserDetails userDetails) {
-        return activityService.getActivities(workspaceId, page, userDetails.getUsername());
+        @RequestParam(defaultValue = "0") Integer page, @RequestParam(required = false) String category,
+        @RequestParam(required = false) Long userId, @AuthenticationPrincipal UserDetails userDetails) {
+        return activityService.getActivities(workspaceId, page, category, userId, userDetails.getUsername());
     }
 }

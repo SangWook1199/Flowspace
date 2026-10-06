@@ -6,3 +6,14 @@ export const getRecentActivities = async (workspaceId) => {
   const { data } = await client.get(`/workspaces/${workspaceId}/activities/recent`);
   return data;
 };
+
+// 활동 기록 전체(20개씩, page는 0부터). category: PAGE | TASK | COMMENT | SPRINT, userId: 한 사람의 활동만.
+// 응답: { items, page, size, totalElements, totalPages, hasNext } — 각 item에 targetName·targetLink가 붙어 있어요.
+export const getActivities = async (workspaceId, { page = 0, category, userId } = {}) => {
+  const params = { page };
+  if (category) params.category = category;
+  if (userId != null) params.userId = userId;
+
+  const { data } = await client.get(`/workspaces/${workspaceId}/activities`, { params });
+  return data;
+};

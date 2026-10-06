@@ -170,6 +170,7 @@ export default function TaskDetailPanel({
               onClick={(e) => {
                 // label 안이라 그냥 두면 체크박스도 같이 토글돼요.
                 e.preventDefault();
+                if (!window.confirm("이 하위 작업을 삭제할까요?")) return;
                 onDeleteSubtask?.(index);
               }}
             />
@@ -263,7 +264,9 @@ function TaskComments({ taskId }) {
                 role="button"
                 aria-label="댓글 삭제"
                 style={{ cursor: "pointer", float: "right" }}
-                onClick={() => remove(comment.id)}
+                onClick={() => {
+                  if (window.confirm("이 댓글을 삭제할까요? 되돌릴 수 없어요.")) remove(comment.id);
+                }}
               />
             )}
             <br />

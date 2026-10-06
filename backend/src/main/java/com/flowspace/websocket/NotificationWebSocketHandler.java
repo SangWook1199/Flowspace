@@ -12,6 +12,7 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
@@ -57,6 +58,9 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
 
+        // 이 탭이 보던 페이지 표시를 지워요.
+        eventPublisher.publishEvent(new SocketClosedEvent(session.getId()));
+
         Object userId = session.getAttributes().get(USER_ID_ATTRIBUTE);
 
         if (userId instanceof Long id) {
@@ -74,11 +78,33 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
     }
 
     // 클라이언트가 연결 유지용으로 "ping"을 보내면 "pong"으로 답해요(프록시가 놀고 있는 연결을 끊지 않게).
+    // JSON 메시지 { "type": "PAGE_VIEW", "pageId": 12, "blockId": 345 }는 "이 페이지를 보고 있어요 / 이 블록을 편집 중이에요"예요
+    // (pageId가 null이면 페이지를 떠난 것, blockId가 null이면 커서가 없는 것).
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
 
-        if ("ping".equals(message.getPayload())) {
+        String payload = message.getPayload();
+
+        if ("ping".equals(payload)) {
             send(session, "pong");
+            return;
+        }
+
+        if (!payload.startsWith("{") || !(session.getAttributes().get(USER_ID_ATTRIBUTE) instanceof Long userId)) {
+            return;
+        }
+
+        try {
+            JsonNode json = MAPPER.readTree(payload);
+
+            if ("PAGE_VIEW".equals(json.path("type").asText())) {
+                Long pageId = json.hasNonNull("pageId") && json.get("pageId").canConvertToLong() ? json.get("pageId").asLong() : null;
+                Long blockId = json.hasNonNull("blockId") && json.get("blockId").canConvertToLong() ? json.get("blockId").asLong() : null;
+
+                eventPublisher.publishEvent(new PageViewEvent(session.getId(), userId, pageId, blockId));
+            }
+        } catch (IOException e) {
+            log.debug("알 수 없는 WebSocket 메시지를 무시해요: {}", e.getMessage());
         }
     }
 

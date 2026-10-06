@@ -130,11 +130,15 @@ export default function SignupForm() {
     const nickname = form.nickname.trim();
 
     try {
-      await signup({
-        email,
-        password: form.password,
-        nickname,
-      });
+      await signup(
+        {
+          email,
+          password: form.password,
+          nickname,
+        },
+        // 가입이 끝나면 로그인 상태로 넘어가기 전에 성공했다고 한 번 알려줘요.
+        { beforeLogin: () => window.alert("회원가입에 성공했어요!") },
+      );
 
       // 프로필 사진은 가입 요청(email/password/nickname)에는 안 들어가요
       // — 가입이 끝난 뒤 발급된 토큰으로 PATCH /auth/me/profile을 따로

@@ -4,6 +4,9 @@ import { getDatabaseDetail } from "../api/databases";
 import { bindingFromLoaded, createBinding, syncDatabase } from "../api/databaseSync";
 import { collectServerImages, syncKey, toEditorBlocks, toEditorComments, toEditorDatabase, toSyncItems } from "../api/mappers";
 import { commentStateFromServer, syncComments } from "../api/commentSync";
+import { mergeBlocks } from "../components/page/lib/blockMerge.js";
+import { normalizeBlockShape } from "../components/page/lib/blockFactory.js";
+import { normalizeIndents } from "../components/page/lib/blockTree.js";
 import { getErrorMessage } from "../utils/apiError";
 
 // 블록을 고치고 나서 서버에 보내기까지 기다리는 시간(타이핑 중 요청 폭주 방지).
@@ -11,6 +14,24 @@ const BLOCK_SAVE_DELAY_MS = 800;
 
 const blankBlocks = () => [{ id: 1, type: "TEXT", content: "" }];
 const isLocalUrl = (url) => /^(data:|blob:)/i.test(url ?? "");
+
+// 실시간 반영이 이상할 때 켜는 로그: 개발자 도구 콘솔에서 localStorage.setItem("flowspace:debug-sync", "1") 실행 후 새로고침.
+const debugSync = (...args) => {
+  try {
+    if (localStorage.getItem("flowspace:debug-sync")) console.info("[실시간]", ...args);
+  } catch {
+    // 저장소를 못 읽어도 동작에는 영향 없어요.
+  }
+};
+
+// 블록 하나의 "저장되는 내용"을 비교용 문자열로 만들어요(들여쓰기·순서·서버 id는 빼요). 병합에서 "고쳤는지"를 가려요.
+const SIG_CTX = { idMap: new Map(), dbBlockIds: { has: () => true }, synced: new Map() };
+const blockSig = (block, resolvePageId) => {
+  const [item] = toSyncItems([{ ...block, indent: 0 }], { ...SIG_CTX, resolvePageId });
+  if (!item) return "";
+  const { clientId, blockId, parentClientId, ...rest } = item; // eslint-disable-line no-unused-vars
+  return JSON.stringify([rest, (block.comments ?? []).map((c) => [c.id, c.text])]);
+};
 
 // 페이지 하나의 블록을 서버에서 불러오고(GET /pages/{id}/detail), 고칠 때마다 통째로 맞춰요(PUT /pages/{id}/blocks).
 //
@@ -25,6 +46,8 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
   const [load, setLoad] = useState({ status: "loading", error: null, blocks: null });
   const [saveState, setSaveState] = useState("saved");
   const [saveError, setSaveError] = useState(null);
+  // 에디터 블록 id ↔ 서버 블록 id 대응이 바뀔 때마다(저장 직후·다른 멤버 변경을 받은 직후) 올라가요.
+  const [idVersion, setIdVersion] = useState(0);
 
   const latest = useRef(null); // 에디터의 가장 최근 블록 배열
   const idMap = useRef(new Map()); // 에디터 블록 id(문자열) → 서버 blockId
@@ -33,6 +56,13 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
   const commentState = useRef(new Map()); // 블록 id(문자열) → 서버가 아는 댓글(commentSync)
   const bindings = useRef(new Map()); // 데이터베이스 블록 id(문자열) → 서버가 아는 데이터베이스 상태(databaseSync)
   const lastKey = useRef(null);
+  // 서버와 마지막으로 맞춰본 블록들(불러왔거나 내가 저장한 직후, 또는 다른 멤버 변경을 받아온 직후) — 다른 멤버의 변경을 합칠 때 "내가 뭘 고쳤는지" 기준이에요.
+  const baseBlocks = useRef([]);
+  // BlockEditor가 등록하는 "화면 블록 통째로 바꾸기" 함수(다른 멤버 변경을 화면에 넣을 때 써요).
+  const editorApply = useRef(null);
+  const pulling = useRef(false);
+  const pullAgain = useRef(false);
+  const pullStartedAt = useRef(0);
   const timer = useRef(null);
   const running = useRef(false);
   const again = useRef(false);
@@ -82,8 +112,11 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
       );
       synced.current = collectServerImages(detail.blocks);
       commentState.current = commentStateFromServer(detail.blocks, toEditorComments);
-      latest.current = blocks;
-      lastKey.current = syncKey(toSyncItems(blocks, ctx()));
+      // 에디터가 처음에 하는 것과 똑같이 모양을 바로잡아 둬요 — 그래야 "내가 고친 블록인지" 비교가 처음부터 정확해요.
+      const normalized = blocks.map(normalizeBlockShape).filter(Boolean);
+      latest.current = normalized;
+      baseBlocks.current = normalized;
+      lastKey.current = syncKey(toSyncItems(normalized, ctx()));
       dirty.current = false;
       loaded.current = true;
 
@@ -175,6 +208,154 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
     return result;
   };
 
+  /* ---------- 다른 멤버의 변경 받아오기 ---------- */
+
+  // 서버의 최신 페이지를 받아서 내 화면에 "블록 단위로" 합쳐요(components/page/lib/blockMerge.js).
+  // 내가 고친 블록은 그대로 두고, 다른 멤버가 고치거나 만들거나 지운 블록만 반영해요.
+  // 새로 받은 블록의 서버 id는 에디터 블록 id로 그대로 쓰되, 내 화면의 다른 블록 id와 겹치면 새 id를 줘요.
+  const pullRemote = async () => {
+    const apply = editorApply.current;
+    if (!loaded.current || !apply) return;
+
+    const request = requestId.current;
+    const detail = await getPageDetail(pageId);
+
+    // 다른 멤버가 새로 만든 데이터베이스 블록은 내용도 같이 받아와요(안 받으면 내 다음 저장이 그 블록을 지워요).
+    const localIds = new Set(latest.current.map((b) => String(b.id)));
+    const serverToEditor = new Map();
+    for (const [editorId, serverId] of idMap.current) serverToEditor.set(serverId, editorId);
+
+    const newDatabases = detail.blocks.filter(
+      (b) => b.type === "DATABASE" && b.databaseId != null && !serverToEditor.has(b.blockId),
+    );
+    const databaseDetails = await Promise.all(newDatabases.map((b) => getDatabaseDetail(b.databaseId)));
+
+    if (request !== requestId.current || !loaded.current) return;
+
+    // ---- 여기부터는 await 없이 한 번에 처리해요(그 사이에 내가 타이핑한 내용이 섞이지 않게) ----
+    const local = latest.current;
+    const used = new Set(local.map((b) => String(b.id)));
+    let maxId = Math.max(0, ...local.map((b) => Number(b.id) || 0), ...detail.blocks.map((b) => b.blockId));
+
+    const editorIdOf = new Map(); // 서버 블록 id → 에디터 블록 id
+    const toEditorId = (serverId) => {
+      if (editorIdOf.has(serverId)) return editorIdOf.get(serverId);
+
+      let editorId;
+      const known = serverToEditor.get(serverId);
+      if (known != null) {
+        editorId = local.find((b) => String(b.id) === known)?.id ?? (Number.isFinite(Number(known)) ? Number(known) : known);
+      } else {
+        editorId = used.has(String(serverId)) ? ++maxId : serverId;
+        used.add(String(editorId));
+      }
+      editorIdOf.set(serverId, editorId);
+      return editorId;
+    };
+
+    const items = detail.blocks.map((b) => ({
+      ...b,
+      blockId: toEditorId(b.blockId),
+      parentBlockId: b.parentBlockId == null ? null : toEditorId(b.parentBlockId),
+    }));
+
+    const databases = new Map(
+      newDatabases.map((b, i) => [b.databaseId, toEditorDatabase(databaseDetails[i])]),
+    );
+    const remoteBlocks = toEditorBlocks(items, { knownPageIds: getKnownPageIdsRef.current?.(), databases })
+      .map(normalizeBlockShape)
+      .filter(Boolean);
+
+    const resolvePageId = (id) => pageIdMapRef.current[id] ?? id;
+    const sig = (block) => blockSig(block, resolvePageId);
+
+    // 에디터가 넣을 때 들여쓰기를 바로잡으니(normalizeIndents) 여기서도 똑같이 해 두고,
+    // 결과가 내 화면과 내용상 같으면 아무 것도 하지 않아요(같은 내용을 계속 다시 넣는 일을 막아요).
+    const merged = normalizeIndents(mergeBlocks({ base: baseBlocks.current, local, remote: remoteBlocks, sig }));
+    const sameAsLocal =
+      merged.length === local.length &&
+      merged.every((block, i) => {
+        const mine = local[i];
+        if (block === mine) return true;
+        return String(block.id) === String(mine.id) && (block.indent || 0) === (mine.indent || 0) && sig(block) === sig(mine);
+      });
+
+    const previousBase = baseBlocks.current;
+    baseBlocks.current = remoteBlocks;
+    debugSync("서버 최신 내용 받음", { 서버블록: remoteBlocks.length, 내블록: local.length, 바뀜: !sameAsLocal });
+    if (sameAsLocal) return;
+
+    // 서버 id 대응표 · 댓글/이미지 기록을 서버 상태에 맞춰요(안 맞추면 다음 저장 때 중복으로 만들거나 지워요).
+    const remoteById = new Map(remoteBlocks.map((b) => [String(b.id), b]));
+    const localById = new Map(local.map((b) => [String(b.id), b]));
+    const serverComments = commentStateFromServer(detail.blocks, toEditorComments);
+    const serverImages = collectServerImages(detail.blocks);
+
+    for (const b of detail.blocks) {
+      const editorKey = String(editorIdOf.get(b.blockId));
+      idMap.current.set(editorKey, b.blockId);
+      if (b.type === "DATABASE") dbBlockIds.current.add(b.blockId);
+    }
+
+    newDatabases.forEach((b, i) => {
+      bindings.current.set(String(editorIdOf.get(b.blockId)), bindingFromLoaded(databaseDetails[i]));
+    });
+
+    for (const block of merged) {
+      const key = String(block.id);
+      const remoteBlock = remoteById.get(key);
+      if (!remoteBlock || (localById.has(key) && sig(block) !== sig(remoteBlock))) continue; // 내 것이 이긴 블록은 그대로 둬요.
+
+      const serverId = idMap.current.get(key);
+      const entry = serverComments.get(String(serverId));
+      if (entry) commentState.current.set(key, entry);
+      else commentState.current.delete(key);
+
+      const image = serverImages.get(String(serverId));
+      if (image) synced.current.set(key, image);
+      else if (!localById.has(key)) synced.current.delete(key);
+    }
+
+    const next = merged;
+    latest.current = next;
+    setIdVersion((v) => v + 1);
+    // 서버와 같아진 부분은 다시 저장하지 않게 기준 키를 서버 상태로 맞춰요(내가 고친 게 남아 있으면 키가 달라서 저장돼요).
+    lastKey.current = syncKey(toSyncItems(remoteBlocks, ctx()));
+    // 실행 취소/다시 실행 기록도 같은 방식으로 합쳐 둬요 — 안 그러면 undo가 옛 스냅샷으로 되돌리면서
+    // 그 뒤에 다른 멤버가 추가한 블록이 "내가 지운 것"이 돼 다음 저장 때 서버에서 지워져요.
+    apply(next, (snapshot) => normalizeIndents(mergeBlocks({ base: previousBase, local: snapshot, remote: remoteBlocks, sig })));
+  };
+
+  // 다른 멤버가 저장했다는 알림을 받았을 때 불러요.
+  const onRemoteContent = () => {
+    debugSync("다른 멤버 저장 알림", { loaded: loaded.current, running: running.current, dirty: dirty.current });
+    if (!loaded.current) return;
+
+    // 보내는 중이면 끝난 뒤 한 번 더 돌면서 합쳐요(보내기 전에 어차피 먼저 받아와서 합쳐요).
+    if (running.current) {
+      again.current = true;
+      return;
+    }
+    // 아직 안 보낸 내 변경이 있어도 바로 받아와요 — 내가 고친 블록은 병합에서 내 것이 이기니까 안전해요.
+    // 받아오는 중이면 끝난 뒤 한 번 더 받아와요. 응답이 너무 오래 안 오면(15초) 멈춘 걸로 보고 새로 시작해요.
+    if (pulling.current && Date.now() - pullStartedAt.current < 15000) {
+      pullAgain.current = true;
+      return;
+    }
+
+    pulling.current = true;
+    pullStartedAt.current = Date.now();
+    pullRemote()
+      .catch((err) => console.warn("다른 멤버의 변경을 받아오지 못했어요", err))
+      .finally(() => {
+        pulling.current = false;
+        if (pullAgain.current) {
+          pullAgain.current = false;
+          onRemoteContent();
+        }
+      });
+  };
+
   const flush = useCallback(async () => {
     clearTimeout(timer.current);
     if (!loaded.current) return;
@@ -189,6 +370,16 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
     try {
       do {
         again.current = false;
+
+        // 저장하기 전에 다른 멤버가 그 사이 저장한 내용을 먼저 합쳐요(안 그러면 내 저장이 그 내용을 덮어써요).
+        // 못 받아왔으면 저장하지 않고 멈춰요 — 그냥 저장하면 그 사이 다른 멤버가 쓴 내용이 지워질 수 있어요(다시 시도로 이어서 저장해요).
+        try {
+          await pullRemote();
+        } catch (err) {
+          console.warn("다른 멤버의 변경을 받아오지 못했어요", err);
+          throw new Error("다른 멤버의 변경을 확인하지 못해서 저장을 멈췄어요. 잠시 뒤 다시 시도해 주세요.");
+        }
+
         const snapshot = latest.current;
         const items = toSyncItems(snapshot, ctx());
         const key = syncKey(items);
@@ -202,6 +393,9 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
           idMap.current = new Map(results.map((r) => [r.clientId, r.block.blockId]));
           dbBlockIds.current = new Set(results.filter((r) => r.block.type === "DATABASE").map((r) => r.block.blockId));
           lastKey.current = key;
+          // 방금 저장한 상태가 서버 상태예요(서버 id가 있는 블록만).
+          baseBlocks.current = snapshot.filter((b) => idMap.current.has(String(b.id)));
+          setIdVersion((v) => v + 1);
         }
 
         const dbResult = await syncDatabases(snapshot);
@@ -262,7 +456,28 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
     };
   }, [flush]);
 
+  // 에디터 블록 id ↔ 서버 blockId 변환(아직 저장 전인 새 블록은 서버 id가 없어서 null).
+  // 같은 페이지를 보는 다른 멤버에게 "내가 편집 중인 블록"을 알릴 때 써요.
+  const toServerBlockId = useCallback((editorId) => idMap.current.get(String(editorId)) ?? null, []);
+  const toEditorBlockId = useCallback((serverId) => {
+    for (const [editorId, id] of idMap.current) {
+      if (id === serverId) return editorId;
+    }
+    return null;
+  }, []);
+
+  const onRemoteContentRef = useRef(onRemoteContent);
+  useEffect(() => {
+    onRemoteContentRef.current = onRemoteContent;
+  });
+  const notifyRemoteContent = useCallback(() => onRemoteContentRef.current(), []);
+
   return {
+    idVersion,
+    editorApply,
+    notifyRemoteContent,
+    toServerBlockId,
+    toEditorBlockId,
     status: load.status,
     error: load.error,
     blocks: load.blocks,

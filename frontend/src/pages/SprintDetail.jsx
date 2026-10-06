@@ -86,6 +86,8 @@ export default function SprintDetail() {
   const goTasks = () => navigate(`/sprints/${sprint.id}/tasks`);
 
   const handleStart = async () => {
+    if (!window.confirm(`“${sprint.name}” 스프린트를 시작할까요?`)) return;
+
     setBusy(true);
     await changeSprintStatus(sprint.id, "ACTIVE");
     setBusy(false);

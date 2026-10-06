@@ -3896,3 +3896,43 @@ span.block-number {
   font-weight: 600;
   cursor: pointer;
 }
+
+/* ===== 같은 페이지를 보는 다른 멤버 ===== */
+/* 다른 멤버가 편집 중인 블록: 왼쪽 색 막대 + 이름표 (색은 멤버마다 아바타 색과 같아요) */
+.block-row {
+  --remote-color: #385ceb;
+}
+.block-row.remote-tone-green { --remote-color: #118365; }
+.block-row.remote-tone-purple { --remote-color: #7c4ec4; }
+.block-row.remote-tone-orange { --remote-color: #c1630b; }
+.block-row.remote-tone-pink { --remote-color: #c2417a; }
+.block-row.has-remote-editor::after {
+  content: "";
+  position: absolute;
+  left: 48px;
+  top: 2px;
+  bottom: 2px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--remote-color);
+  pointer-events: none;
+}
+.block-remote-editor {
+  position: absolute;
+  left: 52px;
+  top: -9px;
+  z-index: 3;
+  max-width: 160px;
+  padding: 1px 7px;
+  border-radius: 6px 6px 6px 0;
+  background: var(--remote-color);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  user-select: none;
+}

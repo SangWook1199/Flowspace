@@ -1,4 +1,4 @@
-import { CalendarDays, Users, MoreHorizontal } from "lucide-react";
+import { CalendarDays, Users } from "lucide-react";
 import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 
 import * as retrospectiveApi from "../api/retrospectives";
@@ -93,9 +93,7 @@ function RetrospectiveDetail({ retrospective }) {
           </div>
         </div>
 
-        <button className="retro-more-button" aria-label="더보기">
-          <MoreHorizontal size={18} />
-        </button>
+        {/* 더보기 버튼은 기능이 없어서 뺐어요. */}
       </header>
 
       {/* ---------- 회고 요약 ---------- */}

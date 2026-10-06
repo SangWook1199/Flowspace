@@ -6,29 +6,26 @@ import org.springframework.data.domain.Page;
 
 // @formatter:off
 
+// 활동 기록 한 페이지 응답 DTO (page는 0부터 시작)
 public record ActivityPageResponse(
 
-    List<ActivityResponse> activities,
-
-    Integer page,
-    Integer totalPages,
-
-    Long totalElements,
-
-    Boolean hasNext
+    List<ActivityResponse> items,
+    int page,
+    int size,
+    long totalElements,
+    int totalPages,
+    boolean hasNext
 
 ) {
 
-    public static ActivityPageResponse from(Page<ActivityResponse> page) {
+    public static ActivityPageResponse from(Page<ActivityResponse> result) {
         return new ActivityPageResponse(
-            page.getContent(),
-
-            page.getNumber(),
-            page.getTotalPages(),
-
-            page.getTotalElements(),
-
-            page.hasNext()
+            result.getContent(),
+            result.getNumber(),
+            result.getSize(),
+            result.getTotalElements(),
+            result.getTotalPages(),
+            result.hasNext()
         );
     }
 

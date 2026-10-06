@@ -65,7 +65,8 @@ export default function Dashboard() {
   const { user } = useAuth();
   const displayName = user?.nickname || user?.name || "회원";
   // 스프린트·작업·팀원은 서버에서 불러와 MainLayout(WorkspaceProvider)이 내려줘요.
-  const { workspaceId, sprints, sprintTasks, taskStatuses, members, pages } = useOutletContext();
+  const { workspaceId, sprints, sprintTasks, taskStatuses, members, pages, sprintDataLoading, sprintDataError, reloadSprintData } =
+    useOutletContext();
   // "오늘"은 처음 렌더링할 때 한 번만 정해요(테스트 때는 window.__TODAY__로 바꿀 수 있어요).
   const [today] = useState(todayKey);
 
@@ -135,7 +136,7 @@ export default function Dashboard() {
   );
 
   // 최근 활동: 서버가 준 활동에 화면이 가진 작업·스프린트·페이지 이름을 붙여 문구를 만들어요.
-  const { data: rawActivities } = useRequest(() => activityApi.getRecentActivities(workspaceId), [workspaceId], {
+  const { data: rawActivities, error: activitiesError } = useRequest(() => activityApi.getRecentActivities(workspaceId), [workspaceId], {
     initialData: [],
   });
   const activities = useMemo(() => {
@@ -160,7 +161,8 @@ export default function Dashboard() {
   );
 
   return (
-    <main className={styles.content}>
+    // MainLayout이 이미 <main>을 그려서 여기서는 div로 둬요(<main> 중첩 방지).
+    <div className={styles.content}>
       {/* 상단 */}
       <section className={styles.welcome}>
         <div>
@@ -184,9 +186,32 @@ export default function Dashboard() {
         ))}
       </section>
 
+      {/* 불러오는 중·실패 상태를 보여줘요(없으면 빈 숫자만 보여서 고장 난 것처럼 보여요). */}
+      {sprintDataError && (
+        <p role="alert" style={{ color: "#ef4444", margin: "0 0 12px" }}>
+          스프린트와 작업을 불러오지 못했어요. {sprintDataError}{" "}
+          {reloadSprintData && (
+            <button type="button" onClick={reloadSprintData}>
+              다시 시도
+            </button>
+          )}
+        </p>
+      )}
+      {sprintDataLoading && !sprintDataError && (
+        <p role="status" style={{ color: "#64748b", margin: "0 0 12px" }}>
+          불러오는 중이에요…
+        </p>
+      )}
+
       {eventsError && (
         <p role="alert" style={{ color: "#ef4444", margin: "0 0 12px" }}>
           오늘의 일정을 불러오지 못했어요. {eventsError}
+        </p>
+      )}
+
+      {activitiesError && (
+        <p role="alert" style={{ color: "#ef4444", margin: "0 0 12px" }}>
+          최근 활동을 불러오지 못했어요. {activitiesError}
         </p>
       )}
 
@@ -204,6 +229,6 @@ export default function Dashboard() {
           <ActivityCard activities={activities} />
         </div>
       </section>
-    </main>
+    </div>
   );
 }

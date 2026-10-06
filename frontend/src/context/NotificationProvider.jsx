@@ -36,6 +36,14 @@ export function NotificationProvider({ children }) {
   // 초대 목록을 한 번이라도 받아왔는지 — 받기 전엔 "처리된 초대"로 잘못 보이지 않게 구분해요.
   const [invitesLoaded, setInvitesLoaded] = useState(false);
   const [toast, setToast] = useState(null);
+  // 지금 보고 있는 페이지를 같이 보는 사람들: { pageId, viewers: [{ userId, blockId }] } (blockId = 편집 중인 서버 블록 id)
+  const [pagePresence, setPagePresence] = useState(null);
+  // 같은 페이지의 다른 멤버가 내용을 저장했다는 알림: { pageId, seq } — seq가 올라갈 때마다 화면이 새로 받아가요.
+  const [pageContent, setPageContent] = useState(null);
+
+  const socketRef = useRef(null);
+  // 마지막으로 서버에 알린 "내가 보는 페이지/블록" — 소켓이 다시 이어지면 이걸 다시 알려줘요.
+  const myViewRef = useRef(null);
 
   const requestId = useRef(0);
   const nextPage = useRef(0);
@@ -114,6 +122,8 @@ export function NotificationProvider({ children }) {
     setPendingInviteIds([]);
     setInvitesLoaded(false);
     setToast(null);
+    setPagePresence(null);
+    setPageContent(null);
     /* eslint-enable react-hooks/set-state-in-effect */
 
     if (userId == null) return undefined;
@@ -129,8 +139,18 @@ export function NotificationProvider({ children }) {
         loadInvites();
         // 끊겨 있던 동안 놓친 접속 상태 변화를 팀원 목록을 다시 받아서 맞춰요.
         presenceRef.current.resync();
+        // 내가 보던 페이지가 있으면 서버에 다시 알려요(서버는 연결이 끊기면 내 위치를 지워요).
+        if (myViewRef.current) socketRef.current?.send({ type: "PAGE_VIEW", ...myViewRef.current });
       },
       onMessage: (message) => {
+        if (message?.type === "PAGE_PRESENCE" && message.data) {
+          setPagePresence(message.data);
+          return;
+        }
+        if (message?.type === "PAGE_CONTENT" && message.data) {
+          setPageContent((prev) => ({ pageId: message.data.pageId, seq: (prev?.seq ?? 0) + 1 }));
+          return;
+        }
         if (message?.type === "PRESENCE" && message.data) {
           presenceRef.current.apply(message.data.userId, Boolean(message.data.online), message.data.lastActiveAt);
           return;
@@ -145,8 +165,20 @@ export function NotificationProvider({ children }) {
       },
     });
 
-    return () => socket.close();
+    socketRef.current = socket;
+
+    return () => {
+      socket.close();
+      if (socketRef.current === socket) socketRef.current = null;
+    };
   }, [userId, refresh, loadInvites]);
+
+  // "나는 지금 이 페이지(의 이 블록)를 보고 있어요"를 알려요. pageId가 null이면 페이지를 떠난 거예요.
+  const reportPageView = useCallback((pageId, blockId = null) => {
+    myViewRef.current = pageId == null ? null : { pageId, blockId };
+    if (pageId == null) setPagePresence(null);
+    socketRef.current?.send({ type: "PAGE_VIEW", pageId, blockId });
+  }, []);
 
   // 알림이 일으키는 화면 쪽 변화: 초대가 오면 초대 목록을, 소유권·멤버가 바뀌면 워크스페이스와 멤버를 다시 받아요.
   useEffect(() => {
@@ -268,6 +300,9 @@ export function NotificationProvider({ children }) {
     acceptInvite,
     declineInvite,
     openNotification,
+    pagePresence,
+    pageContent,
+    reportPageView,
   };
 
   return (

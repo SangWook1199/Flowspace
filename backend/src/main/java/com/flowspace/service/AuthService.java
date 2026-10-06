@@ -10,19 +10,28 @@ import com.flowspace.dto.auth.PasswordChangeRequest;
 import com.flowspace.dto.auth.ProfileUpdateRequest;
 import com.flowspace.dto.auth.RefreshRequest;
 import com.flowspace.dto.auth.SignupRequest;
+import com.flowspace.dto.auth.SocialLinkRequest;
 import com.flowspace.dto.auth.UserResponse;
 import com.flowspace.dto.auth.TokenResponse;
 import com.flowspace.dto.auth.TokenRequest;
 import com.flowspace.entity.File;
 import com.flowspace.entity.RefreshToken;
 import com.flowspace.entity.User;
+import com.flowspace.entity.UserSocialAccount;
+import com.flowspace.entity.WorkspaceMember;
 import com.flowspace.entity.Workspace;
 import com.flowspace.entity.enums.Provider;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.repository.RefreshTokenRepository;
 import com.flowspace.repository.UserRepository;
+import com.flowspace.repository.UserSocialAccountRepository;
+import com.flowspace.repository.WorkspaceMemberRepository;
 import com.flowspace.security.JwtProvider;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.javanet.NetHttpTransport;
@@ -44,6 +53,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -51,6 +62,8 @@ import java.util.Collections;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final UserSocialAccountRepository socialAccountRepository;
+    private final WorkspaceMemberRepository workspaceMemberRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
@@ -64,6 +77,11 @@ public class AuthService {
     private String googleClientId;
     @Value("${microsoft.client-id}")
     private String microsoftClientId;
+
+    private static final String MICROSOFT_JWK_SET_URI = "https://login.microsoftonline.com/common/discovery/v2.0/keys";
+    private static final String MICROSOFT_ISSUER_PREFIX = "https://login.microsoftonline.com/";
+
+    private volatile JwtDecoder microsoftJwtDecoder;
 
     // 회원가입
     @Transactional
@@ -100,7 +118,7 @@ public class AuthService {
         String accessToken = jwtProvider.createAccessToken(user);
         String refreshToken = issueRefreshToken(user, request.remember());
 
-        return LoginResponse.from(user, accessToken, refreshToken, user.getLastWorkspace().getWorkspaceId());
+        return LoginResponse.from(user, accessToken, refreshToken, workspaceIdOf(user));
     }
 
     // 토큰 재발급 (로그인 때 저장해 둔 refresh token이 맞고 만료 전이면 새 access token을 발급해요)
@@ -162,7 +180,7 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        File file = fileService.upload(image, user.getLastWorkspace(), email);
+        File file = fileService.upload(image, profileWorkspace(user), email);
 
         user.updateProfileImage(file);
 
@@ -178,7 +196,7 @@ public class AuthService {
         File profileFile = user.getProfileFile();
 
         if (image != null && !image.isEmpty()) {
-            profileFile = fileService.upload(image, user.getLastWorkspace(), email);
+            profileFile = fileService.upload(image, profileWorkspace(user), email);
         }
 
         // 한 줄 소개는 앞뒤 공백을 지우고, 비어 있으면 소개를 지운 것으로 봐요.
@@ -224,6 +242,23 @@ public class AuthService {
         return LoginResponse.from(user, accessToken, refreshToken, workspaceId);
     }
 
+    // 로그인 응답에 실을 "마지막으로 보던 워크스페이스 id". 그 워크스페이스가 삭제됐거나 비어 있으면 null이에요(화면이 알아서 첫 워크스페이스를 골라요).
+    private Long workspaceIdOf(User user) {
+
+        return user.getLastWorkspace() == null ? null : user.getLastWorkspace().getWorkspaceId();
+    }
+
+    // 프로필 이미지를 저장할 워크스페이스: 마지막으로 보던 곳, 없으면 참여 중인 첫 워크스페이스예요(파일은 워크스페이스에 속해야 해요).
+    private Workspace profileWorkspace(User user) {
+
+        if (user.getLastWorkspace() != null) {
+            return user.getLastWorkspace();
+        }
+
+        return workspaceMemberRepository.findByUser(user).stream().map(WorkspaceMember::getWorkspace).findFirst()
+            .orElse(null);
+    }
+
     // 리프레시 토큰 발급: 기존 토큰은 지우고 새로 저장해요(계정당 하나).
     // 로그인 상태 유지면 설정된 기간, 아니면 하루 동안 쓸 수 있어요.
     private String issueRefreshToken(User user, boolean remember) {
@@ -259,27 +294,113 @@ public class AuthService {
         return UserResponse.from(user);
     }
 
+
+    // 소셜 계정으로 로그인할 사용자를 찾아요. 연결된 소셜 계정을 먼저 보고, 없으면 예전 방식(users.provider)으로 가입한 계정을 봐요.
+    private Optional<User> findSocialUser(Provider provider, String providerId) {
+
+        return socialAccountRepository.findByProviderAndProviderId(provider, providerId).map(UserSocialAccount::getUser)
+            .or(() -> userRepository.findByProviderAndProviderId(provider, providerId));
+    }
+
+    // 소셜 계정을 사용자에게 연결해요.
+    private void linkSocial(User user, Provider provider, String providerId) {
+
+        socialAccountRepository
+            .save(UserSocialAccount.builder().user(user).provider(provider).providerId(providerId).build());
+    }
+
+    // 같은 이메일의 계정이 이미 있을 때 새 계정을 만들지 못하게 막아요.
+    //  - 비밀번호가 있는 계정(이메일 가입): 그 비밀번호로 본인임을 확인하면 연결할 수 있다고 알려요(SOCIAL_LINK_REQUIRED).
+    //    이메일만 보고 합치면 남의 계정을 가로챌 수 있어서, 꼭 비밀번호로 확인해요.
+    //  - 그 밖(다른 소셜로 가입한 계정 등): 처음 가입한 방식으로 로그인하게 안내해요(SOCIAL_EMAIL_CONFLICT).
+    private void rejectExistingEmail(String email, Provider provider) {
+
+        User existing = userRepository.findByEmail(email).orElse(null);
+
+        if (existing == null) {
+            return;
+        }
+
+        if (existing.getPassword() != null && !existing.isWithdrawn()
+            && !socialAccountRepository.existsByUserAndProvider(existing, provider)) {
+            throw new FlowSpaceException(ErrorCode.SOCIAL_LINK_REQUIRED);
+        }
+
+        throw new FlowSpaceException(ErrorCode.SOCIAL_EMAIL_CONFLICT);
+    }
+
+    // 소셜 계정 연결: 같은 이메일의 기존 계정(비밀번호가 있는 계정)에 소셜 계정을 연결하고 로그인해요.
+    // 소셜 토큰이 그 이메일의 주인임을, 비밀번호가 기존 계정의 주인임을 각각 증명해요.
+    public LoginResponse linkSocialAccount(SocialLinkRequest request) {
+
+        Provider provider = request.provider();
+        String providerId;
+        String email;
+
+        if (provider == Provider.GOOGLE) {
+            GoogleUserInfo info = verifyGoogleToken(request.idToken());
+            providerId = info.providerId();
+            email = info.email();
+        } else if (provider == Provider.MICROSOFT) {
+            MicrosoftUserInfo info = verifyMicrosoftToken(request.idToken());
+            providerId = info.providerId();
+            email = info.email();
+        } else {
+            throw new FlowSpaceException(ErrorCode.INVALID_LOGIN);
+        }
+
+        User user = findSocialUser(provider, providerId).orElse(null);
+
+        // 이미 연결된 소셜 계정이면 그대로 로그인해요.
+        if (user == null) {
+
+            User existing = userRepository.findByEmail(email)
+                .orElseThrow(() -> new FlowSpaceException(ErrorCode.INVALID_LOGIN));
+
+            if (existing.isWithdrawn() || existing.getPassword() == null
+                || socialAccountRepository.existsByUserAndProvider(existing, provider)) {
+                throw new FlowSpaceException(ErrorCode.SOCIAL_EMAIL_CONFLICT);
+            }
+
+            if (!passwordEncoder.matches(request.password(), existing.getPassword())) {
+                throw new FlowSpaceException(ErrorCode.SOCIAL_LINK_PASSWORD_MISMATCH);
+            }
+
+            linkSocial(existing, provider, providerId);
+            user = existing;
+        }
+
+        String accessToken = jwtProvider.createAccessToken(user);
+        String refreshToken = issueRefreshToken(user, true);
+
+        return LoginResponse.from(user, accessToken, refreshToken, workspaceIdOf(user));
+    }
+
     // Google 로그인
     public LoginResponse googleLogin(GoogleLoginRequest request) {
 
         GoogleUserInfo googleUser = verifyGoogleToken(request.idToken());
 
-        User user = userRepository.findByProviderAndProviderId(Provider.GOOGLE, googleUser.providerId())
+        User user = findSocialUser(Provider.GOOGLE, googleUser.providerId())
             .orElseGet(() -> createGoogleUser(googleUser));
 
         String accessToken = jwtProvider.createAccessToken(user);
         String refreshToken = issueRefreshToken(user, true);
 
-        return LoginResponse.from(user, accessToken, refreshToken, user.getLastWorkspace().getWorkspaceId());
+        return LoginResponse.from(user, accessToken, refreshToken, workspaceIdOf(user));
     }
 
     // Google 회원 생성
     private User createGoogleUser(GoogleUserInfo googleUser) {
 
+        // 같은 이메일로 이미 가입한 계정이 있으면 새로 만들지 않아요(연결 확인 또는 안내).
+        rejectExistingEmail(googleUser.email(), Provider.GOOGLE);
+
         User user = User.builder().email(googleUser.email()).password(null).nickname(googleUser.nickname())
             .provider(Provider.GOOGLE).providerId(googleUser.providerId()).build();
 
         userRepository.save(user);
+        linkSocial(user, Provider.GOOGLE, googleUser.providerId());
 
         Workspace workspace = workspaceService.createPersonalWorkspace(user);
 
@@ -327,9 +448,16 @@ public class AuthService {
 
             GoogleIdToken.Payload payload = token.getPayload();
 
+            // Google이 이메일을 확인한 계정만 받아요(확인되지 않은 이메일을 믿으면 남의 이메일로 계정을 만들 수 있어요).
+            if (!Boolean.TRUE.equals(payload.getEmailVerified())) {
+                throw new FlowSpaceException(ErrorCode.SOCIAL_EMAIL_NOT_VERIFIED);
+            }
+
             return new GoogleUserInfo(payload.getSubject(), payload.getEmail(), (String) payload.get("name"),
                 (String) payload.get("picture"));
 
+        } catch (FlowSpaceException e) {
+            throw e;
         } catch (Exception e) {
             throw new FlowSpaceException(ErrorCode.INVALID_LOGIN);
         }
@@ -340,22 +468,26 @@ public class AuthService {
 
         MicrosoftUserInfo microsoftUser = verifyMicrosoftToken(request.idToken());
 
-        User user = userRepository.findByProviderAndProviderId(Provider.MICROSOFT, microsoftUser.providerId())
+        User user = findSocialUser(Provider.MICROSOFT, microsoftUser.providerId())
             .orElseGet(() -> createMicrosoftUser(microsoftUser, request.accessToken()));
 
         String accessToken = jwtProvider.createAccessToken(user);
         String refreshToken = issueRefreshToken(user, true);
 
-        return LoginResponse.from(user, accessToken, refreshToken, user.getLastWorkspace().getWorkspaceId());
+        return LoginResponse.from(user, accessToken, refreshToken, workspaceIdOf(user));
     }
 
     // Microsoft 회원 생성
     private User createMicrosoftUser(MicrosoftUserInfo microsoftUser, String accessToken) {
 
+        // 같은 이메일로 이미 가입한 계정이 있으면 새로 만들지 않아요(연결 확인 또는 안내).
+        rejectExistingEmail(microsoftUser.email(), Provider.MICROSOFT);
+
         User user = User.builder().email(microsoftUser.email()).password(null).nickname(microsoftUser.nickname())
             .provider(Provider.MICROSOFT).providerId(microsoftUser.providerId()).build();
 
         userRepository.save(user);
+        linkSocial(user, Provider.MICROSOFT, microsoftUser.providerId());
 
         Workspace workspace = workspaceService.createPersonalWorkspace(user);
 
@@ -392,25 +524,58 @@ public class AuthService {
     }
 
     // Microsoft ID Token 검증
+    //  - Google용 검증기로는 Microsoft 토큰을 확인할 수 없어서(발급처·서명 키가 달라요), Microsoft가 공개한 서명 키로 직접 확인해요.
+    //  - 서명·만료는 디코더가 확인하고, 이 앱(client-id)용으로 발급됐는지와 Microsoft가 발급했는지는 아래에서 확인해요.
     private MicrosoftUserInfo verifyMicrosoftToken(String idToken) {
 
         try {
 
-            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(),
-                GsonFactory.getDefaultInstance()).setAudience(Collections.singletonList(microsoftClientId)).build();
+            Jwt jwt = microsoftDecoder().decode(idToken);
 
-            GoogleIdToken token = verifier.verify(idToken);
+            List<String> audience = jwt.getAudience();
+            String issuer = jwt.getClaimAsString("iss");
 
-            if (token == null) {
+            if (audience == null || !audience.contains(microsoftClientId) || issuer == null
+                || !issuer.startsWith(MICROSOFT_ISSUER_PREFIX) || !issuer.endsWith("/v2.0")) {
                 throw new FlowSpaceException(ErrorCode.INVALID_LOGIN);
             }
 
-            GoogleIdToken.Payload payload = token.getPayload();
+            // 개인 계정은 email 클레임이 없을 수 있어서 preferred_username(로그인 이름)으로 대신해요.
+            String email = jwt.getClaimAsString("email");
 
-            return new MicrosoftUserInfo(payload.getSubject(), payload.getEmail(), (String) payload.get("name"));
+            if (email == null || email.isBlank()) {
+                email = jwt.getClaimAsString("preferred_username");
+            }
 
+            if (email == null || email.isBlank() || !email.contains("@")) {
+                throw new FlowSpaceException(ErrorCode.INVALID_LOGIN);
+            }
+
+            String name = jwt.getClaimAsString("name");
+
+            if (name == null || name.isBlank()) {
+                name = email.substring(0, email.indexOf('@'));
+            }
+
+            return new MicrosoftUserInfo(jwt.getSubject(), email, name);
+
+        } catch (FlowSpaceException e) {
+            throw e;
         } catch (Exception e) {
             throw new FlowSpaceException(ErrorCode.INVALID_LOGIN);
         }
+    }
+
+    // Microsoft이 공개한 서명 키(JWKS)로 ID Token을 확인하는 디코더 — 처음 쓸 때 한 번만 만들어요(키는 알아서 캐시돼요).
+    private JwtDecoder microsoftDecoder() {
+
+        JwtDecoder decoder = microsoftJwtDecoder;
+
+        if (decoder == null) {
+            decoder = NimbusJwtDecoder.withJwkSetUri(MICROSOFT_JWK_SET_URI).build();
+            microsoftJwtDecoder = decoder;
+        }
+
+        return decoder;
     }
 }

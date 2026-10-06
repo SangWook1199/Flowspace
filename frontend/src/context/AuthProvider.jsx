@@ -91,10 +91,34 @@ export function AuthProvider({ children }) {
     return data;
   }, []);
 
-  const signup = useCallback(async (payload) => {
+  // 소셜 로그인: provider는 "google"(payload = ID 토큰 문자열) | "microsoft"(payload = { idToken, accessToken }).
+  // 소셜 로그인은 로그인 상태를 유지해요(저장 위치는 이메일 로그인의 "로그인 유지"를 켠 것과 같아요).
+  const socialLogin = useCallback(async (provider, payload) => {
+    const { data } = provider === "google" ? await authApi.googleLogin(payload) : await authApi.microsoftLogin(payload);
+    bootId.current++;
+    saveTokens(data, { remember: true });
+    setUser(toUser(data.user));
+    setAuthError(false);
+    return data;
+  }, []);
+
+  // 소셜 계정 연결(같은 이메일의 기존 계정 비밀번호로 확인): 연결에 성공하면 그대로 로그인돼요.
+  const linkSocialAccount = useCallback(async (payload) => {
+    const { data } = await authApi.linkSocialAccount(payload);
+    bootId.current++;
+    saveTokens(data, { remember: true });
+    setUser(toUser(data.user));
+    setAuthError(false);
+    return data;
+  }, []);
+
+  // beforeLogin: 가입이 끝난 뒤, 화면이 로그인 상태로 바뀌기 전에 한 번 실행해요(가입 성공 안내 등).
+  // 로그인 상태가 되면 가입 화면이 바로 홈으로 넘어가 버려서, 안내는 그 전에 끝내야 해요.
+  const signup = useCallback(async (payload, { beforeLogin } = {}) => {
     const { data } = await authApi.signup(payload);
     bootId.current++;
     saveTokens(data, { remember: true });
+    await beforeLogin?.(data);
     setUser(toUser(data.user));
     setAuthError(false);
     return data;
@@ -126,13 +150,15 @@ export function AuthProvider({ children }) {
       loading,
       authError,
       login,
+      socialLogin,
+      linkSocialAccount,
       signup,
       logout,
       changePassword,
       setUser: updateUser,
       retryAuth: loadMe,
     }),
-    [user, loading, authError, login, signup, logout, changePassword, updateUser, loadMe],
+    [user, loading, authError, login, socialLogin, linkSocialAccount, signup, logout, changePassword, updateUser, loadMe],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import SprintCreate from "./pages/SprintCreate";
 import SprintList from "./pages/SprintList";
@@ -9,6 +9,7 @@ import Calendar from "./pages/Calendar";
 import RetrospectiveList from "./pages/RetrospectiveList";
 import RetrospectiveDetailPage from "./pages/RetrospectiveDetailPage";
 import PageDetailPage from "./pages/PageDetailPage";
+import ActivityPage from "./pages/ActivityPage";
 import WorkspaceCreatePage from "./pages/WorkspaceCreatePage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
@@ -19,6 +20,15 @@ import { WorkspaceProvider } from "./context/WorkspaceProvider";
 import { NotificationProvider } from "./context/NotificationProvider";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import GuestRoute from "./components/auth/GuestRoute";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import ErrorBoundary from "./components/common/ErrorBoundary";
+
+// 화면에서 예외가 나도 흰 화면이 되지 않게 막아요. 다른 주소로 가면 오류 상태가 풀려요.
+function RouteErrorBoundary({ children }) {
+  const { pathname } = useLocation();
+  return <ErrorBoundary resetKey={pathname}>{children}</ErrorBoundary>;
+}
 
 function App() {
   return (
@@ -29,6 +39,7 @@ function App() {
         <BrowserRouter>
           {/* 알림은 실시간(WebSocket)으로 받아서 화면을 옮기고 워크스페이스를 다시 불러오니까, 라우터와 워크스페이스 안쪽에 둬요. */}
           <NotificationProvider>
+            <RouteErrorBoundary>
             <Routes>
               <Route
                 element={
@@ -50,6 +61,7 @@ function App() {
                   element={<RetrospectiveDetailPage />}
                 />
                 <Route path="pages/:pageId" element={<PageDetailPage />} />
+                <Route path="activities" element={<ActivityPage />} />
               </Route>
               <Route
                 path="/workspace/create"
@@ -75,9 +87,14 @@ function App() {
                   </GuestRoute>
                 }
               />
+              {/* 비밀번호 찾기·재설정은 로그인 여부와 상관없이 열려요(메일 링크로 들어와요). */}
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
+
               {/* 없는 주소는 홈으로 보내요(로그인 안 한 상태면 ProtectedRoute가 로그인으로 다시 보내요). */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            </RouteErrorBoundary>
           </NotificationProvider>
         </BrowserRouter>
       </WorkspaceProvider>

@@ -52,8 +52,12 @@ export default function SimpleTableBlock({ table, onChange }) {
     onChange({ ...table, columns: [...columns, { id, name: "" }] });
   };
 
+  const hasData = (c) => (Array.isArray(c.value) ? c.value.length > 0 : c.value != null && c.value !== "" && c.value !== false);
+
   const deleteColumn = (columnId) => {
     if (columns.length <= 1) return;
+    // 값이 들어 있는 열만 한 번 물어봐요(빈 열은 바로 지워요).
+    if (cells.some((c) => c.columnId === columnId && hasData(c)) && !window.confirm("이 열을 삭제할까요? 열에 입력된 값도 모두 사라져요.")) return;
     onChange({
       ...table,
       columns: columns.filter((c) => c.id !== columnId),
@@ -68,6 +72,7 @@ export default function SimpleTableBlock({ table, onChange }) {
 
   const deleteRow = (rowId) => {
     if (rows.length <= 1) return;
+    if (cells.some((c) => c.rowId === rowId && hasData(c)) && !window.confirm("이 행을 삭제할까요? 행에 입력된 값도 모두 사라져요.")) return;
     onChange({
       ...table,
       rows: rows.filter((r) => r.id !== rowId),

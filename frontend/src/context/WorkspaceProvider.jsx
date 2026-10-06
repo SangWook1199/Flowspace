@@ -405,6 +405,7 @@ export function WorkspaceProvider({ children }) {
           await pageApi.updatePage(page);
         } catch (err) {
           console.error("페이지 저장 실패", err);
+          notifyError(err, "페이지 제목·아이콘을 저장하지 못했어요. 새로고침하면 서버에 저장된 값으로 돌아가요.");
         }
       }, PAGE_SAVE_DELAY_MS),
     );

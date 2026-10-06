@@ -6,6 +6,7 @@ import PageBlocks from "../components/page/PageBlocks";
 import PopoverPortal from "../components/page/PopoverPortal";
 import EmojiPicker from "../components/common/EmojiPicker";
 import { useWorkspace } from "../context/WorkspaceContext";
+import { usePagePresence } from "../hooks/usePagePresence";
 import "../styles/page-detail.css";
 
 // 백엔드 static/covers에 있는 기본 커버 16장. Vite가 frontend/public을
@@ -82,6 +83,9 @@ export default function PageDetailPage() {
           p.id === resolvedId && (p.workspaceId ?? 1) === currentWorkspaceId,
       )
     : undefined;
+
+  // 이 페이지를 같이 보는 다른 멤버(실시간). 훅이라서 아래 early return보다 먼저 불러요.
+  const { viewers, reportBlock, contentSeq } = usePagePresence(page ? page.id : null);
 
   // 페이지 목록을 서버에서 받는 중이거나 실패했을 때는 "찾을 수 없어요"를 보여주지 않아요.
   if (!page && pagesLoading) {
@@ -359,6 +363,9 @@ export default function PageDetailPage() {
         <PageBlocks
           key={page.id}
           pageId={page.id}
+          viewers={viewers}
+          onReportBlock={reportBlock}
+          remoteContentSeq={contentSeq}
           pages={pages}
           pageIdMap={pageIdMap}
           onCreateChildPage={() => createChildPage(page.id)}

@@ -3,12 +3,12 @@ import {
   CalendarDays,
   ChevronDown,
   ChevronRight,
-  MoreHorizontal,
 } from "lucide-react";
 
 import SubtaskList from "./SubtaskList";
 import { KANBAN_DRAG_MIME } from "./kanbanDrag";
 import { formatDateDots, percentOf } from "../../utils/date";
+import { useMemberProfile } from "../../context/MemberProfileContext";
 
 const priorityLabel = {
   HIGH: "높음",
@@ -25,6 +25,7 @@ export default function TaskCard({
   onDragEnd,
 }) {
   const [open, setOpen] = useState(false);
+  const openMemberProfile = useMemberProfile();
 
   // complete/total을 따로 저장해두지 않고 매번 subtasks에서 세요 —
   // 서브태스크 체크 상태(스프린트 작업 목록이나 페이지 TASK 블록에서
@@ -69,9 +70,7 @@ export default function TaskCard({
       <div className="cardTop">
         <small className="cardKey">{task.code ?? task.id}</small>
 
-        <button type="button" className="cardMenu" aria-label={`${task.code ?? task.id} 작업 메뉴`}>
-          <MoreHorizontal size={16} />
-        </button>
+        {/* 작업 메뉴 버튼은 기능이 없어서 뺐어요. */}
       </div>
 
       <h4 className="cardTitle">{task.title}</h4>
@@ -79,7 +78,26 @@ export default function TaskCard({
       <div className="cardMeta">
         <div className="cardMembers">
           {(task.assignees ?? []).map((user, index) => (
-            <span key={`${user?.id ?? "none"}-${index}`} className="cardAvatar" title={user?.name}>
+            // 아바타를 누르면 그 담당자의 프로필 카드가 떠요(카드 드래그와는 따로 동작해요).
+            <span
+              key={`${user?.id ?? "none"}-${index}`}
+              className={`cardAvatar${user?.id != null ? " memberAvatarLink" : ""}`}
+              title={user?.name}
+              role={user?.id != null ? "button" : undefined}
+              tabIndex={user?.id != null ? 0 : undefined}
+              onClick={(e) => {
+                if (user?.id == null) return;
+                e.stopPropagation();
+                openMemberProfile(user.id, e.currentTarget);
+              }}
+              onKeyDown={(e) => {
+                if (user?.id != null && (e.key === "Enter" || e.key === " ")) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  openMemberProfile(user.id, e.currentTarget);
+                }
+              }}
+            >
               {user?.initial ?? user?.name?.[0] ?? ""}
             </span>
           ))}

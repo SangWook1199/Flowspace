@@ -33,6 +33,7 @@ import WorkspaceContext from "../../context/WorkspaceContext";
 import MentionInput from "../common/MentionInput";
 import MentionText from "../common/MentionText";
 import { useMemberProfile } from "../../context/MemberProfileContext";
+import { getAvatarTone } from "../../utils/avatarColor.js";
 
 /* ================= BlockRow ================= */
 
@@ -43,6 +44,7 @@ function BlockRowImpl({
   isFirst,
   isLast,
   isFocused,
+  remoteEditors = null,
   isDragging = false,
   isSelected = false,
   isGroupHighlighted = false,
@@ -372,7 +374,7 @@ function BlockRowImpl({
       data-block-id={block.id}
       className={`block-row block-${(block.type || "TEXT").toLowerCase()} ${isMoreOpen ? "menu-open" : ""} ${
         isEmbed ? "block-row--embed" : ""
-      } ${isDragging ? "dragging" : ""}`}
+      } ${isDragging ? "dragging" : ""}${remoteEditors ? ` has-remote-editor remote-tone-${getAvatarTone(remoteEditors[0].userId)}` : ""}`}
       style={hasRowStyle ? rowStyle : undefined}
       onDragEnter={(e) => e.preventDefault()}
       onDragOver={(e) => {
@@ -392,6 +394,12 @@ function BlockRowImpl({
       }}
       onDrop={(e) => e.preventDefault()}
     >
+      {/* 다른 멤버가 이 블록을 편집 중이면 그 사람 이름표(왼쪽 색 막대는 CSS가 그려요). */}
+      {remoteEditors && (
+        <span className="block-remote-editor" contentEditable={false} aria-label={`${remoteEditors.map((v) => v.name).join(", ")}님이 편집 중`}>
+          {remoteEditors.map((v) => v.name).join(", ")}
+        </span>
+      )}
       {/* 노션처럼 "+"와 드래그 핸들을 왼쪽에 나란히 둬요(호버할 때만
           보임). "+"는 바로 아래에 빈 블록을 추가하고, 핸들은 두 가지
           역할을 함께 해요 — 잡고 끌면 순서를 바꾸고(다른 블록 위로
@@ -879,8 +887,9 @@ function BlockRowImpl({
                               type="button"
                               className="danger"
                               onClick={() => {
-                                onDeleteComment(c.id);
                                 setOpenCommentMenuId(null);
+                                if (!window.confirm("이 댓글을 삭제할까요? 되돌릴 수 없어요.")) return;
+                                onDeleteComment(c.id);
                               }}
                             >
                               <Trash2 size={13} />

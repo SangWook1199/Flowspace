@@ -76,6 +76,9 @@ public class SecurityConfig {
                                 "/api/auth/refresh",
                                 "/api/auth/google",
                                 "/api/auth/microsoft",
+                                "/api/auth/social/link",
+                                "/api/auth/password/forgot",
+                                "/api/auth/password/reset",
                                 // WebSocket 연결은 ?token= 으로 핸드셰이크에서 직접 검증해요(JwtHandshakeInterceptor).
                                 "/ws/**",
                                 // 서버 오류가 /error로 넘어갈 때 로그인 요구(401)로 바뀌어 원인이 가려지지 않게 열어둬요.

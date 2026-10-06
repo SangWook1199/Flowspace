@@ -5,6 +5,9 @@ import com.flowspace.dto.auth.LoginRequest;
 import com.flowspace.dto.auth.LoginResponse;
 import com.flowspace.dto.auth.MicrosoftLoginRequest;
 import com.flowspace.dto.auth.PasswordChangeRequest;
+import com.flowspace.dto.auth.PasswordForgotRequest;
+import com.flowspace.dto.auth.PasswordResetRequest;
+import com.flowspace.dto.auth.SocialLinkRequest;
 import com.flowspace.dto.auth.ProfileUpdateRequest;
 import com.flowspace.dto.auth.RefreshRequest;
 import com.flowspace.dto.auth.SignupRequest;
@@ -15,6 +18,7 @@ import com.flowspace.dto.auth.TokenResponse;
 import com.flowspace.dto.auth.TokenRequest;
 import com.flowspace.service.AccountService;
 import com.flowspace.service.AuthService;
+import com.flowspace.service.PasswordResetService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -33,6 +37,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final AccountService accountService;
+    private final PasswordResetService passwordResetService;
 
     @Operation(summary = "회원가입")
     @PostMapping("/signup")
@@ -121,5 +126,23 @@ public class AuthController {
     @PostMapping("/microsoft")
     public LoginResponse microsoftLogin(@Valid @RequestBody MicrosoftLoginRequest request) {
         return authService.microsoftLogin(request);
+    }
+
+    @Operation(summary = "소셜 계정 연결", description = "같은 이메일의 기존 계정(이메일 가입)의 비밀번호로 확인하고 Google/Microsoft 계정을 연결한 뒤 로그인합니다.")
+    @PostMapping("/social/link")
+    public LoginResponse linkSocialAccount(@Valid @RequestBody SocialLinkRequest request) {
+        return authService.linkSocialAccount(request);
+    }
+
+    @Operation(summary = "비밀번호 찾기 메일 발송", description = "가입된 이메일이면 재설정 링크를 보냅니다. 가입 여부와 관계없이 항상 성공으로 응답합니다.")
+    @PostMapping("/password/forgot")
+    public void forgotPassword(@Valid @RequestBody PasswordForgotRequest request) {
+        passwordResetService.requestReset(request);
+    }
+
+    @Operation(summary = "비밀번호 재설정", description = "메일 링크의 토큰으로 새 비밀번호를 정합니다. 성공하면 모든 기기의 로그인이 풀립니다.")
+    @PostMapping("/password/reset")
+    public void resetPassword(@Valid @RequestBody PasswordResetRequest request) {
+        passwordResetService.reset(request);
     }
 }

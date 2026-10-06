@@ -67,6 +67,7 @@ export default function ProfilePanel({ onSaved }) {
     }
 
     if (saving) return;
+    if (!window.confirm("프로필 사진을 삭제할까요?")) return;
     setSaving(true);
     setMessage(null);
     try {
