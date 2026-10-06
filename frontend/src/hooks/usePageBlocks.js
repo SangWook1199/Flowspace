@@ -280,6 +280,7 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
         return String(block.id) === String(mine.id) && (block.indent || 0) === (mine.indent || 0) && sig(block) === sig(mine);
       });
 
+    const previousBase = baseBlocks.current;
     baseBlocks.current = remoteBlocks;
     debugSync("서버 최신 내용 받음", { 서버블록: remoteBlocks.length, 내블록: local.length, 바뀜: !sameAsLocal });
     if (sameAsLocal) return;
@@ -320,7 +321,9 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
     setIdVersion((v) => v + 1);
     // 서버와 같아진 부분은 다시 저장하지 않게 기준 키를 서버 상태로 맞춰요(내가 고친 게 남아 있으면 키가 달라서 저장돼요).
     lastKey.current = syncKey(toSyncItems(remoteBlocks, ctx()));
-    apply(next);
+    // 실행 취소/다시 실행 기록도 같은 방식으로 합쳐 둬요 — 안 그러면 undo가 옛 스냅샷으로 되돌리면서
+    // 그 뒤에 다른 멤버가 추가한 블록이 "내가 지운 것"이 돼 다음 저장 때 서버에서 지워져요.
+    apply(next, (snapshot) => normalizeIndents(mergeBlocks({ base: previousBase, local: snapshot, remote: remoteBlocks, sig })));
   };
 
   // 다른 멤버가 저장했다는 알림을 받았을 때 불러요.
@@ -369,10 +372,12 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
         again.current = false;
 
         // 저장하기 전에 다른 멤버가 그 사이 저장한 내용을 먼저 합쳐요(안 그러면 내 저장이 그 내용을 덮어써요).
+        // 못 받아왔으면 저장하지 않고 멈춰요 — 그냥 저장하면 그 사이 다른 멤버가 쓴 내용이 지워질 수 있어요(다시 시도로 이어서 저장해요).
         try {
           await pullRemote();
         } catch (err) {
           console.warn("다른 멤버의 변경을 받아오지 못했어요", err);
+          throw new Error("다른 멤버의 변경을 확인하지 못해서 저장을 멈췄어요. 잠시 뒤 다시 시도해 주세요.");
         }
 
         const snapshot = latest.current;

@@ -3,7 +3,9 @@ import styles from "../styles/classes.js";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import WorkspaceSettingsModal from "./WorkspaceSettingsModal";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import ErrorBoundary from "../components/common/ErrorBoundary";
+import { useAuth } from "../context/useAuth";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { MemberProfileProvider } from "../context/MemberProfileProvider";
 
@@ -71,6 +73,9 @@ export default function MainLayout() {
   // 서로 형제 관계라 여기(공통 부모)에서 들고 내려줘요. 화면 안에서만 쓰는
   // UI 상태라 Provider로 올리지 않았어요.
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const { logout } = useAuth();
 
   // 워크스페이스 목록을 아직 못 받았거나 실패했을 때는 사이드바·헤더를 그릴 수 없어요
   // (현재 워크스페이스가 있어야 이름·페이지를 보여줘요).
@@ -80,9 +85,18 @@ export default function MainLayout() {
         {workspaceError ? (
           <>
             <p role="alert">{workspaceError}</p>
-            <button type="button" onClick={reloadWorkspaces} style={{ marginTop: 12 }}>
-              다시 시도
-            </button>
+            <div style={{ marginTop: 12, display: "flex", gap: 8, justifyContent: "center" }}>
+              <button type="button" onClick={reloadWorkspaces}>
+                다시 시도
+              </button>
+              {/* 워크스페이스가 하나도 없으면 막다른 화면이 되지 않게 새로 만들거나 로그아웃할 수 있어요. */}
+              <button type="button" onClick={() => navigate("/workspace/create")}>
+                워크스페이스 만들기
+              </button>
+              <button type="button" onClick={() => window.confirm("로그아웃할까요?") && logout()}>
+                로그아웃
+              </button>
+            </div>
           </>
         ) : (
           <p>워크스페이스를 불러오는 중이에요…</p>
@@ -115,6 +129,7 @@ export default function MainLayout() {
       />
       <main className={styles.main}>
         <Header members={members} workspaceId={currentWorkspace.id} />
+        <ErrorBoundary resetKey={pathname}>
         <Outlet
           context={{
             workspaceId: currentWorkspace.id,
@@ -156,6 +171,7 @@ export default function MainLayout() {
             reorderStatuses,
           }}
         />
+        </ErrorBoundary>
       </main>
       {settingsOpen && (
         <WorkspaceSettingsModal onClose={() => setSettingsOpen(false)} />

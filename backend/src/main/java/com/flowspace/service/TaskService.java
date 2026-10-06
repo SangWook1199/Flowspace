@@ -358,6 +358,8 @@ public class TaskService {
             .map(assignee -> assignee.getUser().getUserId()).collect(Collectors.toSet());
 
         taskAssigneeRepository.deleteByTask(task);
+        // 같은 담당자를 다시 넣을 때 (작업, 담당자) 중복으로 걸리지 않게, 지운 것을 먼저 DB에 반영해요.
+        taskAssigneeRepository.flush();
 
         List<Long> assigneeIds = request.assigneeIds() == null ? List.of() : request.assigneeIds();
 

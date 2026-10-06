@@ -27,6 +27,7 @@ import com.flowspace.repository.PasswordResetTokenRepository;
 import com.flowspace.repository.RefreshTokenRepository;
 import com.flowspace.repository.UserSocialAccountRepository;
 import com.flowspace.repository.TaskAssigneeRepository;
+import com.flowspace.repository.TaskRepository;
 import com.flowspace.repository.UserRepository;
 import com.flowspace.repository.WorkspaceInviteRepository;
 import com.flowspace.repository.WorkspaceMemberRepository;
@@ -47,6 +48,7 @@ public class AccountService {
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final WorkspaceInviteRepository workspaceInviteRepository;
     private final TaskAssigneeRepository taskAssigneeRepository;
+    private final TaskRepository taskRepository;
     private final NotificationRepository notificationRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final UserSocialAccountRepository socialAccountRepository;
@@ -105,6 +107,8 @@ public class AccountService {
 
         // 나 혼자 쓰던 워크스페이스는 함께 삭제해요.
         for (Workspace workspace : classified.deleting) {
+            // 작업이 남아 있으면 FK 때문에 삭제가 실패하므로 작업부터 지워요.
+            taskRepository.deleteAllByWorkspace(workspace);
             workspaceRepository.delete(workspace);
         }
 

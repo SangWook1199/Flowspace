@@ -887,8 +887,9 @@ function BlockRowImpl({
                               type="button"
                               className="danger"
                               onClick={() => {
-                                onDeleteComment(c.id);
                                 setOpenCommentMenuId(null);
+                                if (!window.confirm("이 댓글을 삭제할까요? 되돌릴 수 없어요.")) return;
+                                onDeleteComment(c.id);
                               }}
                             >
                               <Trash2 size={13} />

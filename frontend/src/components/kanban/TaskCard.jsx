@@ -3,7 +3,6 @@ import {
   CalendarDays,
   ChevronDown,
   ChevronRight,
-  MoreHorizontal,
 } from "lucide-react";
 
 import SubtaskList from "./SubtaskList";
@@ -71,9 +70,7 @@ export default function TaskCard({
       <div className="cardTop">
         <small className="cardKey">{task.code ?? task.id}</small>
 
-        <button type="button" className="cardMenu" aria-label={`${task.code ?? task.id} 작업 메뉴`}>
-          <MoreHorizontal size={16} />
-        </button>
+        {/* 작업 메뉴 버튼은 기능이 없어서 뺐어요. */}
       </div>
 
       <h4 className="cardTitle">{task.title}</h4>

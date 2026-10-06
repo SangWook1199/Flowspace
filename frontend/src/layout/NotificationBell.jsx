@@ -196,7 +196,9 @@ function NotificationItem({ notification, inviteState, onOpen, onRemove, onAccep
           <button type="button" className="notiItem__accept" disabled={busy} onClick={() => run(onAccept, true)}>
             수락
           </button>
-          <button type="button" className="notiItem__decline" disabled={busy} onClick={() => run(onDecline, false)}>
+          <button type="button" className="notiItem__decline" disabled={busy} onClick={() => {
+              if (window.confirm("이 워크스페이스 초대를 거절할까요?")) run(onDecline, false);
+            }}>
             거절
           </button>
         </div>

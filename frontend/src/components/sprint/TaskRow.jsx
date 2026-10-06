@@ -1,4 +1,4 @@
-import { Flag, MoreHorizontal } from "lucide-react";
+import { Flag } from "lucide-react";
 import styles from "./TaskWorkspace.module.css";
 import { formatDateDots } from "../../utils/date";
 
@@ -44,11 +44,8 @@ export default function TaskRow({
       <td>
         {done} / {subtasks.length}
       </td>
-      <td onClick={(event) => event.stopPropagation()}>
-        <button type="button" className={styles.more} aria-label="작업 메뉴">
-          <MoreHorizontal size={19} />
-        </button>
-      </td>
+      {/* 작업 메뉴 버튼은 기능이 없어서 뺐어요(칸 자리는 그대로 둬요). */}
+      <td></td>
     </tr>
   );
 }

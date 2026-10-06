@@ -1,4 +1,4 @@
-import { CalendarDays, Ellipsis, Flag, Archive } from "lucide-react";
+import { CalendarDays, Flag, Archive } from "lucide-react";
 import SprintProgress from "./SprintProgress";
 import { formatDateDots } from "../../utils/date";
 import { SPRINT_STATUS_LABEL, sprintPercent, sprintRemainingLabel } from "../../utils/sprint";
@@ -31,12 +31,7 @@ export default function SprintDetailHero({ sprint }) {
       </div>
 
       <div className="detailProgress">
-        <div>
-          <button type="button" aria-label="더보기">
-            <Ellipsis size={20} />
-          </button>
-          <button type="button">{isBacklog ? "백로그 편집" : "스프린트 편집"}</button>
-        </div>
+        {/* 더보기·편집 버튼은 기능이 없어서 뺐어요. */}
 
         {isBacklog ? (
           <>

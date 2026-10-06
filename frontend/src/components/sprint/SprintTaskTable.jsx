@@ -1,8 +1,6 @@
 import {
   ChevronDown,
   ChevronRight,
-  Edit3,
-  MoreHorizontal,
   Plus,
   Upload,
 } from "lucide-react";
@@ -152,15 +150,7 @@ function TaskGroup({ task, open, onToggle }) {
 
         <mark>{status}</mark>
 
-        <span className="taskActions">
-          <button type="button" aria-label={`${task.title} 편집`}>
-            <Edit3 size={15} />
-          </button>
-
-          <button type="button" aria-label={`${task.title} 더보기`}>
-            <MoreHorizontal size={17} />
-          </button>
-        </span>
+        {/* 편집·더보기 버튼은 기능이 없어서 뺐어요. */}
       </div>
 
       {open &&

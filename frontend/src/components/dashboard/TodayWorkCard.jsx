@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MoreVertical } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import styles from "../../styles/classes";
 import { getAvatarTone } from "../../utils/avatarColor";
 
@@ -12,6 +12,7 @@ const FILTERS = [
 ];
 
 export default function TodayWorkCard({ tasks = [] }) {
+  const navigate = useNavigate();
   const [filter, setFilter] = useState("all");
 
   // 탭에 적힌 숫자를 직접 적으면 작업이 바뀌어도 그대로라서, 항상 tasks에서 세요.
@@ -27,7 +28,9 @@ export default function TodayWorkCard({ tasks = [] }) {
     <section className={styles.panel}>
       <div className={styles.panelHeader}>
         <h2>오늘의 작업</h2>
-        <button className={styles.more}>전체 보기</button>
+        <button type="button" className={styles.more} onClick={() => navigate("/kanban")}>
+          전체 보기
+        </button>
       </div>
 
       <div className={styles.taskFilter}>
@@ -114,11 +117,8 @@ export default function TodayWorkCard({ tasks = [] }) {
 
               <td>{task.time}</td>
 
-              <td>
-                <button className={styles.moreIcon} aria-label={`${task.title} 메뉴`}>
-                  <MoreVertical size={16} />
-                </button>
-              </td>
+              {/* 메뉴 버튼은 기능이 없어서 뺐어요(칸 자리는 그대로 둬요). */}
+              <td></td>
             </tr>
           ))}
         </tbody>

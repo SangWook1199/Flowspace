@@ -276,7 +276,8 @@ export default function BlockEditor({
   useEffect(() => {
     if (!applyRef) return undefined;
 
-    applyRef.current = (next) => {
+    applyRef.current = (next, rebase) => {
+      if (rebase) history.rebaseHistory(rebase);
       idCounter.current = Math.max(idCounter.current, ...next.map((b) => Number(b.id) || 0)) + 1;
       setBlocks(() => next);
     };

@@ -56,12 +56,7 @@ public class CommentService {
         workspaceMemberRepository.findByWorkspaceAndUser(task.getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        Comment parent = null;
-
-        if (request.parentCommentId() != null) {
-            parent = commentRepository.findById(request.parentCommentId())
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.COMMENT_NOT_FOUND));
-        }
+        Comment parent = resolveParent(request.parentCommentId(), task, null);
 
         Comment comment = Comment.builder().task(task).parentComment(parent).user(user).content(request.content())
             .build();
@@ -91,12 +86,7 @@ public class CommentService {
         workspaceMemberRepository.findByWorkspaceAndUser(block.getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        Comment parent = null;
-
-        if (request.parentCommentId() != null) {
-            parent = commentRepository.findById(request.parentCommentId())
-                .orElseThrow(() -> new FlowSpaceException(ErrorCode.COMMENT_NOT_FOUND));
-        }
+        Comment parent = resolveParent(request.parentCommentId(), null, block);
 
         Comment comment = Comment.builder().block(block).parentComment(parent).user(user).content(request.content())
             .build();
@@ -297,5 +287,28 @@ public class CommentService {
             .map(reply -> CommentResponse.from(reply, List.of())).toList();
 
         return CommentResponse.from(comment, replies);
+    }
+
+    // 답글의 부모 댓글을 확인해요.
+    //  - 같은 작업(또는 같은 블록)의 댓글이어야 해요(다른 곳의 댓글을 부모로 지정하면 그쪽에 답글이 붙고 알림이 가요).
+    //  - 답글에 단 답글은 그 위의 댓글에 이어 붙여요(댓글은 한 단계 답글까지만 보여줘서, 안 그러면 화면에서 사라져요).
+    private Comment resolveParent(Long parentCommentId, Task task, Block block) {
+
+        if (parentCommentId == null) {
+            return null;
+        }
+
+        Comment parent = commentRepository.findById(parentCommentId)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.COMMENT_NOT_FOUND));
+
+        boolean sameTarget = task != null
+            ? parent.getTask() != null && parent.getTask().getTaskId().equals(task.getTaskId())
+            : parent.getBlock() != null && parent.getBlock().getBlockId().equals(block.getBlockId());
+
+        if (!sameTarget) {
+            throw new FlowSpaceException(ErrorCode.COMMENT_NOT_FOUND);
+        }
+
+        return parent.getParentComment() != null ? parent.getParentComment() : parent;
     }
 }

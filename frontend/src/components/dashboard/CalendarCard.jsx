@@ -1,28 +1,25 @@
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import styles from "../../styles/classes";
 import { formatDateWithWeekday } from "../../utils/date";
 
 // date는 "YYYY-MM-DD" 오늘 날짜예요. 날짜 문구를 화면에 직접 적어두면 실제 오늘과 어긋나서 prop으로 받아요.
 export default function CalendarCard({ events = [], date }) {
+  const navigate = useNavigate();
+
   return (
     <section className={styles.panel}>
       <div className={styles.panelHeader}>
         <h2>오늘의 일정</h2>
 
-        <button className={styles.more}>전체 보기</button>
+        <button type="button" className={styles.more} onClick={() => navigate("/calendar")}>
+          전체 보기
+        </button>
       </div>
 
       {/* 날짜 */}
       <div className={styles.calendarDate}>
-        <button aria-label="이전 날">
-          <ArrowLeft size={16} />
-        </button>
-
+        {/* 이전/다음 날 버튼은 기능이 없어서 뺐어요. 다른 날은 "전체 보기"(캘린더)에서 봐요. */}
         <span>{formatDateWithWeekday(date)}</span>
-
-        <button aria-label="다음 날">
-          <ArrowRight size={16} />
-        </button>
       </div>
 
       {/* 타임라인 */}

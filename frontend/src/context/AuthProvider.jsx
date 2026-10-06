@@ -112,10 +112,13 @@ export function AuthProvider({ children }) {
     return data;
   }, []);
 
-  const signup = useCallback(async (payload) => {
+  // beforeLogin: 가입이 끝난 뒤, 화면이 로그인 상태로 바뀌기 전에 한 번 실행해요(가입 성공 안내 등).
+  // 로그인 상태가 되면 가입 화면이 바로 홈으로 넘어가 버려서, 안내는 그 전에 끝내야 해요.
+  const signup = useCallback(async (payload, { beforeLogin } = {}) => {
     const { data } = await authApi.signup(payload);
     bootId.current++;
     saveTokens(data, { remember: true });
+    await beforeLogin?.(data);
     setUser(toUser(data.user));
     setAuthError(false);
     return data;

@@ -18,6 +18,7 @@ import com.flowspace.entity.File;
 import com.flowspace.entity.RefreshToken;
 import com.flowspace.entity.User;
 import com.flowspace.entity.UserSocialAccount;
+import com.flowspace.entity.WorkspaceMember;
 import com.flowspace.entity.Workspace;
 import com.flowspace.entity.enums.Provider;
 import com.flowspace.exception.ErrorCode;
@@ -25,6 +26,7 @@ import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.repository.RefreshTokenRepository;
 import com.flowspace.repository.UserRepository;
 import com.flowspace.repository.UserSocialAccountRepository;
+import com.flowspace.repository.WorkspaceMemberRepository;
 import com.flowspace.security.JwtProvider;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -61,6 +63,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final UserSocialAccountRepository socialAccountRepository;
+    private final WorkspaceMemberRepository workspaceMemberRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
@@ -115,7 +118,7 @@ public class AuthService {
         String accessToken = jwtProvider.createAccessToken(user);
         String refreshToken = issueRefreshToken(user, request.remember());
 
-        return LoginResponse.from(user, accessToken, refreshToken, user.getLastWorkspace().getWorkspaceId());
+        return LoginResponse.from(user, accessToken, refreshToken, workspaceIdOf(user));
     }
 
     // 토큰 재발급 (로그인 때 저장해 둔 refresh token이 맞고 만료 전이면 새 access token을 발급해요)
@@ -177,7 +180,7 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        File file = fileService.upload(image, user.getLastWorkspace(), email);
+        File file = fileService.upload(image, profileWorkspace(user), email);
 
         user.updateProfileImage(file);
 
@@ -193,7 +196,7 @@ public class AuthService {
         File profileFile = user.getProfileFile();
 
         if (image != null && !image.isEmpty()) {
-            profileFile = fileService.upload(image, user.getLastWorkspace(), email);
+            profileFile = fileService.upload(image, profileWorkspace(user), email);
         }
 
         // 한 줄 소개는 앞뒤 공백을 지우고, 비어 있으면 소개를 지운 것으로 봐요.
@@ -237,6 +240,23 @@ public class AuthService {
         Long workspaceId = user.getLastWorkspace() == null ? null : user.getLastWorkspace().getWorkspaceId();
 
         return LoginResponse.from(user, accessToken, refreshToken, workspaceId);
+    }
+
+    // 로그인 응답에 실을 "마지막으로 보던 워크스페이스 id". 그 워크스페이스가 삭제됐거나 비어 있으면 null이에요(화면이 알아서 첫 워크스페이스를 골라요).
+    private Long workspaceIdOf(User user) {
+
+        return user.getLastWorkspace() == null ? null : user.getLastWorkspace().getWorkspaceId();
+    }
+
+    // 프로필 이미지를 저장할 워크스페이스: 마지막으로 보던 곳, 없으면 참여 중인 첫 워크스페이스예요(파일은 워크스페이스에 속해야 해요).
+    private Workspace profileWorkspace(User user) {
+
+        if (user.getLastWorkspace() != null) {
+            return user.getLastWorkspace();
+        }
+
+        return workspaceMemberRepository.findByUser(user).stream().map(WorkspaceMember::getWorkspace).findFirst()
+            .orElse(null);
     }
 
     // 리프레시 토큰 발급: 기존 토큰은 지우고 새로 저장해요(계정당 하나).
@@ -353,7 +373,7 @@ public class AuthService {
         String accessToken = jwtProvider.createAccessToken(user);
         String refreshToken = issueRefreshToken(user, true);
 
-        return LoginResponse.from(user, accessToken, refreshToken, user.getLastWorkspace().getWorkspaceId());
+        return LoginResponse.from(user, accessToken, refreshToken, workspaceIdOf(user));
     }
 
     // Google 로그인
@@ -367,7 +387,7 @@ public class AuthService {
         String accessToken = jwtProvider.createAccessToken(user);
         String refreshToken = issueRefreshToken(user, true);
 
-        return LoginResponse.from(user, accessToken, refreshToken, user.getLastWorkspace().getWorkspaceId());
+        return LoginResponse.from(user, accessToken, refreshToken, workspaceIdOf(user));
     }
 
     // Google 회원 생성
@@ -428,9 +448,16 @@ public class AuthService {
 
             GoogleIdToken.Payload payload = token.getPayload();
 
+            // Google이 이메일을 확인한 계정만 받아요(확인되지 않은 이메일을 믿으면 남의 이메일로 계정을 만들 수 있어요).
+            if (!Boolean.TRUE.equals(payload.getEmailVerified())) {
+                throw new FlowSpaceException(ErrorCode.SOCIAL_EMAIL_NOT_VERIFIED);
+            }
+
             return new GoogleUserInfo(payload.getSubject(), payload.getEmail(), (String) payload.get("name"),
                 (String) payload.get("picture"));
 
+        } catch (FlowSpaceException e) {
+            throw e;
         } catch (Exception e) {
             throw new FlowSpaceException(ErrorCode.INVALID_LOGIN);
         }
@@ -447,7 +474,7 @@ public class AuthService {
         String accessToken = jwtProvider.createAccessToken(user);
         String refreshToken = issueRefreshToken(user, true);
 
-        return LoginResponse.from(user, accessToken, refreshToken, user.getLastWorkspace().getWorkspaceId());
+        return LoginResponse.from(user, accessToken, refreshToken, workspaceIdOf(user));
     }
 
     // Microsoft 회원 생성

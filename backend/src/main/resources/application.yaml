@@ -12,6 +12,8 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        # 연관 엔티티를 하나씩 따로 읽지 않고 100개씩 묶어서 읽어요(작업·댓글·페이지 목록의 쿼리 수가 크게 줄어요).
+        default_batch_fetch_size: 100
 
   jackson:
     time-zone: Asia/Seoul

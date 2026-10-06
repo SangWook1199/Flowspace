@@ -98,6 +98,7 @@ export default function Header({ members = [], workspaceId }) {
 
   const handleLogout = () => {
     setMenuOpen(false);
+    if (!window.confirm("로그아웃할까요?")) return;
     logout();
     navigate("/login", { replace: true });
   };

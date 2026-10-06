@@ -92,8 +92,15 @@ public class CalendarService {
     private Sprint resolveSprint(Workspace workspace, Long sprintId) {
 
         if (sprintId != null) {
-            return sprintRepository.findById(sprintId)
+            Sprint sprint = sprintRepository.findById(sprintId)
                 .orElseThrow(() -> new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND));
+
+            // 다른 워크스페이스의 스프린트로는 조회할 수 없어요.
+            if (!sprint.getWorkspace().getWorkspaceId().equals(workspace.getWorkspaceId())) {
+                throw new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND);
+            }
+
+            return sprint;
         }
 
         return sprintRepository.findFirstByWorkspaceAndStatusOrderByStartDateAsc(workspace, SprintStatus.ACTIVE).or(

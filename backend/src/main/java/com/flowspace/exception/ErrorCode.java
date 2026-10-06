@@ -11,6 +11,7 @@ public enum ErrorCode {
     // Auth
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
     SOCIAL_EMAIL_CONFLICT(HttpStatus.CONFLICT, "이미 이 이메일로 가입된 계정이 있어요. 처음 가입했던 방식(이메일 또는 다른 소셜 계정)으로 로그인해주세요."),
+    SOCIAL_EMAIL_NOT_VERIFIED(HttpStatus.BAD_REQUEST, "이메일이 인증되지 않은 Google 계정으로는 로그인할 수 없어요."),
     SOCIAL_LINK_REQUIRED(HttpStatus.CONFLICT, "이미 이 이메일로 가입된 계정이 있어요. 그 계정의 비밀번호를 입력하면 연결할 수 있어요."),
     SOCIAL_LINK_PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "비밀번호가 올바르지 않아요."),
     INVALID_RESET_TOKEN(HttpStatus.BAD_REQUEST, "링크가 만료됐거나 이미 사용됐어요. 비밀번호 찾기를 다시 해주세요."),

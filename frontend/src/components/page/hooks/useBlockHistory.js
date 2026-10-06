@@ -79,5 +79,13 @@ export default function useBlockHistory({ blocks, setBlocksState, onRestore }) {
     restoreBlocksSnapshot(nextBlocks, focusId);
   };
 
-  return { pushUndoSnapshot, pushTextUndoSnapshot, handleUndo, handleRedo, lastPushRef, revertSnapshot };
+  // 다른 멤버의 변경을 합칠 때 쌓아 둔 스냅샷에도 같은 변경을 반영해요(rebase: 스냅샷 → 합친 스냅샷).
+  // 안 하면 undo/redo가 옛 스냅샷으로 되돌리면서 그 사이 다른 멤버가 추가한 블록이 사라져요.
+  const rebaseHistory = (rebase) => {
+    undoStackRef.current = undoStackRef.current.map(rebase);
+    redoStackRef.current = redoStackRef.current.map(rebase);
+    lastPushRef.current = null;
+  };
+
+  return { pushUndoSnapshot, pushTextUndoSnapshot, handleUndo, handleRedo, lastPushRef, revertSnapshot, rebaseHistory };
 }
