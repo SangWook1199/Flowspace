@@ -67,13 +67,13 @@ export const getStatuses = async (workspaceId) => {
   return data.map(toStatus);
 };
 
-export const createStatus = async (workspaceId, { name, category, color }) => {
-  const { data } = await client.post(`/workspaces/${workspaceId}/task-statuses`, { name, category, color });
+export const createStatus = async (workspaceId, { name, category, color, wipLimit = null }) => {
+  const { data } = await client.post(`/workspaces/${workspaceId}/task-statuses`, { name, category, color, wipLimit });
   return toStatus(data);
 };
 
-export const updateStatus = async (workspaceId, statusId, { name, category, color }) => {
-  const { data } = await client.patch(`/task-statuses/${statusId}`, { workspaceId, name, category, color });
+export const updateStatus = async (workspaceId, statusId, { name, category, color, wipLimit = null }) => {
+  const { data } = await client.patch(`/task-statuses/${statusId}`, { workspaceId, name, category, color, wipLimit });
   return toStatus(data);
 };
 

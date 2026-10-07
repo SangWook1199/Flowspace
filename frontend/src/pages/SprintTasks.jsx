@@ -1,9 +1,8 @@
 import { ArrowLeft } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useNavigate, useOutletContext, useParams } from "react-router-dom";
+import { useNavigate, useOutletContext, useParams, useSearchParams } from "react-router-dom";
 import TaskDetailPanel from "../components/sprint/TaskDetailPanel";
 import TaskTable from "../components/sprint/TaskTable";
-import { useAuth } from "../context/useAuth";
 import useDialog from "../context/useDialog";
 import { formatDateDots, isRangeReversed } from "../utils/date";
 import styles from "../components/sprint/TaskWorkspace.module.css";
@@ -52,7 +51,6 @@ export default function SprintTasks() {
 function SprintTasksBody({ sprint }) {
   const navigate = useNavigate();
   const { confirm, notify } = useDialog();
-  const auth = useAuth();
   // 작업은 서버에서 불러온 공용 데이터예요 — 칸반 보드·페이지 TASK 블록과 같은 배열을 봐요. 다만 이 화면
   // (TaskTable/TaskRow/TaskDetailPanel)은 원래부터 담당자 1명(문자열)·한글 우선순위를 기대하게 만들어져
   // 있어서, 그 컴포넌트들은 그대로 두고 여기서만 공용 모델(assignees 배열·영문 priority enum)과의 차이를 흡수해요.
@@ -80,7 +78,13 @@ function SprintTasksBody({ sprint }) {
     () => sprintTasks.filter((task) => task.sprintId === ownerId),
     [sprintTasks, ownerId],
   );
-  const [selectedId, setSelectedId] = useState(() => sprintOwnTasks[0]?.id ?? null);
+  // 스프린트 상세에서 작업을 눌러 왔으면(?task=작업id) 그 작업을 선택한 채로 열어요. 아니면 첫 작업이에요.
+  const [searchParams] = useSearchParams();
+  const [selectedId, setSelectedId] = useState(() => {
+    const wanted = searchParams.get("task");
+    const target = wanted ? sprintOwnTasks.find((task) => String(task.id) === wanted) : null;
+    return (target ?? sprintOwnTasks[0])?.id ?? null;
+  });
   const [checkedIds, setCheckedIds] = useState([]);
 
   const tasks = sprintOwnTasks.map((task) => ({
@@ -106,22 +110,21 @@ function SprintTasksBody({ sprint }) {
     setCheckedIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
   };
 
-  const addTask = async () => {
-    const me = members.find((member) => member.id === auth?.user?.id);
+  const addTask = async (title) => {
     const created = await createTask(ownerId, {
-      title: "새 작업",
+      title,
       statusId: taskStatuses[0]?.id,
-      assignees: me ? [me] : [],
+      assignees: [], // 담당자는 만든 뒤에 직접 배정해요
       priority: "MEDIUM",
       startDate: sprint.startDate ?? "",
       dueDate: sprint.endDate ?? "",
       description: "",
     });
 
-    if (created) {
-      setSelectedId(created.id);
-      setCheckedIds([]);
-    }
+    if (!created) return false;
+    setSelectedId(created.id);
+    setCheckedIds([]);
+    return true;
   };
 
   const toggleSubtaskAt = (index) => {
@@ -185,6 +188,21 @@ function SprintTasksBody({ sprint }) {
     setSelectedId(null);
   };
 
+  // 지금 상세로 열린 작업 하나를 지워요.
+  const deleteSelectedOne = async () => {
+    if (selectedId == null) return;
+    const ok = await confirm({
+      title: "작업 삭제",
+      message: "이 작업을 삭제할까요?\n삭제한 작업은 되돌릴 수 없어요.",
+      confirmLabel: "삭제",
+      danger: true,
+    });
+    if (!ok) return;
+
+    deleteTasks([selectedId]);
+    setSelectedId(null);
+  };
+
   // 체크한 작업을 다른 스프린트(또는 백로그)로 옮겨요. 서버가 새 스프린트 안의 순서를 정해요.
   const moveChecked = (target) => {
     if (!target || checkedIds.length === 0) return;
@@ -199,8 +217,8 @@ function SprintTasksBody({ sprint }) {
   // 옮길 수 있는 곳: 지금 화면이 아닌 곳 중 끝나지 않은 스프린트, 그리고 (백로그가 아니면) 백로그.
   const moveTargets = sprints.filter((item) => item.id !== sprint.id && item.status !== "COMPLETED");
 
-  // 선택한 작업이 없고 여러 개 선택도 아니면(X로 닫은 뒤) 오른쪽 패널을 아예 없애서 표가 전체 폭을 써요.
-  const panelOpen = Boolean(selectedTask) || checkedIds.length > 1;
+  // 선택한 작업이 없고 체크한 작업도 없으면(X로 닫은 뒤) 오른쪽 패널을 아예 없애서 표가 전체 폭을 써요.
+  const panelOpen = Boolean(selectedTask) || checkedIds.length > 0;
 
   return (
     <div className={`${styles.workspace}${panelOpen ? "" : ` ${styles.workspaceClosed}`}`}>
@@ -242,8 +260,9 @@ function SprintTasksBody({ sprint }) {
           checkedIds={checkedIds}
           onCheck={toggleCheck}
           onSelect={(id) => {
+            // 행을 누르면 그 작업 하나의 상세로 돌아가요(체크해 둔 선택은 풀려요).
             setSelectedId(id);
-            if (checkedIds.length < 2) setCheckedIds([]);
+            setCheckedIds([]);
           }}
           onAdd={addTask}
         />
@@ -267,6 +286,7 @@ function SprintTasksBody({ sprint }) {
           onMoveSubtask={(from, to) => moveSubtask(selectedId, from, to)}
           onBatchChange={batchChange}
           onDelete={deleteChecked}
+          onDeleteTask={deleteSelectedOne}
         />
       )}
     </div>

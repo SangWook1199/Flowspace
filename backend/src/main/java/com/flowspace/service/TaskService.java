@@ -91,7 +91,7 @@ public class TaskService {
 
         WorkspaceTaskStatus mapping = WorkspaceTaskStatus.builder()
             .id(new WorkspaceTaskStatusId(workspace.getWorkspaceId(), status.getStatusId())).workspace(workspace)
-            .taskStatus(status).position(position).build();
+            .taskStatus(status).position(position).wipLimit(request.wipLimit()).build();
 
         workspaceTaskStatusRepository.save(mapping);
 
@@ -128,24 +128,34 @@ public class TaskService {
         workspaceMemberRepository.findByWorkspaceAndUser(mapping.getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        // 기본 상태(1,2,3) 수정 → 새 상태 생성
+        // 기본 상태(1,2,3) 수정 → 공용 기본 상태는 그대로 두고, 이 워크스페이스 전용 새 상태로 바꿔 끼운다
         if (mapping.getIsDefault()) {
+
+            Workspace workspace = mapping.getWorkspace();
 
             TaskStatus newStatus = taskStatusRepository.save(
                 TaskStatus.builder().name(request.name()).category(request.category()).color(request.color()).build());
 
+            // 같은 자리(position)에 새 상태를 넣는다
             WorkspaceTaskStatus newMapping = WorkspaceTaskStatus.builder()
-                .id(new WorkspaceTaskStatusId(mapping.getWorkspace().getWorkspaceId(), newStatus.getStatusId()))
-                .workspace(mapping.getWorkspace()).taskStatus(newStatus).position(mapping.getPosition() + 1)
-                .isDefault(false).build();
+                .id(new WorkspaceTaskStatusId(workspace.getWorkspaceId(), newStatus.getStatusId()))
+                .workspace(workspace).taskStatus(newStatus).position(mapping.getPosition())
+                .wipLimit(request.wipLimit()).isDefault(false).build();
 
             workspaceTaskStatusRepository.save(newMapping);
+
+            // 이 워크스페이스의 작업만 새 상태로 옮기고, 이 워크스페이스에서는 기존 기본 상태 연결을 뺀다
+            taskRepository.findByWorkspaceAndStatusOrderByPositionAsc(workspace, mapping.getTaskStatus())
+                .forEach(task -> task.replaceStatus(newStatus));
+
+            workspaceTaskStatusRepository.delete(mapping);
 
             return TaskStatusResponse.from(newMapping);
         }
 
         // 커스텀 상태 수정
         mapping.getTaskStatus().update(request.name(), request.category(), request.color());
+        mapping.updateWipLimit(request.wipLimit());
 
         return TaskStatusResponse.from(mapping);
     }
@@ -185,9 +195,13 @@ public class TaskService {
         workspaceMemberRepository.findByWorkspaceAndUser(mapping.getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        // 기본 상태는 삭제 불가
-        if (mapping.getIsDefault()) {
-            throw new FlowSpaceException(ErrorCode.DEFAULT_TASK_STATUS_CANNOT_DELETE);
+        // 마지막 남은 상태는 삭제할 수 없고, 작업을 옮길 대상이 삭제하는 상태 자신일 수도 없다
+        if (workspaceTaskStatusRepository.countByWorkspace(mapping.getWorkspace()) <= 1) {
+            throw new FlowSpaceException(ErrorCode.LAST_TASK_STATUS_CANNOT_DELETE);
+        }
+
+        if (statusId.equals(request.targetStatusId())) {
+            throw new FlowSpaceException(ErrorCode.INVALID_TASK_STATUS);
         }
 
         WorkspaceTaskStatus targetMapping = workspaceTaskStatusRepository
@@ -200,7 +214,11 @@ public class TaskService {
             .forEach(task -> task.updateStatus(targetMapping.getTaskStatus()));
 
         workspaceTaskStatusRepository.delete(mapping);
-        taskStatusRepository.delete(mapping.getTaskStatus());
+
+        // 기본 상태(1,2,3)는 모든 워크스페이스가 같이 쓰는 행이라 DB에서 지우지 않고 이 워크스페이스의 연결만 끊는다
+        if (!mapping.getIsDefault()) {
+            taskStatusRepository.delete(mapping.getTaskStatus());
+        }
     }
 
     // Task 생성

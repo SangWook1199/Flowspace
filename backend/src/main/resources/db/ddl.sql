@@ -134,6 +134,7 @@ CREATE TABLE workspace_task_statuses (
     status_id BIGINT NOT NULL,
     position INT NOT NULL DEFAULT 0,
     is_default BOOLEAN NOT NULL DEFAULT FALSE,
+    wip_limit INT NULL,
     PRIMARY KEY (workspace_id, status_id),
     CONSTRAINT fk_wts_workspace FOREIGN KEY (workspace_id) REFERENCES workspaces(workspace_id) ON DELETE CASCADE,
     CONSTRAINT fk_wts_status FOREIGN KEY (status_id) REFERENCES task_statuses(status_id)

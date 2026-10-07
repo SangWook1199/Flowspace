@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 import { ChevronRight, Flag } from "lucide-react";
-import UserAvatar from "./UserAvatar";
+import UserAvatar, { UnassignedAvatar } from "./UserAvatar";
 import styles from "./TaskWorkspace.module.css";
 import { formatDateDots } from "../../utils/date";
 
@@ -65,7 +65,11 @@ export default function TaskRow({
         {task.title}
       </td>
       <td>
-        {assignees.length > 0 && (
+        {assignees.length === 0 ? (
+          <span className={styles.assigneeCell}>
+            <UnassignedAvatar />
+          </span>
+        ) : (
           <span className={styles.assigneeCell} title={assignees.map((user) => user.name).join(", ")}>
             <span className={styles.avatarStack}>
               {assignees.slice(0, 3).map((user) => (

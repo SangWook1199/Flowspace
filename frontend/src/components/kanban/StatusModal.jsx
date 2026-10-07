@@ -22,6 +22,9 @@ export default function StatusModal({
   const [name, setName] = useState(status?.name ?? "");
   const [category, setCategory] = useState(status?.category ?? "IN_PROGRESS");
   const [color, setColor] = useState(status?.color ?? "PURPLE");
+  // 작업 수 제한(WIP). 비워 두면 제한이 없어요. 완료 컬럼에는 쓰지 않아요.
+  const [wip, setWip] = useState(status?.wipLimit != null ? String(status.wipLimit) : "");
+  const [wipError, setWipError] = useState("");
 
   const [moveTo, setMoveTo] = useState(
     statuses.find((s) => s.id !== status?.id)?.id ?? "",
@@ -35,6 +38,7 @@ export default function StatusModal({
   const titleId = `${uid}-title`;
   const nameId = `${uid}-name`;
   const categoryId = `${uid}-category`;
+  const wipId = `${uid}-wip`;
   const moveToId = `${uid}-move`;
 
   useModalA11y(modalRef, onClose);
@@ -58,11 +62,21 @@ export default function StatusModal({
       return;
     }
 
+    let wipLimit = null;
+    if (category !== "DONE" && wip.trim() !== "") {
+      wipLimit = Number(wip);
+      if (!Number.isInteger(wipLimit) || wipLimit < 1 || wipLimit > 999) {
+        setWipError("작업 수 제한은 1~999 사이의 숫자로 입력해 주세요.");
+        return;
+      }
+    }
+
     onSave?.({
       ...status,
       name: trimmed,
       category,
       color,
+      wipLimit,
     });
   };
 
@@ -195,15 +209,43 @@ export default function StatusModal({
                 </select>
               </div>
 
+              {category !== "DONE" && (
+                <div className="field">
+                  <label htmlFor={wipId}>작업 수 제한 (선택)</label>
+
+                  <input
+                    id={wipId}
+                    type="number"
+                    min="1"
+                    max="999"
+                    inputMode="numeric"
+                    value={wip}
+                    onChange={(e) => {
+                      setWip(e.target.value);
+                      setWipError("");
+                    }}
+                    placeholder="예) 5 — 비우면 제한 없음"
+                    aria-invalid={wipError ? "true" : undefined}
+                  />
+                  {wipError ? (
+                    <small role="alert" style={{ color: "#dc2626" }}>
+                      {wipError}
+                    </small>
+                  ) : (
+                    <small>넘으면 컬럼 개수가 붉게 표시돼요. 작업을 막지는 않아요.</small>
+                  )}
+                </div>
+              )}
+
               <div className="field">
                 <label id={`${uid}-color`}>컬럼 색상</label>
 
-                <div className="colorPicker" role="group" aria-labelledby={`${uid}-color`}>
+                <div className="statusColorPicker" role="group" aria-labelledby={`${uid}-color`}>
                   {COLORS.map((item) => (
                     <button
                       key={item}
                       type="button"
-                      className={`colorCircle ${item.toLowerCase()} ${
+                      className={`statusColorCircle ${item.toLowerCase()} ${
                         color === item ? "active" : ""
                       }`}
                       onClick={() => setColor(item)}

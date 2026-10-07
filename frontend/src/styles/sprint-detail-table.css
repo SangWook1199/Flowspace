@@ -2,7 +2,7 @@
 .taskRow,
 .subtask {
   grid-template-columns:
-    44px 76px minmax(150px, 1.25fr)
+    44px 32px 76px minmax(150px, 1.25fr)
     minmax(120px, 1fr) minmax(104px, 0.8fr) minmax(104px, 0.8fr) minmax(104px, 0.8fr)
     minmax(140px, 1.1fr) minmax(90px, 0.8fr);
 }
@@ -136,4 +136,31 @@
   .subtask {
     min-width: 1160px;
   }
+}
+
+/* 토글 다음의 선택 체크박스 칸 */
+.taskCheckCell {
+  display: grid;
+  place-items: center;
+}
+.taskCheckCell input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+}
+
+/* 선택한 작업 삭제 버튼(헤더 오른쪽) */
+.detailTasks header button.deleteTasksBtn {
+  border-color: #f1c4c7;
+  background: #fff4f5;
+  color: #e64f58;
+}
+
+/* 눌러서 작업 페이지로 갈 수 있는 작업 줄 */
+.taskRowLink {
+  cursor: pointer;
+}
+.taskRowLink:hover {
+  background: #f8faff;
 }

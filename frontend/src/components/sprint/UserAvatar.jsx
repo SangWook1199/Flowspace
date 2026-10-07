@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { User } from "lucide-react";
 import { getInitial } from "../../utils/initial";
 import styles from "./TaskWorkspace.module.css";
 
@@ -10,6 +11,15 @@ export default function UserAvatar({ user, className = "" }) {
   return (
     <span className={`${styles.avatar} ${className}`} title={user?.name}>
       {showImage ? <img src={user.profileImageUrl} alt="" onError={() => setFailed(true)} /> : (user?.initial ?? getInitial(user?.name))}
+    </span>
+  );
+}
+
+// 담당자가 아직 없을 때 보여주는 빈 아바타예요(점선 동그라미 + 사람 아이콘).
+export function UnassignedAvatar({ className = "" }) {
+  return (
+    <span className={`${styles.avatar} ${styles.avatarEmpty} ${className}`} title="담당자 없음">
+      <User size={13} />
     </span>
   );
 }

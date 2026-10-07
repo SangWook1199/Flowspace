@@ -289,7 +289,7 @@
 }
 
 .wsSettings__chip.light {
-  box-shadow: inset 0 0 0 1px #cbd5e1;
+  box-shadow: inset 0 0 0 1px #111827;
 }
 
 .wsSettings__chip.selected {

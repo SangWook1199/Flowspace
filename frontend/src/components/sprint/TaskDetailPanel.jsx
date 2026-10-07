@@ -38,6 +38,8 @@ export default function TaskDetailPanel({
   task,
   sprintRange = null,
   members = [],
+  statuses = [],
+  onStatusChange,
   selectedIds,
   onChange,
   onClose,
@@ -49,13 +51,15 @@ export default function TaskDetailPanel({
   onDeleteSubtask,
   onBatchChange,
   onDelete,
+  onDeleteTask,
 }) {
   // 날짜가 거절됐을 때 보여줄 메시지예요. 어느 작업에서 난 건지(id)도 같이 들고 있어서, 다른 작업으로
   // 옮기면 저절로 사라져요.
   const [dateError, setDateError] = useState({ taskId: null, message: "" });
   const { confirm } = useDialog();
 
-  const batchMode = selectedIds.length > 1;
+  // 체크한 작업이 하나라도 있으면 오른쪽에 일괄 편집이 떠요(하나만 체크해도 담당자·우선순위·기간·삭제를 바로 할 수 있어요).
+  const batchMode = selectedIds.length > 0;
   if (batchMode)
     return (
       <BatchPanel
@@ -117,6 +121,19 @@ export default function TaskDetailPanel({
         <span>제목</span>
         <TitleInput key={task.id} value={task.title} onChange={(value) => onChange("title", value)} />
       </div>
+      {/* 상태(칸반 컬럼)는 부모가 목록과 변경 함수를 줄 때만 보여줘요 — 고르면 그 컬럼 맨 아래로 옮겨요. */}
+      {onStatusChange && statuses.length > 0 && (
+        <div className={styles.field}>
+          <span>상태</span>
+          <select value={task.statusId ?? ""} onChange={(e) => onStatusChange(Number(e.target.value))}>
+            {statuses.map((status) => (
+              <option key={status.id} value={status.id}>
+                {status.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className={styles.field}>
         <span>담당자</span>
         <AssigneePicker members={members} value={task.assignees ?? []} onChange={(list) => onChange("assignees", list)} />
@@ -181,6 +198,11 @@ export default function TaskDetailPanel({
         <SubtaskAdd key={`subtask-add-${task.id}`} onAdd={onAddSubtask} />
       </div>
       <TaskComments key={`comments-${task.id}`} taskId={task.id} />
+      {onDeleteTask && (
+        <button type="button" className={styles.deleteSelected} onClick={onDeleteTask}>
+          <Trash2 size={16} /> 작업 삭제
+        </button>
+      )}
     </aside>
   );
 }

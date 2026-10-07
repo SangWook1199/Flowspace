@@ -32,6 +32,36 @@
   color: #64748b;
 }
 
+.kanbanHeader__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.completeSprintBtn {
+  height: 42px;
+  padding: 0 16px;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  background: #fff;
+  color: #4338ca;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.completeSprintBtn:hover:not(:disabled) {
+  background: #eef2ff;
+}
+
+.completeSprintBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .addStatusBtn {
   height: 42px;
   padding: 0 18px;
@@ -49,6 +79,319 @@
 
 .addStatusBtn:hover {
   background: #4338ca;
+}
+
+/* 보드 머리의 스프린트 요약(기간 · 남은 일수 · 진행률 · 상세 링크) */
+
+.kanbanSummary {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.kanbanSummary__progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.kanbanSummary__progress i {
+  width: 96px;
+  height: 6px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.kanbanSummary__progress b {
+  display: block;
+  height: 100%;
+  background: #4f46e5;
+  border-radius: inherit;
+}
+
+.kanbanSummary a {
+  color: #4338ca;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.kanbanSummary a:hover {
+  text-decoration: underline;
+}
+
+/* ================= Filter bar ================= */
+
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.filterSearch {
+  width: 280px;
+  height: 36px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #dfe6ee;
+  border-radius: 9px;
+  background: #fff;
+  color: #64748b;
+}
+
+.filterSearch:focus-within {
+  border-color: #6366f1;
+}
+
+.filterSearch input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  color: #111827;
+}
+
+.filterSearch button {
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0;
+}
+
+.filterMenu {
+  position: relative;
+}
+
+.filterBtn {
+  height: 36px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #dfe6ee;
+  border-radius: 9px;
+  background: #fff;
+  color: #334155;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.filterBtn:hover {
+  background: #f8fafc;
+}
+
+.filterBtn.is-active {
+  border-color: #6366f1;
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.filterBtn b,
+.filterPanel__fields li b {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+}
+
+/* 지라처럼 왼쪽에서 항목을 고르면 오른쪽에 그 항목의 값이 나오는 필터 패널 */
+.filterPanel {
+  position: absolute;
+  top: 42px;
+  left: 0;
+  z-index: 60;
+  width: 540px;
+  max-width: calc(100vw - 48px);
+  height: 340px;
+  display: flex;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.14);
+}
+
+.filterPanel__fields {
+  position: relative;
+  width: 190px;
+  flex: none;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-right: 1px solid #e5e7eb;
+}
+
+.filterPanel__fields ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.filterPanel__fields > ul {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.filterPanel__fields li button {
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 0;
+  border-left: 3px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  color: #334155;
+  cursor: pointer;
+}
+
+.filterPanel__fields li button:hover {
+  background: #f8fafc;
+}
+
+.filterPanel__fields li button.is-current {
+  border-left-color: #4f46e5;
+  background: #eef2ff;
+  color: #3730a3;
+  font-weight: 600;
+}
+
+.filterPanel__clearAll,
+.filterPanel__foot button {
+  height: 32px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #4338ca;
+  cursor: pointer;
+}
+
+.filterPanel__clearAll:hover:not(:disabled),
+.filterPanel__foot button:hover:not(:disabled) {
+  background: #eef2ff;
+}
+
+.filterPanel__clearAll {
+  justify-content: flex-start;
+  color: #334155;
+}
+
+.filterPanel__clearAll:disabled,
+.filterPanel__foot button:disabled {
+  color: #cbd5e1;
+  cursor: default;
+}
+
+.filterPanel__values {
+  flex: 1;
+  min-width: 0;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filterPanel__values .filterSearch {
+  width: auto;
+}
+
+.filterPanel__options {
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.filterPanel__options label {
+  height: 34px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 7px;
+  font-size: 13px;
+  color: #334155;
+  cursor: pointer;
+}
+
+.filterPanel__options label:hover {
+  background: #f8fafc;
+}
+
+.filterPanel__options input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: #4f46e5;
+}
+
+.filterPanel__empty {
+  padding: 10px 6px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.filterPanel__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.filterBar__right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filterBar__count {
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* 비어 있는 컬럼 안내 */
+.columnEmpty {
+  margin: 0;
+  padding: 18px 8px 6px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #94a3b8;
+  pointer-events: none;
 }
 
 /* ================= Board ================= */
@@ -117,6 +460,74 @@
   color: #64748b;
 }
 
+.columnTitle .columnCount.is-over {
+  color: #dc2626;
+}
+
+.kanbanColumn.is-overWip {
+  border-color: #fca5a5;
+}
+
+/* 접힌 컬럼: 이름과 개수만 세로로 보여주는 좁은 띠 */
+.kanbanColumn.is-collapsed {
+  min-width: 52px;
+  max-width: 52px;
+  cursor: pointer;
+}
+
+.columnCollapsedBtn {
+  width: 100%;
+  min-height: 160px;
+  padding: 14px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  font-family: inherit;
+  color: #334155;
+  cursor: pointer;
+}
+
+.columnCollapsedBtn:hover {
+  background: #f8fafc;
+}
+
+.columnCollapsedName {
+  writing-mode: vertical-rl;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.columnCollapsedBtn b {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.columnCollapsedName.is-over,
+.columnCollapsedBtn b.is-over {
+  color: #dc2626;
+}
+
+.columnFoldBtn {
+  height: 34px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.columnFoldBtn:hover {
+  border-color: #6366f1;
+  color: #4338ca;
+  background: #eef2ff;
+}
+
 .columnDot {
   width: 10px;
   height: 10px;
@@ -137,6 +548,24 @@
 
 .columnDot.green {
   background: #22c55e;
+}
+
+.columnDot.red {
+  background: #ef4444;
+}
+
+.columnDot.orange {
+  background: #f59e0b;
+}
+
+.columnDot.pink {
+  background: #ec4899;
+}
+
+/* 흰색 상태는 점이 안 보여서 얇은 검정 테두리를 줘요. */
+.columnDot.white {
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px #111827;
 }
 
 .columnMenuWrap {
@@ -161,7 +590,7 @@
   position: absolute;
   top: 34px;
   right: 0;
-  width: 140px;
+  width: 190px;
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
@@ -181,8 +610,13 @@
   font-size: 13px;
 }
 
-.columnDropdown button:hover {
+.columnDropdown button:hover:not(:disabled) {
   background: #f8fafc;
+}
+
+.columnDropdown button:disabled {
+  color: #cbd5e1;
+  cursor: default;
 }
 
 .columnDropdown .danger {
@@ -217,6 +651,59 @@
   border-color: #6366f1;
   color: #4338ca;
   background: #eef2ff;
+}
+
+/* 새 작업 이름 입력 */
+.columnAddForm {
+  margin: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.columnAddForm input {
+  height: 40px;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  padding: 0 12px;
+  font-family: inherit;
+  font-size: 13px;
+  outline: 0;
+  background: #fff;
+}
+
+.columnAddForm input:focus {
+  border-color: #6366f1;
+}
+
+.columnAddForm__actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.columnAddForm__actions button {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 12px;
+  color: #475569;
+  cursor: pointer;
+}
+
+.columnAddForm__actions button[type="submit"] {
+  border-color: #4f46e5;
+  background: #4f46e5;
+  color: #fff;
+}
+
+.columnAddForm__actions button[type="submit"]:disabled {
+  border-color: #e2e8f0;
+  background: #f1f5f9;
+  color: #a3aec0;
+  cursor: default;
 }
 
 /* ================= Card ================= */
@@ -313,17 +800,293 @@
 
 .kanbanCard h4 {
   margin: 0;
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 13.5px;
+  font-weight: 400;
   color: #111827;
 }
 
-/* 담당자 + 우선순위 */
+/* 카드 첫 줄: 제목 + 오른쪽 끝 이름 수정(연필) */
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.kanbanCard .cardHead h4 {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardEditBtn {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.cardEditBtn:hover,
+.cardEditBtn:focus-visible,
+.cardEditBtn.is-open {
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.cardTitleInput {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid #6366f1;
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: #111827;
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+/* 카드 둘째 줄: 우선순위 · D-day, 오른쪽 끝 담당자 */
 
 .cardMeta {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cardMeta .priority {
+  flex: none;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.dueBadge {
+  flex: none;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dueBadge.soon {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.dueBadge.late {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* 누르면 카드에서 바로 바꿀 수 있는 배지(우선순위·D-day) */
+.badgeBtn {
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.badgeBtn:hover,
+.badgeBtn:focus-visible {
+  filter: brightness(0.95);
+  outline: 2px solid rgba(99, 102, 241, 0.35);
+  outline-offset: 1px;
+}
+
+/* ================= 카드 팝업(... 메뉴, 우선순위, 마감일) ================= */
+
+.floatingPanel {
+  position: fixed;
+  z-index: 10000;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+}
+
+.cardMenuList {
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.cardMenuList button {
+  width: 100%;
+  min-height: 34px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  color: #334155;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cardMenuList button > svg:last-child:not(:first-child) {
+  margin-left: auto;
+}
+
+.cardMenuList button:hover:not(:disabled),
+.cardMenuList button[aria-expanded="true"] {
+  background: #f1f5f9;
+}
+
+.cardMenuList button:disabled {
+  color: #cbd5e1;
+  cursor: default;
+}
+
+.cardMenuEntry {
+  position: relative;
+}
+
+.cardSubMenu {
+  position: absolute;
+  top: 0;
+  left: calc(100% + 4px);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+}
+
+.cardSubMenu.is-left {
+  left: auto;
+  right: calc(100% + 4px);
+}
+
+.cardSubMenu button {
+  width: 100%;
+  min-height: 34px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  color: #334155;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cardSubMenu button:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.cardSubMenu button:disabled {
+  color: #cbd5e1;
+  cursor: default;
+}
+
+.cardSubMenu button svg {
+  margin-left: auto;
+}
+
+.cardSubMenu button:disabled .columnDot {
+  opacity: 0.45;
+}
+
+.cardQuickBody {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cardQuickBody label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.cardQuickBody input {
+  height: 34px;
+  padding: 0 8px;
+  border: 1px solid #dfe6ee;
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.cardQuickBody button {
+  height: 32px;
+  border: 0;
+  border-radius: 7px;
+  background: #4f46e5;
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cardQuickBody button:disabled {
+  background: #c7d2fe;
+  cursor: default;
+}
+
+.cardQuickError {
+  font-size: 11.5px;
+  color: #dc2626;
+}
+
+.cardAssignees {
+  flex: none;
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  padding: 2px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.cardAssignees:hover,
+.cardAssignees.is-open {
+  background: #eef2ff;
+}
+
+.cardAssignees .cardAvatarItem {
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.cardAssignees > .cardAvatarItem + .cardAvatarItem {
+  margin-left: -7px;
+}
+
+.cardAssigneeMore {
+  margin-left: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
 }
 
 .avatars {
@@ -412,12 +1175,26 @@
 
 /* ================= Subtask ================= */
 
-.subtaskToggle {
-  width: 100%;
+/* 하위 작업 줄: 펼침 버튼 + 오른쪽 "+" (카드 크기는 하위 작업이 0개여도 같아요) */
+.subtaskBar {
   height: 34px;
-  border: 0;
   border-radius: 8px;
   background: #f8fafc;
+  display: flex;
+  align-items: center;
+}
+
+.subtaskBar:hover {
+  background: #eef2ff;
+}
+
+.subtaskToggle {
+  flex: 1;
+  height: 100%;
+  min-width: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -427,9 +1204,52 @@
   cursor: pointer;
 }
 
-.subtaskToggle:hover {
-  background: #eef2ff;
+.subtaskBar:hover .subtaskToggle {
   color: #4338ca;
+}
+
+/* 하위 작업이 없으면 펼칠 수 없어서 눌러도 반응하지 않는 모양이에요. */
+.subtaskToggle[aria-disabled="true"],
+.subtaskBar:hover .subtaskToggle[aria-disabled="true"] {
+  color: #475569;
+  cursor: default;
+}
+
+.subtaskAddBtn {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin-right: 3px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.subtaskAddBtn:hover,
+.subtaskAddBtn:focus-visible {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.subtaskAdd input {
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 7px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  outline: 0;
+}
+
+.subtaskAdd input:focus {
+  border-style: solid;
+  border-color: #6366f1;
 }
 
 .subtaskList {
@@ -446,11 +1266,19 @@
   gap: 8px;
   font-size: 12px;
   color: #334155;
+  cursor: pointer;
 }
 
 .subtaskItem input {
   width: 14px;
   height: 14px;
+  margin: 0;
+  flex: none;
+  cursor: pointer;
+}
+
+.subtaskItem input:disabled {
+  cursor: default;
 }
 
 .subtaskItem .done {
@@ -543,58 +1371,59 @@
   border-color: #6366f1;
 }
 
-.colorPicker {
+/* 컬럼 색상 선택: 워크스페이스 생성의 색 선택(.color-chip)과 같은 모양이에요.
+   (.colorPicker/.colorCircle는 스프린트·캘린더 쪽 스타일과 이름이 겹쳐서 상태 모달 전용 이름을 써요.) */
+.statusColorPicker {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
-.colorCircle {
-  width: 28px;
-  height: 28px;
+.statusColorCircle {
+  width: 34px;
+  height: 34px;
+  padding: 0;
   border-radius: 50%;
   border: 3px solid transparent;
   cursor: pointer;
 }
 
-.colorCircle.active {
+.statusColorCircle.active {
   border-color: #111827;
 }
 
-.colorCircle.gray {
+.statusColorCircle.gray {
   background: #64748b;
 }
 
-.colorCircle.blue {
+.statusColorCircle.blue {
   background: #3b82f6;
 }
 
-.colorCircle.green {
+.statusColorCircle.green {
   background: #22c55e;
 }
 
-.colorCircle.purple {
+.statusColorCircle.purple {
   background: #9333ea;
 }
 
-.colorCircle.red {
+.statusColorCircle.red {
   background: #ef4444;
 }
 
-.colorCircle.orange {
+.statusColorCircle.orange {
   background: #f59e0b;
 }
 
-.colorCircle.pink {
+.statusColorCircle.pink {
   background: #ec4899;
 }
 
-.colorCircle.white {
+/* 흰색은 배경과 안 보여서 얇은 검정 테두리를 줘요. */
+.statusColorCircle.white {
   background: #ffffff;
-  border-color: #cbd5e1;
-}
-
-.colorCircle.white.active {
-  border-color: #111827;
+  box-shadow: inset 0 0 0 1px #111827;
 }
 
 .statusModalFooter {
@@ -767,5 +1596,131 @@
 
 .columnBody::-webkit-scrollbar-track,
 .kanbanBoard::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ================= 담당자 간편 배정 팝업 ================= */
+
+.assigneePop {
+  position: fixed;
+  z-index: 1000;
+  padding: 8px;
+  border: 1px solid #e3e8f0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.18);
+}
+
+.assigneePop__search {
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid #c7d2fe;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  outline: 0;
+  box-sizing: border-box;
+}
+
+.assigneePop__search:focus {
+  border-color: #6366f1;
+}
+
+.assigneePop__list {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.assigneePop__list button {
+  width: 100%;
+  min-height: 44px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.assigneePop__list button:hover {
+  background: #f1f4fb;
+}
+
+.assigneePop__list button > svg {
+  flex: none;
+  color: #4f5cf6;
+}
+
+.assigneePop__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.assigneePop__text b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1f2a3d;
+}
+
+.assigneePop__text b small {
+  font-size: 11px;
+  font-weight: 400;
+  color: #7a899f;
+}
+
+.assigneePop__text em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-style: normal;
+  color: #7a899f;
+}
+
+.assigneePop__empty {
+  padding: 12px 8px;
+  font-size: 12px;
+  color: #7a899f;
+}
+
+/* ================= 작업 편집 모달 ================= */
+
+.taskModalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900; /* 멤버 프로필 카드(1100)·확인 창(10000)보다 아래예요 */
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.taskModal {
+  width: min(560px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 30px 60px rgba(15, 23, 42, 0.25);
+}
+
+/* 작업 페이지 오른쪽 패널을 그대로 쓰니까, 패널 쪽의 옆 테두리·세로 높이만 모달에 맞게 풀어요. */
+.taskModal > aside {
+  border-left: 0;
+  min-height: 0;
+  padding: 24px 22px 26px;
   background: transparent;
 }

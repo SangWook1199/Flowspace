@@ -2,6 +2,8 @@ package com.flowspace.dto.task;
 
 import com.flowspace.entity.enums.TaskStatusCategory;
 import com.flowspace.entity.enums.WorkspaceColor;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -19,7 +21,12 @@ public record TaskStatusCreateRequest(
     TaskStatusCategory category,
 
     @NotNull(message = "색상은 필수입니다.")
-    WorkspaceColor color
+    WorkspaceColor color,
+
+    // 비우면 WIP 제한 없음
+    @Min(value = 1, message = "작업 수 제한은 1 이상이어야 합니다.")
+    @Max(value = 999, message = "작업 수 제한은 999 이하여야 합니다.")
+    Integer wipLimit
 
 ) {
 }

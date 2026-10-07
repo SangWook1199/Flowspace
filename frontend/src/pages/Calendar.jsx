@@ -380,7 +380,7 @@ function CalendarBody() {
                 <label id="eventColorLabel">색상</label>
 
                 <div
-                  className="colorPicker"
+                  className="eventColorPicker"
                   role="group"
                   aria-labelledby="eventColorLabel"
                 >
@@ -390,7 +390,7 @@ function CalendarBody() {
                       type="button"
                       aria-label={COLOR_LABEL[color]}
                       aria-pressed={newEvent.color === color}
-                      className={`colorCircle ${color.toLowerCase()} ${
+                      className={`eventColorCircle ${color.toLowerCase()} ${
                         newEvent.color === color ? "active" : ""
                       }`}
                       onClick={() => updateNewEvent({ color })}

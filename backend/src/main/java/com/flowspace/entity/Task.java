@@ -78,20 +78,32 @@ public class Task extends BaseEntity {
         this.endDate = endDate;
         this.priority = priority;
 
-        if (status.getCategory() == TaskStatusCategory.DONE) {
-            this.completedAt = LocalDateTime.now();
-        } else {
-            this.completedAt = null;
-        }
+        syncCompletedAt(status);
     }
 
     public void updateStatus(TaskStatus status) {
         this.status = status;
 
-        if (status.getCategory() == TaskStatusCategory.DONE) {
-            this.completedAt = LocalDateTime.now();
-        } else {
+        syncCompletedAt(status);
+    }
+
+    // 기본 상태를 이 워크스페이스 전용 상태로 바꿔 끼울 때 쓴다.
+    public void replaceStatus(TaskStatus newStatus) {
+        this.status = newStatus;
+
+        syncCompletedAt(newStatus);
+    }
+
+    // 완료 분류가 되면 그때 처음 완료 시각을 찍고, 이미 완료였던 작업은(제목만 고치거나 다른 완료 컬럼으로 옮겨도) 원래 시각을 그대로 둔다.
+    // 완료가 아닌 분류로 가면 지운다.
+    private void syncCompletedAt(TaskStatus status) {
+        if (status.getCategory() != TaskStatusCategory.DONE) {
             this.completedAt = null;
+            return;
+        }
+
+        if (this.completedAt == null) {
+            this.completedAt = LocalDateTime.now();
         }
     }
 

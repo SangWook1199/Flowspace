@@ -176,24 +176,24 @@
   background: #8b97a8;
 }
 
+/* 흰색 스프린트: 다른 색 카드와 같은 모양(왼쪽 색 띠 + 연한 아이콘)이에요. 흰 띠는 안 보여서 띠·강조 색을 진한 검정 계열로 보여줘요. */
 .sprintCard.white {
-  border-left-color: #cbd5e1;
+  border-left-color: #111827;
 }
 .white .sprintIcon {
-  background: #f8fafc;
-  color: #64748b;
+  background: #f1f5f9;
+  color: #334155;
 }
 .sprintProgress strong.white {
-  color: #64748b;
+  color: #111827;
 }
 .sprintProgress i.white {
-  background: #ffffff;
-  box-shadow: inset 0 0 0 1px #cbd5e1;
+  background: #111827;
 }
 .sidebarSprints > button > i.white,
 .currentSprint i.white {
   background: #ffffff;
-  box-shadow: inset 0 0 0 1px #cbd5e1;
+  box-shadow: inset 0 0 0 1px #111827;
 }
 .detailIcon.white {
   background: #f8fafc;
@@ -201,7 +201,7 @@
 }
 .embed-sprint-card--white .embed-sprint-card__bar {
   background: #ffffff;
-  box-shadow: inset 0 0 0 1px #cbd5e1;
+  box-shadow: inset 0 0 0 1px #111827;
 }
 
 /* 대시보드 "오늘의 일정" 타임라인 막대 — 일정 색(WorkspaceColor) 중 기존 css에 없던 색이에요. */
@@ -216,5 +216,5 @@
 }
 .timelineBar.white {
   background: #ffffff;
-  box-shadow: inset 0 0 0 1px #cbd5e1;
+  box-shadow: inset 0 0 0 1px #111827;
 }

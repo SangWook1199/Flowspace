@@ -275,6 +275,12 @@
   place-items: center;
   overflow: hidden;
 }
+/* 담당자 없음: 점선 동그라미 */
+.avatarEmpty {
+  background: #fff;
+  color: #9aa6b8;
+  border: 1px dashed #c3ccd9;
+}
 .avatar img {
   width: 100%;
   height: 100%;
@@ -367,6 +373,46 @@
   background: transparent;
   display: grid;
   place-items: center;
+}
+/* 새 작업 이름 입력 줄 */
+.addTaskForm {
+  margin: 14px;
+  display: flex;
+  gap: 8px;
+}
+.addTaskForm input {
+  flex: 1;
+  min-width: 0;
+  height: 48px;
+  border: 1px solid #c9d2df;
+  border-radius: 7px;
+  padding: 0 14px;
+  font-family: inherit;
+  font-size: 13px;
+  outline: 0;
+}
+.addTaskForm input:focus {
+  border-color: #4f5cf6;
+}
+.addTaskForm button {
+  height: 48px;
+  border: 1px solid #dfe6ee;
+  border-radius: 7px;
+  background: #fff;
+  padding: 0 16px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.addTaskForm button[type="submit"] {
+  border-color: #4f5cf6;
+  background: #4f5cf6;
+  color: #fff;
+}
+.addTaskForm button[type="submit"]:disabled {
+  border-color: #dfe6ee;
+  background: #f1f4f9;
+  color: #a3aec0;
+  cursor: default;
 }
 .addTask {
   margin: 14px;
@@ -835,6 +881,19 @@
   align-items: center;
   gap: 4px;
   cursor: pointer;
+}
+/* "나에게 할당": 버튼 모양 없이 글자만 눌러요 */
+.assignMe {
+  border: 0;
+  background: transparent;
+  padding: 0 4px;
+  color: #4254ed;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.assignMe:hover {
+  text-decoration: underline;
 }
 .pickerMenu {
   position: absolute;

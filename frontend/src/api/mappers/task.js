@@ -73,4 +73,5 @@ export const toStatus = (dto) => ({
   color: dto.color,
   position: dto.position ?? 0,
   isDefault: Boolean(dto.isDefault),
+  wipLimit: dto.wipLimit ?? null, // 작업 수 제한(WIP), 없으면 null
 });

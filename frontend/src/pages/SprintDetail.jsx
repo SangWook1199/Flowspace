@@ -24,6 +24,7 @@ export default function SprintDetail() {
     changeSprintStatus,
     deleteSprint,
     updateTask,
+    deleteTasks,
   } = useOutletContext() ?? {};
   const [busy, setBusy] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -119,6 +120,21 @@ export default function SprintDetail() {
 
   const goTasks = () => navigate(`/sprints/${sprint.id}/tasks`);
 
+  // 체크한 작업을 지워요. 지운 작업은 되돌릴 수 없어서 한 번 더 물어보고, 지웠으면 true를 돌려줘요.
+  const handleDeleteTasks = async (taskIds) => {
+    if (taskIds.length === 0) return false;
+    const ok = await confirm({
+      title: "작업 삭제",
+      message: `선택한 작업 ${taskIds.length}개를 삭제할까요?\n삭제한 작업은 되돌릴 수 없어요.`,
+      confirmLabel: "삭제",
+      danger: true,
+    });
+    if (!ok) return false;
+
+    deleteTasks(taskIds);
+    return true;
+  };
+
   // 고른 작업을 이 스프린트로 옮겨요(복사가 아니라 이동이고, 순서는 서버가 정해요).
   const handleImport = (taskIds) => {
     taskIds.forEach((id) => updateTask(id, { sprintId: sprint.id }));
@@ -190,6 +206,8 @@ export default function SprintDetail() {
       <SprintTaskTable
         key={sprintId}
         tasks={tasks}
+        onDeleteTasks={sprint.status === "COMPLETED" ? undefined : handleDeleteTasks}
+        onOpenTask={(task) => navigate(`/sprints/${sprint.id}/tasks?task=${task.id}`)}
         onAdd={sprint.status === "COMPLETED" ? undefined : goTasks}
         onImport={!isBacklog && sprint.status !== "COMPLETED" ? () => setImportOpen(true) : undefined}
       />

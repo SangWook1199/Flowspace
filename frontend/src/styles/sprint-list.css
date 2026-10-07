@@ -206,6 +206,19 @@
   gap: 20px;
   padding: 16px 17px;
 }
+.sprintCard {
+  cursor: pointer;
+  transition:
+    box-shadow 0.15s,
+    border-color 0.15s;
+}
+.sprintCard:hover {
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.07);
+}
+.sprintCard:focus-visible {
+  outline: 2px solid #4f5cf6;
+  outline-offset: 2px;
+}
 .sprintCard.indigo {
   border-left-color: #4f5cf6;
 }

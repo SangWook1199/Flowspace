@@ -2318,7 +2318,7 @@ span.block-number {
   flex: 1;
   min-width: 0;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 400;
   color: #111a2f;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -123,6 +123,26 @@ export function useSprintData({ userId, workspaceId }) {
     [workspaceId, load],
   );
 
+  // 탭이나 창으로 돌아오면(15초 넘게 지났을 때) 조용히 서버 값으로 맞춰요 — 다른 사람이 바꾼 작업·상태가 보여요.
+  // 처음 불러오는 중이거나 불러오지 못한 상태에서는 하지 않아요.
+  useEffect(() => {
+    if (userId == null || workspaceId == null || loadedFor !== workspaceId || error) return undefined;
+
+    let lastLoadedAt = Date.now();
+    const refreshIfStale = () => {
+      if (document.visibilityState === "hidden" || Date.now() - lastLoadedAt < 15000) return;
+      lastLoadedAt = Date.now();
+      load(workspaceId, { silent: true });
+    };
+
+    window.addEventListener("focus", refreshIfStale);
+    document.addEventListener("visibilitychange", refreshIfStale);
+    return () => {
+      window.removeEventListener("focus", refreshIfStale);
+      document.removeEventListener("visibilitychange", refreshIfStale);
+    };
+  }, [userId, workspaceId, loadedFor, error, load]);
+
   /* ---------- 화면용 계산 값 ---------- */
 
   // 상태 id → 카테고리(TODO/IN_PROGRESS/DONE). 스프린트 요약 숫자는 이걸로 세요.
@@ -401,6 +421,7 @@ export function useSprintData({ userId, workspaceId }) {
   };
 
   // 하위 작업을 추가해요(texts는 문자열 배열, 순서대로 하나씩 만들어요).
+  // 모두 추가하면 true, 하나라도 실패하면 안내하고 false를 돌려줘요.
   const addSubtasks = async (taskId, texts) => {
     for (const text of texts) {
       try {
@@ -408,9 +429,10 @@ export function useSprintData({ userId, workspaceId }) {
         patchSubtasks(taskId, (list) => [...list, created]);
       } catch (err) {
         notifyError(err, "하위 작업을 추가하지 못했어요.");
-        return;
+        return false;
       }
     }
+    return true;
   };
 
   const deleteSubtask = async (taskId, subtaskId) => {
@@ -441,6 +463,11 @@ export function useSprintData({ userId, workspaceId }) {
     try {
       const updated = await taskApi.updateStatus(workspaceId, data.id, data);
       setStatuses((prev) => prev.map((status) => (status.id === data.id ? { ...status, ...updated, position: status.position } : status)));
+      // 기본 상태를 고치면 서버가 이 워크스페이스 전용 새 상태(새 id)로 바꿔 끼우고 작업도 그쪽으로 옮겨요.
+      // 화면의 작업도 새 id로 맞춰야 컬럼 밖으로 밀려나지 않아요.
+      if (updated?.id != null && updated.id !== data.id) {
+        setTasks((prev) => prev.map((task) => (task.statusId === data.id ? { ...task, statusId: updated.id } : task)));
+      }
       return true;
     } catch (err) {
       notifyError(err, "상태를 저장하지 못했어요.");

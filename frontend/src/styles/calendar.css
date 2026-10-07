@@ -325,7 +325,7 @@
   align-items: center;
   color: #fff;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 400;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -565,6 +565,7 @@
 .sidebarTask h4 {
   margin: 6px 0;
   font-size: 14px;
+  font-weight: 400;
 }
 
 .taskMeta {
@@ -714,60 +715,60 @@
   color: #fff;
 }
 
-/* Color Picker */
+/* Color Picker — 일정 색 선택. 워크스페이스 생성의 색 선택(.color-chip)과 같은 모양이에요.
+   (.colorPicker/.colorCircle는 스프린트 폼 쪽 스타일과 이름이 겹쳐서 일정 전용 이름을 써요.) */
 
-.colorPicker {
+.eventColorPicker {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
-.colorCircle {
-  width: 28px;
-  height: 28px;
+.eventColorCircle {
+  width: 34px;
+  height: 34px;
+  padding: 0;
   border-radius: 50%;
   border: 3px solid transparent;
   cursor: pointer;
 }
 
-.colorCircle.active {
+.eventColorCircle.active {
   border-color: #111827;
 }
 
-.colorCircle.blue {
+.eventColorCircle.blue {
   background: #3b82f6;
 }
 
-.colorCircle.purple {
+.eventColorCircle.purple {
   background: #9333ea;
 }
 
-.colorCircle.green {
+.eventColorCircle.green {
   background: #22c55e;
 }
 
-.colorCircle.red {
+.eventColorCircle.red {
   background: #ef4444;
 }
 
-.colorCircle.orange {
+.eventColorCircle.orange {
   background: #f59e0b;
 }
 
-.colorCircle.pink {
+.eventColorCircle.pink {
   background: #ec4899;
 }
 
-.colorCircle.gray {
+.eventColorCircle.gray {
   background: #64748b;
 }
 
-.colorCircle.white {
+/* 흰색은 배경과 안 보여서 얇은 검정 테두리를 줘요. */
+.eventColorCircle.white {
   background: #ffffff;
-  border-color: #cbd5e1;
-}
-
-.colorCircle.white.active {
-  border-color: #111827;
+  box-shadow: inset 0 0 0 1px #111827;
 }
 
 /* Responsive */

@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { Check, Plus, X } from "lucide-react";
+import { useAuth } from "../../context/useAuth";
 import UserAvatar from "./UserAvatar";
 import useDismiss from "./useDismiss";
 import styles from "./TaskWorkspace.module.css";
@@ -13,6 +14,9 @@ export default function AssigneePicker({ members = [], value = [], onChange }) {
   useDismiss(open, wrapRef, close);
 
   const selectedIds = new Set(value.map((user) => user.id));
+  // 내가 이 워크스페이스 멤버이고 아직 담당자가 아니면 "나에게 할당"을 보여줘요.
+  const meId = useAuth()?.user?.id;
+  const me = members.find((member) => member.id === meId);
 
   const toggle = (member) => {
     onChange(selectedIds.has(member.id) ? value.filter((user) => user.id !== member.id) : [...value, member]);
@@ -40,6 +44,12 @@ export default function AssigneePicker({ members = [], value = [], onChange }) {
         >
           <Plus size={13} /> {value.length === 0 ? "담당자 선택" : "추가"}
         </button>
+
+        {me && !selectedIds.has(me.id) && (
+          <button type="button" className={styles.assignMe} onClick={() => onChange([...value, me])}>
+            나에게 할당
+          </button>
+        )}
       </div>
 
       {open && (

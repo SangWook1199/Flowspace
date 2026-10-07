@@ -437,6 +437,13 @@
   margin-left: 0;
 }
 
+/* 담당자 없음: 점선 동그라미 + 사람 아이콘 */
+.assigneeAvatar.assigneeEmpty {
+  background: #fff;
+  color: #9aa6b8;
+  border: 1px dashed #c3ccd9;
+}
+
 @media (max-width: 1100px) {
   .detailHero {
     grid-template-columns: 80px 1fr;
@@ -548,7 +555,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
 }
 .importModal__assignees {
   display: flex;
