@@ -1,41 +1,64 @@
-import { useEffect, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
-import { useOutletContext } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useOutletContext } from "react-router-dom";
 
+import CalendarRail from "../components/calendar/CalendarRail";
 import CalendarToolbar from "../components/calendar/CalendarToolbar";
-import CalendarSprintBanner from "../components/calendar/CalendarSprintBanner";
 import CalendarGrid from "../components/calendar/CalendarGrid";
-import DaySidebar from "../components/calendar/DaySidebar";
+import DayPopover from "../components/calendar/DayPopover";
+import EventModal from "../components/calendar/EventModal";
+import EventDetail from "../components/calendar/EventDetail";
 
 import * as eventApi from "../api/events";
-import { useRequest } from "../hooks/useRequest";
-import { getErrorMessage } from "../utils/apiError";
-import { toDateKey, todayKey, parseDateKey } from "../utils/date";
-import { pickCurrentSprint } from "../utils/sprintRange";
+import { useCalendarEvents } from "../hooks/useCalendarEvents";
+import { toDateKey, todayKey, parseDateKey, inclusiveDays } from "../utils/date";
+import { isCalendarSprint, pickInitialSprint } from "../utils/calendarSprint";
 import { isEventOnDate, sortEventsByStart } from "../utils/calendarRange";
+import { compareDayTasks } from "../utils/calendarTaskOrder";
 
-const EVENT_COLORS = [
-  "WHITE",
-  "BLUE",
-  "PURPLE",
-  "GREEN",
-  "RED",
-  "ORANGE",
-  "PINK",
-  "GRAY",
-];
+// 달력에 보이는 것(작업/일정/완료된 작업/긴 작업)을 껐다 켜는 설정이에요. 브라우저에 기억해둬요.
+// 기간이 긴 작업은 스프린트 내내 이어지는 막대가 달력을 덮어서 기본은 숨겨요(왼쪽 레일에서 켤 수 있어요).
+const VIEW_KEY = "flowspace.calendar.view";
+const DEFAULT_VIEW = { tasks: true, events: true, done: true, long: false };
+const LONG_TASK_DAYS = 7;
 
-// 색상 버튼은 색만 있어서 스크린리더가 읽을 이름이 없어요. 그래서 aria-label용 한글 이름을 따로 둬요.
-const COLOR_LABEL = {
-  BLUE: "파랑",
-  PURPLE: "보라",
-  GREEN: "초록",
-  RED: "빨강",
-  ORANGE: "주황",
-  PINK: "분홍",
-  GRAY: "회색",
-  WHITE: "흰색",
+// 작업 페이지에 갔다가 돌아와도 보던 스프린트와 날짜가 그대로이도록, 탭이 열려 있는 동안만 기억해둬요.
+const stateKey = (workspaceId) => `flowspace.calendar.state.${workspaceId}`;
+
+const loadState = (workspaceId) => {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(stateKey(workspaceId)));
+    return saved && typeof saved === "object" ? saved : {};
+  } catch {
+    return {};
+  }
 };
+
+const saveState = (workspaceId, state) => {
+  try {
+    sessionStorage.setItem(stateKey(workspaceId), JSON.stringify(state));
+  } catch {
+    // 저장하지 못해도 화면은 그대로 동작해요.
+  }
+};
+
+const loadView = () => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(VIEW_KEY));
+    return saved && typeof saved === "object" ? { ...DEFAULT_VIEW, ...saved } : DEFAULT_VIEW;
+  } catch {
+    return DEFAULT_VIEW;
+  }
+};
+
+const saveView = (view) => {
+  try {
+    localStorage.setItem(VIEW_KEY, JSON.stringify(view));
+  } catch {
+    // 저장하지 못해도 화면은 그대로 동작해요.
+  }
+};
+
+const isLongTask = (task) => inclusiveDays(task.start, task.end) > LONG_TASK_DAYS;
 
 // 그 달 1일의 Date. setMonth로 달을 옮기면 31일 같은 날짜가 다음 달로 넘쳐서(1/31 + 1달 = 3/3),
 // 항상 "연, 월, 1일"로 새로 만들어요.
@@ -51,14 +74,6 @@ const pickDateForMonth = (monthDate, selectedDate, today) => {
   return `${prefix}-01`;
 };
 
-const createEmptyEvent = (dateKey) => ({
-  title: "",
-  description: "",
-  start_datetime: `${dateKey}T09:00`,
-  end_datetime: `${dateKey}T10:00`,
-  color: "PURPLE",
-});
-
 // 공용 작업 → 캘린더가 쓰는 작업 모양. 날짜가 없는 작업은 달력에 올릴 수 없어서 빼요.
 const toCalendarTask = (task, statusById) => {
   const status = statusById[task.statusId];
@@ -69,11 +84,16 @@ const toCalendarTask = (task, statusById) => {
     sprintId: task.sprintId,
     code: task.code ?? task.id,
     title: task.title,
-    assignee: (task.assignees ?? []).map((a) => a.name).join(", "),
+    assignees: task.assignees ?? [],
     start: task.startDate,
     // 마감일이 없거나 시작일보다 앞서면 하루짜리로 보여요.
     end: task.dueDate && task.dueDate >= task.startDate ? task.dueDate : task.startDate,
-    status: { id: task.statusId, name: status?.name ?? task.statusName, color: status?.color ?? "GRAY" },
+    status: {
+      id: task.statusId,
+      name: status?.name ?? task.statusName,
+      color: status?.color ?? "GRAY",
+      category: status?.category,
+    },
     priority: task.priority,
     complete: subtasks.filter((s) => s.checked).length,
     total: subtasks.length,
@@ -114,31 +134,52 @@ function CalendarBody() {
   // 배너의 색은 서버 색 이름(BLUE 등)을 읽어서, 스프린트의 colorCode를 color로 넘겨줘요.
   const calendarSprints = useMemo(() => sprints.map((s) => ({ ...s, color: s.colorCode })), [sprints]);
 
-  // 기본으로 보여줄 스프린트: 오늘이 기간에 들어가는 스프린트 → 없으면 가장 가까운 예정/최근 스프린트 → 없으면 첫 번째.
+  // 돌아왔을 때를 위해 기억해둔 값(보던 스프린트/날짜)이에요. 사라진 스프린트나 잘못된 날짜는 쓰지 않아요.
+  const [saved] = useState(() => {
+    const state = loadState(workspaceId);
+    const sprintOk = calendarSprints.some((s) => s.id === state.sprintId && isCalendarSprint(s));
+
+    return {
+      sprintId: sprintOk ? state.sprintId : null,
+      date: typeof state.date === "string" && parseDateKey(state.date) ? state.date : null,
+    };
+  });
+
+  // 기본으로 보여줄 스프린트: 기억해둔 것 → "진행 중" 상태인 스프린트(오늘이 기간에 든 것 먼저) → 가까운 예정/최근 스프린트.
   const [selectedSprint, setSelectedSprint] = useState(
-    () => pickCurrentSprint(calendarSprints, today)?.id ?? calendarSprints[0]?.id ?? null,
+    () => saved.sprintId ?? pickInitialSprint(calendarSprints, today)?.id ?? null,
   );
-  const [selectedDate, setSelectedDate] = useState(today);
+  const [selectedDate, setSelectedDate] = useState(saved.date ?? today);
   const [currentMonth, setCurrentMonth] = useState(() => {
-    const base = parseDateKey(today) ?? new Date();
+    const base = parseDateKey(saved.date ?? today) ?? new Date();
     return firstOfMonth(base.getFullYear(), base.getMonth());
   });
 
-  // 일정은 보고 있는 달(앞뒤 한 달 포함)을 서버에서 받아요. 달을 옮기면 다시 받아요.
+  // 일정은 보고 있는 달(앞뒤 한 달 포함)을 월별로 받아서 기억해요(이미 받은 달은 다시 받지 않아요).
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth() + 1;
   const {
-    data: events,
+    events,
     error: eventsError,
-    setData: setEvents,
-  } = useRequest(() => eventApi.getEventsAround(workspaceId, year, month), [workspaceId, year, month], {
-    initialData: [],
-  });
-  const [openModal, setOpenModal] = useState(false);
-  const [formError, setFormError] = useState("");
-  const [saving, setSaving] = useState(false);
+    failedCount,
+    retry: retryEvents,
+    addEvent,
+    replaceEvent,
+    removeEvent,
+  } = useCalendarEvents(workspaceId, year, month);
 
-  const [newEvent, setNewEvent] = useState(() => createEmptyEvent(today));
+  useEffect(() => {
+    saveState(workspaceId, { sprintId: selectedSprint, date: selectedDate });
+  }, [workspaceId, selectedSprint, selectedDate]);
+
+  const mainRef = useRef(null);
+  const [view, setView] = useState(loadView);
+  const [railOpen, setRailOpen] = useState(() => typeof window === "undefined" || window.innerWidth >= 1200);
+  // 날짜를 누르면 그 칸 옆에 상세 패널이 떠요.
+  const [detailOpen, setDetailOpen] = useState(false);
+  // 열려 있는 창: { type: "create" } | { type: "detail", id } | { type: "edit", id }
+  const [modal, setModal] = useState(null);
+  const navigate = useNavigate();
 
   // 스프린트를 못 찾으면 undefined예요. 아래 배너/사이드바가 undefined를 받아도 안 깨지게 처리해뒀어요.
   const sprint = useMemo(
@@ -155,12 +196,45 @@ function CalendarBody() {
       .map((task) => toCalendarTask(task, statusById));
   }, [sprintTasks, taskStatuses, selectedSprint]);
 
+  // 표시 설정(완료된 작업/긴 작업/작업 자체)을 적용한 작업만 달력 칸에 올려요. 상세 패널에는 전부 보여줘요.
+  const gridTasks = useMemo(
+    () =>
+      view.tasks
+        ? calendarTasks.filter(
+            (task) => (view.done || task.status.category !== "DONE") && (view.long || !isLongTask(task)),
+          )
+        : [],
+    [calendarTasks, view],
+  );
+
+  const hiddenLongCount = useMemo(
+    () =>
+      view.tasks
+        ? calendarTasks.filter((task) => (view.done || task.status.category !== "DONE") && isLongTask(task)).length
+        : 0,
+    [calendarTasks, view.tasks, view.done],
+  );
+
+  const toggleView = (key) => {
+    setView((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      saveView(next);
+      return next;
+    });
+  };
+
   const todayTasks = useMemo(
     () =>
-      calendarTasks.filter(
-        (task) => selectedDate >= task.start && selectedDate <= task.end,
-      ),
+      calendarTasks
+        .filter((task) => selectedDate >= task.start && selectedDate <= task.end)
+        .sort(compareDayTasks),
     [calendarTasks, selectedDate],
+  );
+
+  // 지금 열어 본 일정(수정하면 목록의 새 값으로 바뀌어요). 지워졌으면 없어서 창이 닫혀요.
+  const openedEvent = useMemo(
+    () => (modal?.id == null ? null : (events.find((event) => event.event_id === modal.id) ?? null)),
+    [events, modal],
   );
 
   const todayEvents = useMemo(
@@ -171,18 +245,6 @@ function CalendarBody() {
     [events, selectedDate],
   );
 
-  // 모달이 열려 있는 동안 Esc로 닫을 수 있게 해요(키보드만 쓰는 사용자가 모달에 갇히지 않게).
-  useEffect(() => {
-    if (!openModal) return undefined;
-
-    const onKeyDown = (e) => {
-      if (e.key === "Escape") setOpenModal(false);
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [openModal]);
-
   const moveMonth = (diff) => {
     const next = firstOfMonth(
       currentMonth.getFullYear(),
@@ -191,236 +253,163 @@ function CalendarBody() {
 
     setCurrentMonth(next);
     setSelectedDate((prev) => pickDateForMonth(next, prev, today));
+    setDetailOpen(false);
+  };
+
+  const selectDate = (dateKey) => {
+    setSelectedDate(dateKey);
+    setDetailOpen(true);
+  };
+
+  // 미니 달력에서 날짜를 누르면(다른 달 날짜면 그 달로 옮기고) 그 날 상세를 열어요.
+  const selectFromMini = (date) => {
+    if (!date.isCurrentMonth) setCurrentMonth(firstOfMonth(date.year, date.month));
+    selectDate(date.full);
+  };
+
+  // 스프린트를 바꾸면, 지금 보는 달이 그 스프린트 기간과 겹치지 않을 때 스프린트가 시작하는 달로 같이 옮겨요
+  // (달력에 아무 작업도 안 보이는 채로 스프린트만 바뀌지 않게요).
+  const changeSprint = (id) => {
+    setSelectedSprint(id);
+
+    const picked = calendarSprints.find((s) => s.id === id);
+    if (!picked?.startDate || !picked?.endDate) return;
+
+    const monthStart = toDateKey(currentMonth);
+    const monthEnd = toDateKey(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0));
+    if (picked.startDate <= monthEnd && picked.endDate >= monthStart) return;
+
+    const base = parseDateKey(picked.startDate);
+    if (!base) return;
+    setCurrentMonth(firstOfMonth(base.getFullYear(), base.getMonth()));
+    setSelectedDate(picked.startDate);
+    setDetailOpen(false);
   };
 
   const goToday = () => {
     const base = parseDateKey(today) ?? new Date();
     setCurrentMonth(firstOfMonth(base.getFullYear(), base.getMonth()));
     setSelectedDate(today);
+    setDetailOpen(false);
   };
 
   const openCreateModal = () => {
-    setNewEvent(createEmptyEvent(selectedDate));
-    setFormError("");
-    setOpenModal(true);
+    setDetailOpen(false);
+    setModal({ type: "create" });
   };
 
-  const updateNewEvent = (patch) => {
-    setNewEvent((prev) => ({ ...prev, ...patch }));
-    setFormError("");
+  // 달력의 일정이나 날짜 상세의 일정을 누르면 그 일정의 자세한 내용(설명 포함)을 보여줘요.
+  const openEvent = (event) => {
+    setDetailOpen(false);
+    setModal({ type: "detail", id: event.event_id });
   };
 
-  const createEvent = async () => {
-    if (saving) return;
-
-    const title = newEvent.title.trim();
-
-    // 저장을 막는 이유를 alert 대신 모달 안에 보여줘요(alert는 화면 흐름을 끊고 접근성도 나빠요).
-    if (!title) {
-      setFormError("일정 제목을 입력해 주세요.");
-      return;
-    }
-
-    if (!newEvent.start_datetime) {
-      setFormError("시작 일시를 입력해 주세요.");
-      return;
-    }
-
-    // "YYYY-MM-DDTHH:mm" 문자열은 사전순 비교가 곧 시간순이라 날짜와 시각을 한 번에 비교할 수 있어요.
-    if (
-      newEvent.end_datetime &&
-      newEvent.end_datetime < newEvent.start_datetime
-    ) {
-      setFormError("종료 일시는 시작 일시보다 빠를 수 없어요.");
-      return;
-    }
-
-    // datetime-local을 지우면 ""가 와서 ?? 로는 못 걸러요. 서버 요청을 만들 때 ||로 빈 값을 null로 바꿔요.
-    setSaving(true);
-
-    try {
-      const created = await eventApi.createEvent(workspaceId, { ...newEvent, title });
-      setEvents((prev) => [...(prev ?? []), created]);
-
-      setOpenModal(false);
-      setFormError("");
-      setNewEvent(createEmptyEvent(selectedDate));
-    } catch (err) {
-      setFormError(getErrorMessage(err, "일정을 만들지 못했어요."));
-    } finally {
-      setSaving(false);
-    }
+  // 서버에 저장하고 달력에 바로 보여줘요. 실패하면 오류를 그대로 던져서 창이 안에 보여줘요.
+  const createEvent = async (form) => {
+    addEvent(await eventApi.createEvent(workspaceId, form));
   };
+
+  const updateEvent = async (id, form) => {
+    replaceEvent(await eventApi.updateEvent(id, form));
+  };
+
+  const deleteEvent = async (event) => {
+    await eventApi.deleteEvent(event.event_id);
+    removeEvent(event.event_id);
+  };
+
+  // 팝오버의 작업을 누르면 작업 페이지로 가서 그 작업이 선택된 채로 열려요.
+  const openTask = (task) => navigate(`/sprints/${task.sprintId}/tasks?task=${task.id}`);
 
   return (
     <div className="calendarPage">
-      <header className="calendarHeader">
-        <div>
-          <h1>캘린더</h1>
-          <p>작업과 일정을 한눈에 확인하고 관리하세요.</p>
+      <div className={`calendarApp${railOpen ? "" : " railClosed"}`}>
+        {railOpen && (
+          <CalendarRail
+            currentMonth={currentMonth}
+            selectedDate={selectedDate}
+            today={today}
+            events={events}
+            sprint={sprint}
+            sprintList={calendarSprints}
+            onSprintChange={changeSprint}
+            view={view}
+            onToggleView={toggleView}
+            hiddenLongCount={hiddenLongCount}
+            onPrevMonth={() => moveMonth(-1)}
+            onNextMonth={() => moveMonth(1)}
+            onSelectDate={selectFromMini}
+            onAddEvent={openCreateModal}
+          />
+        )}
+
+        <div className="calendarMain" ref={mainRef}>
+          <CalendarToolbar
+            currentMonth={currentMonth}
+            today={today}
+            sprint={sprint}
+            railOpen={railOpen}
+            onToggleRail={() => setRailOpen((prev) => !prev)}
+            onPrevMonth={() => moveMonth(-1)}
+            onNextMonth={() => moveMonth(1)}
+            onToday={goToday}
+          />
+
+          {eventsError && (
+            <p className="emptyText calendarError" role="alert">
+              {failedCount > 1 ? "일부 달의 일정을 불러오지 못했어요." : "일정을 불러오지 못했어요."} {eventsError}{" "}
+              <button type="button" className="toolbarBtn" onClick={retryEvents}>
+                다시 시도
+              </button>
+            </p>
+          )}
+
+          <CalendarGrid
+            currentMonth={currentMonth}
+            tasks={gridTasks}
+            events={view.events ? events : []}
+            selectedDate={selectedDate}
+            today={today}
+            onSelectDate={selectDate}
+            onMonthChange={setCurrentMonth}
+            onOpenEvent={openEvent}
+          />
+
+          {detailOpen && (
+            <DayPopover
+              date={selectedDate}
+              today={today}
+              tasks={todayTasks}
+              events={todayEvents}
+              containerRef={mainRef}
+              onClose={() => setDetailOpen(false)}
+              onAddEvent={openCreateModal}
+              onOpenTask={openTask}
+              onOpenEvent={openEvent}
+            />
+          )}
         </div>
-
-        <button className="primaryBtn" onClick={openCreateModal}>
-          <Plus size={16} />
-          일정 추가
-        </button>
-      </header>
-
-      <CalendarToolbar
-        sprintList={calendarSprints}
-        selectedSprint={selectedSprint ?? ""}
-        onSprintChange={setSelectedSprint}
-        currentMonth={currentMonth}
-        onPrevMonth={() => moveMonth(-1)}
-        onNextMonth={() => moveMonth(1)}
-        onToday={goToday}
-      />
-
-      <CalendarSprintBanner sprint={sprint} today={today} />
-
-      {eventsError && (
-        <p className="emptyText" role="alert" style={{ color: "#ef4444" }}>
-          일정을 불러오지 못했어요. {eventsError}
-        </p>
-      )}
-
-      <div className="calendarContent">
-        <CalendarGrid
-          currentMonth={currentMonth}
-          tasks={calendarTasks}
-          events={events ?? []}
-          selectedDate={selectedDate}
-          onSelectDate={setSelectedDate}
-          onMonthChange={setCurrentMonth}
-        />
-
-        <DaySidebar
-          date={selectedDate}
-          sprint={sprint}
-          tasks={todayTasks}
-          events={todayEvents}
-        />
       </div>
 
-      {openModal && (
-        <div className="modalOverlay" onClick={() => setOpenModal(false)}>
-          <div
-            className="scheduleModal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="scheduleModalTitle"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="scheduleModalHeader">
-              <h2 id="scheduleModalTitle">새 일정</h2>
+      {modal?.type === "create" && (
+        <EventModal initialDate={selectedDate} onClose={() => setModal(null)} onSubmit={createEvent} />
+      )}
 
-              <button
-                className="closeBtn"
-                aria-label="닫기"
-                onClick={() => setOpenModal(false)}
-              >
-                ✕
-              </button>
-            </div>
+      {modal?.type === "detail" && openedEvent && (
+        <EventDetail
+          event={openedEvent}
+          onClose={() => setModal(null)}
+          onEdit={(event) => setModal({ type: "edit", id: event.event_id })}
+          onDelete={deleteEvent}
+        />
+      )}
 
-            <div className="scheduleModalBody">
-              <div className="field">
-                <label htmlFor="eventTitle">일정 제목</label>
-
-                <input
-                  id="eventTitle"
-                  autoFocus
-                  placeholder="예) 팀 회의"
-                  value={newEvent.title}
-                  onChange={(e) => updateNewEvent({ title: e.target.value })}
-                />
-              </div>
-
-              <div className="field">
-                <label htmlFor="eventDescription">설명</label>
-
-                <textarea
-                  id="eventDescription"
-                  rows={3}
-                  placeholder="회의 내용 또는 메모"
-                  value={newEvent.description}
-                  onChange={(e) =>
-                    updateNewEvent({ description: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="field">
-                <label htmlFor="eventStart">시작 일시</label>
-
-                <input
-                  id="eventStart"
-                  type="datetime-local"
-                  value={newEvent.start_datetime}
-                  onChange={(e) =>
-                    updateNewEvent({ start_datetime: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="field">
-                <label htmlFor="eventEnd">종료 일시</label>
-
-                <input
-                  id="eventEnd"
-                  type="datetime-local"
-                  value={newEvent.end_datetime}
-                  onChange={(e) =>
-                    updateNewEvent({ end_datetime: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="field">
-                <label id="eventColorLabel">색상</label>
-
-                <div
-                  className="eventColorPicker"
-                  role="group"
-                  aria-labelledby="eventColorLabel"
-                >
-                  {EVENT_COLORS.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      aria-label={COLOR_LABEL[color]}
-                      aria-pressed={newEvent.color === color}
-                      className={`eventColorCircle ${color.toLowerCase()} ${
-                        newEvent.color === color ? "active" : ""
-                      }`}
-                      onClick={() => updateNewEvent({ color })}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {formError && (
-                <p
-                  className="emptyText"
-                  role="alert"
-                  style={{ color: "#ef4444" }}
-                >
-                  {formError}
-                </p>
-              )}
-            </div>
-
-            <div className="scheduleModalFooter">
-              <button className="cancelBtn" onClick={() => setOpenModal(false)}>
-                취소
-              </button>
-
-              <button className="saveBtn" onClick={createEvent} disabled={saving}>
-                {saving ? "저장 중…" : "생성"}
-              </button>
-            </div>
-          </div>
-        </div>
+      {modal?.type === "edit" && openedEvent && (
+        <EventModal
+          event={openedEvent}
+          onClose={() => setModal({ type: "detail", id: openedEvent.event_id })}
+          onSubmit={(form) => updateEvent(openedEvent.event_id, form)}
+        />
       )}
     </div>
   );

@@ -1,22 +1,24 @@
 import client from "./client";
 import { toEvent, toEventRequest } from "./mappers";
 
-// 보고 있는 달(month: 1~12)의 일정. 달력 칸에는 앞뒤 달의 날짜도 보여서 앞뒤 한 달씩 함께 받아요.
-// 서버의 캘린더 조회는 작업과 일정을 같이 주는데, 작업은 이미 불러둔 걸 쓰니까 일정(EVENT)만 골라요.
+// 한 달(month: 1~12)의 일정. 서버의 캘린더 조회는 작업과 일정을 같이 주는데,
+// 작업은 이미 불러둔 걸 쓰니까 일정(EVENT)만 골라요. 일정은 "시작일이 그 달인 것"이 와요.
+export const getEventsOfMonth = async (workspaceId, year, month) => {
+  const { data } = await client.get(`/workspaces/${workspaceId}/calendar`, { params: { year, month } });
+  return data.filter((item) => item.type === "EVENT").map(toEvent);
+};
+
+// 보고 있는 달의 일정. 달력 칸에는 앞뒤 달의 날짜도 보여서 앞뒤 한 달씩 함께 받아요(대시보드가 써요).
 export const getEventsAround = async (workspaceId, year, month) => {
   const months = [-1, 0, 1].map((diff) => {
     const date = new Date(year, month - 1 + diff, 1);
     return { year: date.getFullYear(), month: date.getMonth() + 1 };
   });
 
-  const responses = await Promise.all(
-    months.map((params) => client.get(`/workspaces/${workspaceId}/calendar`, { params })),
-  );
+  const lists = await Promise.all(months.map((m) => getEventsOfMonth(workspaceId, m.year, m.month)));
 
   const events = new Map();
-  responses.forEach(({ data }) => {
-    data.filter((item) => item.type === "EVENT").forEach((item) => events.set(item.id, toEvent(item)));
-  });
+  lists.flat().forEach((event) => events.set(event.event_id, event));
 
   return [...events.values()];
 };
@@ -42,4 +44,15 @@ export const searchEvents = async (workspaceId, keyword = "") => {
 export const createEvent = async (workspaceId, form) => {
   const { data } = await client.post(`/workspaces/${workspaceId}/events`, toEventRequest(form));
   return toEvent(data);
+};
+
+// 일정 고치기 (form은 새 일정 모달과 같은 값)
+export const updateEvent = async (eventId, form) => {
+  const { data } = await client.patch(`/events/${eventId}`, toEventRequest(form));
+  return toEvent(data);
+};
+
+// 일정 지우기
+export const deleteEvent = async (eventId) => {
+  await client.delete(`/events/${eventId}`);
 };
