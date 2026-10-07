@@ -1,14 +1,28 @@
-import { useContext, useRef, useState } from "react";
-import { CalendarDays, Plus, Send, Trash2, X } from "lucide-react";
+import { useCallback, useContext, useRef, useState } from "react";
+import { CalendarDays, ChevronDown, ChevronUp, GripVertical, Plus, Send, Trash2, UserPlus, X } from "lucide-react";
 import styles from "./TaskWorkspace.module.css";
+import UserAvatar from "./UserAvatar";
+import useDismiss from "./useDismiss";
 import { useAuth } from "../../context/useAuth";
+import useDialog from "../../context/useDialog";
 import WorkspaceContext from "../../context/WorkspaceContext";
+import AssigneePicker from "./AssigneePicker";
+import PrioritySelect from "./PrioritySelect";
+import RichTextEditor from "./RichTextEditor";
 import MentionInput from "../common/MentionInput";
 import MentionText from "../common/MentionText";
 import { useMemberProfile } from "../../context/MemberProfileContext";
 import { useTaskComments } from "../../hooks/useTaskComments";
 import { toRelativeTime } from "../../api/mappers";
-import { isRangeReversed, parseDateKey, percentOf, toDateKey } from "../../utils/date";
+import { formatDateDots, isRangeReversed, parseDateKey, percentOf, toDateKey } from "../../utils/date";
+import { htmlToText, textToHtml } from "../../utils/sanitizeHtml";
+
+// 설명은 서식 있는 글(HTML)로 저장돼요. 에디터가 없던 때 쓴 줄바꿈뿐인 글(태그도 &nbsp; 같은 기호도 없는 글)만
+// 처음 열 때 한 번 줄바꿈이 보이게 바꿔요. (타이핑 중에는 바꾸지 않아요 — 스페이스가 &nbsp;로 저장되는데
+// 그걸 다시 글자로 취급하면 "&amp;nbsp;"가 쌓이고 커서가 튀어요.)
+const DESCRIPTION_MAX = 5000;
+const looksLikeHtml = (text) => /<[a-z][\s\S]*>|&(nbsp|amp|lt|gt|quot|#\d+);/i.test(text ?? "");
+const toEditorHtml = (text) => (looksLikeHtml(text) ? text : textToHtml(text));
 
 // "YYYY-MM-DD"로 끝까지 입력된, 실제로 있는 날짜인지 확인해요(2월 30일 같은 건 거절). 연도는 4자리라도
 // 0002처럼 타이핑 중간 값이 올 수 있어서 1900~2999 사이만 인정해요.
@@ -19,15 +33,19 @@ const isCompleteDate = (value) => {
   return year >= 1900 && year <= 2999 && date !== null && toDateKey(date) === value;
 };
 
-// members(담당자 후보 이름 목록)는 부모가 내려줘요 — 이 컴포넌트가 mock을 직접 읽지 않아요.
+// members(담당자 후보인 워크스페이스 멤버 목록)는 부모가 내려줘요 — 이 컴포넌트가 mock을 직접 읽지 않아요.
 export default function TaskDetailPanel({
   task,
+  sprintRange = null,
   members = [],
   selectedIds,
   onChange,
   onClose,
   onAddSubtask,
   onToggleSubtask,
+  onRenameSubtask,
+  onAssignSubtask,
+  onMoveSubtask,
   onDeleteSubtask,
   onBatchChange,
   onDelete,
@@ -35,6 +53,7 @@ export default function TaskDetailPanel({
   // 날짜가 거절됐을 때 보여줄 메시지예요. 어느 작업에서 난 건지(id)도 같이 들고 있어서, 다른 작업으로
   // 옮기면 저절로 사라져요.
   const [dateError, setDateError] = useState({ taskId: null, message: "" });
+  const { confirm } = useDialog();
 
   const batchMode = selectedIds.length > 1;
   if (batchMode)
@@ -60,6 +79,10 @@ export default function TaskDetailPanel({
     );
   const subtasks = task.subtasks ?? [];
   const done = subtasks.filter((item) => item.checked).length;
+  // 작업 날짜가 스프린트 기간을 벗어나면 안내해요(저장은 막지 않아요).
+  const outOfSprint =
+    Boolean(sprintRange?.startDate && sprintRange?.endDate) &&
+    [task.startDate, task.dueDate].some((value) => value && (value < sprintRange.startDate || value > sprintRange.endDate));
 
   // 시작일이 마감일보다 늦어지거나 마감일이 시작일보다 앞서는 변경은 받아들이지 않고 이유를 보여줘요.
   const changeDate = (key, value) => {
@@ -85,34 +108,23 @@ export default function TaskDetailPanel({
       <header>
         <div>
           <small>{task.code ?? task.id}</small>
-          <h2>
-            <TitleInput key={task.id} value={task.title} onChange={(value) => onChange("title", value)} />
-          </h2>
         </div>
         <button type="button" className={styles.close} onClick={onClose} aria-label="닫기">
           <X size={20} />
         </button>
       </header>
-      <Field label="담당자">
-        <select
-          value={task.assignee}
-          onChange={(e) => onChange("assignee", e.target.value)}
-        >
-          {members.map((member) => (
-            <option key={member}>{member}</option>
-          ))}
-        </select>
-      </Field>
-      <Field label="우선순위">
-        <select
-          value={task.priority}
-          onChange={(e) => onChange("priority", e.target.value)}
-        >
-          <option>높음</option>
-          <option>보통</option>
-          <option>낮음</option>
-        </select>
-      </Field>
+      <div className={styles.field}>
+        <span>제목</span>
+        <TitleInput key={task.id} value={task.title} onChange={(value) => onChange("title", value)} />
+      </div>
+      <div className={styles.field}>
+        <span>담당자</span>
+        <AssigneePicker members={members} value={task.assignees ?? []} onChange={(list) => onChange("assignees", list)} />
+      </div>
+      <div className={styles.field}>
+        <span>우선순위</span>
+        <PrioritySelect value={task.priority} onChange={(value) => onChange("priority", value)} />
+      </div>
       <div className={styles.dateFields}>
         <Field label="시작일">
           <DateInput
@@ -129,18 +141,17 @@ export default function TaskDetailPanel({
           />
         </Field>
       </div>
+      {outOfSprint && (
+        <small className={styles.dateWarn} role="status">
+          스프린트 기간({formatDateDots(sprintRange.startDate)} ~ {formatDateDots(sprintRange.endDate)}) 밖의 날짜가 있어요.
+        </small>
+      )}
       {dateError.taskId === task.id && (
         <small role="alert" style={{ color: "#dc2626", display: "block", marginTop: -8, marginBottom: 12 }}>
           {dateError.message}
         </small>
       )}
-      <Field label="설명">
-        <textarea
-          value={task.description}
-          maxLength="1000"
-          onChange={(e) => onChange("description", e.target.value)}
-        />
-      </Field>
+      <DescriptionField key={`description-${task.id}`} description={task.description} onChange={(html) => onChange("description", html)} />
       <div className={styles.subtasks}>
         <h3>
           하위 작업{" "}
@@ -155,36 +166,281 @@ export default function TaskDetailPanel({
             />
           </i>
         </h3>
-        {subtasks.map((subtask, index) => (
-          <label key={`${subtask.id ?? subtask.text}-${index}`}>
-            <input
-              type="checkbox"
-              checked={subtask.checked}
-              onChange={() => onToggleSubtask(index)}
-            />
-            <span>{subtask.text}</span>
-            <Trash2
-              size={14}
-              style={{ cursor: "pointer" }}
-              aria-label="하위 작업 삭제"
-              onClick={(e) => {
-                // label 안이라 그냥 두면 체크박스도 같이 토글돼요.
-                e.preventDefault();
-                if (!window.confirm("이 하위 작업을 삭제할까요?")) return;
-                onDeleteSubtask?.(index);
-              }}
-            />
-          </label>
-        ))}
-        <div>
-          <button type="button" onClick={() => onAddSubtask(false)}>
-            <Plus size={15} /> 하위 작업 추가
-          </button>
-          <button type="button" onClick={() => onAddSubtask(true)}>여러 개 추가</button>
-        </div>
+        <SubtaskList
+          subtasks={subtasks}
+          taskAssignees={task.assignees ?? []}
+          onToggle={onToggleSubtask}
+          onRename={(subtaskId, text) => onRenameSubtask?.(subtaskId, text)}
+          onAssign={(subtaskId, assigneeId) => onAssignSubtask?.(subtaskId, assigneeId)}
+          onMove={(from, to) => onMoveSubtask?.(from, to)}
+          onDelete={async (index) => {
+            const ok = await confirm({ title: "하위 작업 삭제", message: "이 하위 작업을 삭제할까요?", confirmLabel: "삭제", danger: true });
+            if (ok) onDeleteSubtask?.(index);
+          }}
+        />
+        <SubtaskAdd key={`subtask-add-${task.id}`} onAdd={onAddSubtask} />
       </div>
-      <TaskComments key={task.id} taskId={task.id} />
+      <TaskComments key={`comments-${task.id}`} taskId={task.id} />
     </aside>
+  );
+}
+
+// 작업 설명 에디터예요. 처음 열 때의 값만 에디터에 넣고(작업을 바꾸면 key로 새로 시작해요), 그 뒤로는 에디터가
+// 알려주는 값을 저장만 해요 — 저장된 값을 다시 에디터에 밀어넣으면 커서가 튀어요.
+function DescriptionField({ description, onChange }) {
+  const [initialHtml] = useState(() => toEditorHtml(description));
+  const [tooLong, setTooLong] = useState(false);
+
+  return (
+    <div className={styles.field}>
+      <span>설명</span>
+      <RichTextEditor
+        label=""
+        value={initialHtml}
+        maxLength={DESCRIPTION_MAX}
+        placeholder="작업에 대한 설명을 작성하세요. (선택)"
+        hint="글머리 기호, 번호 목록, 링크를 쓸 수 있어요."
+        onChange={(html) => {
+          // 너무 길면 저장하지 않고 안내해요(서버가 거절하기 전에 막아요).
+          if (htmlToText(html).length > DESCRIPTION_MAX) {
+            setTooLong(true);
+            return;
+          }
+          setTooLong(false);
+          onChange(html);
+        }}
+      />
+      {tooLong && (
+        <small role="alert" style={{ color: "#dc2626", display: "block", marginTop: 6 }}>
+          설명이 너무 길어서 저장하지 않았어요. {DESCRIPTION_MAX.toLocaleString()}자 이하로 줄여주세요.
+        </small>
+      )}
+    </div>
+  );
+}
+
+// 하위 작업 목록이에요. 왼쪽 손잡이(⋮⋮)를 끌어서 순서를 바꿔요(손잡이에 포커스를 두고 위/아래 화살표 키로도 돼요).
+function SubtaskList({ subtasks, taskAssignees, onToggle, onRename, onAssign, onMove, onDelete }) {
+  const [dragIndex, setDragIndex] = useState(null);
+  const [overIndex, setOverIndex] = useState(null);
+
+  const endDrag = () => {
+    setDragIndex(null);
+    setOverIndex(null);
+  };
+
+  // 마우스 높이(Y)로 "몇 번째 줄 자리"인지 계산해요. 줄 사이 틈이나 맨 아래 빈 곳에 놓아도 가장 가까운 자리로 들어가요.
+  const indexAt = (container, clientY) => {
+    const rows = Array.from(container.children);
+    for (let i = 0; i < rows.length; i += 1) {
+      const box = rows[i].getBoundingClientRect();
+      if (clientY < box.top + box.height / 2) return i;
+    }
+    return rows.length - 1;
+  };
+
+  return (
+    <div
+      className={styles.subtaskList}
+      onDragOver={(e) => {
+        if (dragIndex === null) return;
+        e.preventDefault();
+        setOverIndex(indexAt(e.currentTarget, e.clientY));
+      }}
+      onDrop={(e) => {
+        if (dragIndex === null) return;
+        e.preventDefault();
+        const target = indexAt(e.currentTarget, e.clientY);
+        if (target !== dragIndex) onMove(dragIndex, target);
+        endDrag();
+      }}
+    >
+      {subtasks.map((subtask, index) => (
+        <SubtaskRow
+          key={`${subtask.id}-${subtask.text}`}
+          subtask={subtask}
+          taskAssignees={taskAssignees}
+          dragging={dragIndex === index}
+          dropMark={dragIndex !== null && overIndex === index && dragIndex !== index ? (dragIndex < index ? "down" : "up") : ""}
+          isFirst={index === 0}
+          isLast={index === subtasks.length - 1}
+          onToggle={() => onToggle(index)}
+          onRename={(text) => onRename(subtask.id, text)}
+          onAssign={(assigneeId) => onAssign(subtask.id, assigneeId)}
+          onDelete={() => onDelete(index)}
+          onMoveBy={(step) => onMove(index, index + step)}
+          onDragStart={() => setDragIndex(index)}
+          onDragEnd={endDrag}
+        />
+      ))}
+    </div>
+  );
+}
+
+// 하위 작업 한 줄이에요. 순서 손잡이, 체크, 이름(눌러서 바로 고쳐요: Enter나 입력칸을 벗어나면 저장), 담당자, 삭제.
+function SubtaskRow({
+  subtask,
+  taskAssignees,
+  dragging,
+  dropMark,
+  isFirst,
+  isLast,
+  onToggle,
+  onRename,
+  onAssign,
+  onDelete,
+  onMoveBy,
+  onDragStart,
+  onDragEnd,
+}) {
+  const [draft, setDraft] = useState(subtask.text);
+  const rowRef = useRef(null);
+
+  const commit = () => {
+    const text = draft.trim();
+    if (!text) setDraft(subtask.text);
+    else if (text !== subtask.text) onRename(text);
+  };
+
+  return (
+    <div
+      ref={rowRef}
+      className={`${styles.subtaskRow}${dragging ? ` ${styles.subtaskDragging}` : ""}${dropMark === "up" ? ` ${styles.subtaskDropUp}` : ""}${dropMark === "down" ? ` ${styles.subtaskDropDown}` : ""}`}
+    >
+      <span
+        className={styles.subtaskGrip}
+        role="button"
+        tabIndex={0}
+        draggable
+        title="끌어서 순서 바꾸기"
+        aria-label="하위 작업 순서 바꾸기 (위/아래 화살표 키)"
+        onDragStart={(e) => {
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", subtask.text);
+          if (rowRef.current) e.dataTransfer.setDragImage(rowRef.current, 12, 14);
+          onDragStart();
+        }}
+        onDragEnd={onDragEnd}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowUp") {
+            e.preventDefault();
+            onMoveBy(-1);
+          } else if (e.key === "ArrowDown") {
+            e.preventDefault();
+            onMoveBy(1);
+          }
+        }}
+      >
+        <GripVertical size={14} />
+      </span>
+      <input type="checkbox" checked={subtask.checked} onChange={onToggle} aria-label="완료 표시" />
+      <input
+        className={`${styles.subtaskInput}${subtask.checked ? ` ${styles.subtaskDone}` : ""}`}
+        aria-label="하위 작업 이름"
+        value={draft}
+        maxLength={300}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.nativeEvent.isComposing) e.currentTarget.blur();
+          if (e.key === "Escape") {
+            setDraft(subtask.text);
+            e.currentTarget.blur();
+          }
+        }}
+      />
+      <span className={styles.subtaskMove}>
+        <button type="button" aria-label="위로 이동" disabled={isFirst} onClick={() => onMoveBy(-1)}>
+          <ChevronUp size={12} />
+        </button>
+        <button type="button" aria-label="아래로 이동" disabled={isLast} onClick={() => onMoveBy(1)}>
+          <ChevronDown size={12} />
+        </button>
+      </span>
+      <SubtaskAssignee assignees={taskAssignees} value={subtask.assigneeId} onChange={onAssign} />
+      <button type="button" className={styles.subtaskDelete} aria-label="하위 작업 삭제" onClick={onDelete}>
+        <Trash2 size={14} />
+      </button>
+    </div>
+  );
+}
+
+// 하위 작업 담당자 선택: 이 작업의 담당자 중에서만 고를 수 있어요(작업 담당자가 없으면 먼저 지정하라고 안내해요).
+function SubtaskAssignee({ assignees, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+  const close = useCallback(() => setOpen(false), []);
+  useDismiss(open, wrapRef, close);
+
+  const current = assignees.find((user) => user.id === value) ?? null;
+  const disabled = assignees.length === 0;
+
+  const pick = (id) => {
+    setOpen(false);
+    onChange(id);
+  };
+
+  return (
+    <div className={styles.subAssignee} ref={wrapRef}>
+      <button
+        type="button"
+        className={styles.subAssigneeBtn}
+        disabled={disabled}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={current ? `담당자 ${current.name}` : "담당자 지정"}
+        title={disabled ? "작업 담당자를 먼저 지정하세요" : (current?.name ?? "담당자 지정")}
+        onClick={() => setOpen((prev) => !prev)}
+      >
+        {current ? <UserAvatar user={current} /> : <UserPlus size={14} />}
+      </button>
+
+      {open && (
+        <ul className={`${styles.pickerMenu} ${styles.subAssigneeMenu}`} role="listbox" aria-label="하위 작업 담당자">
+          <li role="option" aria-selected={value == null}>
+            <button type="button" className={value == null ? styles.picked : ""} onClick={() => pick(null)}>
+              <span className={styles.pickerName}>담당자 없음</span>
+            </button>
+          </li>
+          {assignees.map((user) => (
+            <li key={user.id} role="option" aria-selected={user.id === value}>
+              <button type="button" className={user.id === value ? styles.picked : ""} onClick={() => pick(user.id)}>
+                <UserAvatar user={user} />
+                <span className={styles.pickerName}>{user.name}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// 새 하위 작업을 이름과 함께 바로 추가해요(Enter 또는 추가 버튼).
+function SubtaskAdd({ onAdd }) {
+  const [text, setText] = useState("");
+
+  const submit = (e) => {
+    e.preventDefault();
+    const value = text.trim();
+    if (!value) return;
+    onAdd(value);
+    setText("");
+  };
+
+  return (
+    <form className={styles.subtaskAdd} onSubmit={submit}>
+      <input
+        aria-label="새 하위 작업 이름"
+        placeholder="하위 작업을 입력하고 Enter"
+        value={text}
+        maxLength={300}
+        onChange={(e) => setText(e.target.value)}
+      />
+      <button type="submit" disabled={!text.trim()}>
+        <Plus size={15} /> 추가
+      </button>
+    </form>
   );
 }
 
@@ -194,6 +450,7 @@ function TaskComments({ taskId }) {
   // 댓글에서 @로 멘션할 수 있는 워크스페이스 멤버들(알림은 서버가 보내요)
   const workspaceMembers = useContext(WorkspaceContext)?.members ?? [];
   const openMemberProfile = useMemberProfile();
+  const { confirm } = useDialog();
   const { comments, loading, saving, error, add, remove } = useTaskComments(taskId);
   const [draft, setDraft] = useState("");
 
@@ -264,8 +521,9 @@ function TaskComments({ taskId }) {
                 role="button"
                 aria-label="댓글 삭제"
                 style={{ cursor: "pointer", float: "right" }}
-                onClick={() => {
-                  if (window.confirm("이 댓글을 삭제할까요? 되돌릴 수 없어요.")) remove(comment.id);
+                onClick={async () => {
+                  const ok = await confirm({ title: "댓글 삭제", message: "이 댓글을 삭제할까요?\n삭제한 댓글은 되돌릴 수 없어요.", confirmLabel: "삭제", danger: true });
+                  if (ok) remove(comment.id);
                 }}
               />
             )}
@@ -308,6 +566,7 @@ function TitleInput({ value, onChange }) {
 
   return (
     <input
+      className={styles.titleInput}
       aria-label="작업 제목"
       value={draft}
       onChange={(e) => {
@@ -373,28 +632,21 @@ function BatchPanel({ members, count, onChange, onDelete, onClose }) {
       <p className={styles.batchHint}>
         선택한 작업에 적용할 항목만 변경하세요.
       </p>
-      <Field label="담당자">
+      <Field label="담당자 추가">
         <select
-          defaultValue=""
+          value=""
           onChange={(e) => onChange("assignee", e.target.value)}
         >
           <option value="">변경 안 함</option>
           {members.map((member) => (
-            <option key={member}>{member}</option>
+            <option key={member.id} value={member.name}>{member.name}</option>
           ))}
         </select>
       </Field>
-      <Field label="우선순위">
-        <select
-          defaultValue=""
-          onChange={(e) => onChange("priority", e.target.value)}
-        >
-          <option value="">변경 안 함</option>
-          <option>높음</option>
-          <option>보통</option>
-          <option>낮음</option>
-        </select>
-      </Field>
+      <div className={styles.field}>
+        <span>우선순위</span>
+        <PrioritySelect emptyLabel="변경 안 함" onChange={(value) => onChange("priority", value)} />
+      </div>
       <div className={styles.dateFields}>
         <Field label="시작일">
           <BatchDateInput onApply={(value) => onChange("startDate", value)} />

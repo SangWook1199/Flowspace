@@ -10,6 +10,16 @@
   margin: 0 auto;
   box-sizing: border-box;
 }
+/* 패널을 닫아도 표 폭은 그대로 두고(패널이 있을 때와 같은 폭) 화면 가운데로 와요. */
+.workspaceClosed {
+  grid-template-columns: minmax(0, 1fr);
+}
+.workspaceClosed .workspaceMain {
+  width: calc(100% - 430px);
+  min-width: 700px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
 .workspaceMain {
   padding: 31px 20px 34px 30px;
   min-width: 0;
@@ -45,18 +55,32 @@
   align-items: center;
   font-weight: 700;
 }
-.pageHeader button:last-child {
-  background: #4f5cf6;
-  border-color: #4f5cf6;
-  color: #fff;
+/* 선택한 작업을 다른 스프린트/백로그로 보내는 "이동하기" — 옆의 돌아가기 버튼과 같은 모양이에요. */
+.pageHeader .moveSelect {
+  height: 44px;
+  min-width: 120px;
+  border: 1px solid #dfe6ef;
+  border-radius: 8px;
+  background-color: #fff;
+  /* 기본 화살표를 빼고 직접 그려서(오른쪽 고정) 글자가 버튼 한가운데 오게 해요. */
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235d6d85' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding: 0 32px;
+  text-align: center;
+  text-align-last: center;
+  color: #16233d;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
 }
-.notice {
-  position: absolute;
-  top: 94px;
-  right: 460px;
-  margin: 0;
-  color: #239968;
-  font-size: 12px;
+.pageHeader .moveSelect:hover {
+  background-color: #f6f8fd;
+}
+.pageHeader .moveSelect:focus-visible {
+  outline: 2px solid #4f5cf6;
+  outline-offset: 1px;
 }
 .tableWrap {
   border: 1px solid #e1e7f0;
@@ -69,73 +93,265 @@
   border-collapse: collapse;
   table-layout: fixed;
 }
+.tableWrap th,
+.tableWrap td {
+  box-sizing: border-box; /* 칸 너비에 좌우 여백이 포함되게(안 그러면 지정한 폭보다 넓어져요) */
+}
 .tableWrap th {
-  height: 57px;
+  height: 50px;
+  padding: 0 12px;
   background: #fbfcfe;
   color: #5d6d85;
   font-size: 12px;
   font-weight: 600;
-  text-align: left;
+  text-align: center;
+  white-space: nowrap;
 }
+/* 열 너비: 제목이 남는 폭을 쓰고, 나머지는 고정이라 제목이 지나치게 길어 보이지 않아요.
+   1열=세부 작업 토글, 2열=체크박스. */
 .tableWrap th:first-child,
 .tableWrap td:first-child {
-  width: 50px;
+  width: 44px;
+  padding: 0;
   text-align: center;
 }
-.tableWrap th:nth-child(2) {
-  width: 68px;
+.tableWrap th:nth-child(2),
+.tableWrap td:nth-child(2) {
+  width: 48px;
+  padding: 0;
+  text-align: center;
 }
-.tableWrap th:nth-child(4) {
-  width: 102px;
+.tableWrap th:nth-child(3) {
+  width: 84px;
 }
 .tableWrap th:nth-child(5) {
-  width: 102px;
+  width: 190px;
 }
-.tableWrap th:nth-child(6),
-.tableWrap th:nth-child(7) {
-  width: 105px;
+.tableWrap th:nth-child(6) {
+  width: 120px;
 }
+.tableWrap th:nth-child(7),
 .tableWrap th:nth-child(8) {
-  width: 88px;
+  width: 118px;
 }
-.tableWrap th:last-child {
-  width: 50px;
+.tableWrap th:nth-child(9) {
+  width: 130px;
 }
 .tableWrap td {
-  height: 67px;
+  height: 60px;
+  padding: 0 12px;
   border-top: 1px solid #edf0f5;
   color: #16233d;
   font-size: 13px;
+  text-align: center;
+}
+.tableWrap tbody tr {
+  transition: background 0.12s;
+}
+.tableWrap tbody tr:hover td {
+  background: #f6f8fd;
 }
 .tableWrap tr {
   cursor: pointer;
 }
+.tableWrap tbody tr:focus-visible {
+  outline: 2px solid #4f5cf6;
+  outline-offset: -2px;
+}
 .tableWrap tr.selected td {
   background: #edf3ff;
+}
+.taskCode {
+  color: #7a899f;
+  font-size: 12px;
+  font-weight: 600;
+}
+.dateCell {
+  color: #4b5a73;
+}
+/* 스프린트 기간 밖의 날짜 */
+.tableWrap td.dateOut {
+  color: #d9822b;
+  font-weight: 700;
+}
+.dateWarn {
+  display: block;
+  margin: -8px 0 12px;
+  color: #c26a12;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.rowToggle {
+  width: 28px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #7a899f;
+  cursor: pointer;
+}
+.rowToggle:hover:not(:disabled) {
+  background: #e6ecf7;
+  color: #16233d;
+}
+.rowToggle:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+.rowToggle svg {
+  transition: transform 0.15s;
+}
+.rowToggleOpen svg {
+  transform: rotate(90deg);
+}
+.tableWrap tr.subRow td {
+  height: 46px;
+  background: #fafbfe;
+  color: #4b5a73;
+  font-size: 13px;
+}
+.tableWrap tr.subRow:hover td {
+  background: #f1f4fb;
+}
+.tableWrap tr.subRow td.subTitle {
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+.subTitle > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+}
+.subTitle > span > em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-style: normal;
+}
+.subTitleDone > span > em {
+  color: #8a97ab;
+  text-decoration: line-through;
+}
+.subState {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #eef1f6;
+  color: #6b7a92;
+  font-size: 11px;
+  font-weight: 600;
+}
+.subStateDone {
+  background: #e3f6ec;
+  color: #1f9a63;
 }
 .tableWrap input[type="checkbox"] {
   width: 17px;
   height: 17px;
   accent-color: #4f5cf6;
 }
-.taskTitle {
-  font-weight: 600;
+.tableWrap td.taskTitle {
+  max-width: 0; /* 칸 폭을 넘는 긴 제목은 … 으로 줄여요 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  font-weight: 400;
 }
 .avatar {
   width: 22px;
   height: 22px;
+  flex: none;
   background: #29384d;
   color: #fff;
   border-radius: 50%;
   font-size: 10px;
   display: inline-grid;
   place-items: center;
-  margin-right: 7px;
+  overflow: hidden;
+}
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* 표의 담당자 칸: 겹쳐진 아바타 + 이름("홍길동 외 2명") */
+.assigneeCell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  max-width: 100%;
+  min-width: 0;
+}
+.avatarStack {
+  display: inline-flex;
+  flex: none;
+}
+.avatarStack .avatar {
+  box-shadow: 0 0 0 2px #fff;
+}
+.avatarStack .avatar + .avatar {
+  margin-left: -7px;
+}
+.assigneeNames {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .priority {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.highBg {
+  background: #fdecee;
+}
+.mediumBg {
+  background: #fff3e2;
+}
+.lowBg {
+  background: #e5f6ee;
+}
+/* 하위 작업: "완료 / 전체" 숫자와 작은 진행 막대 */
+.subCount {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4b5a73;
+}
+.subCount > i {
+  display: block;
+  width: 96px;
+  height: 6px;
+  border-radius: 6px;
+  background: #e5eaf2;
+  overflow: hidden;
+}
+.subCount > i b {
+  display: block;
+  height: 100%;
+  background: #4f5cf6;
+}
+.dot {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
 }
 .high {
   color: #eb4c54;
@@ -192,7 +408,7 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 25px;
+  margin-bottom: 18px;
 }
 .detailPanel h2 {
   margin: 0;
@@ -205,12 +421,26 @@
   font-size: 11px;
   color: #53627b;
 }
-.detailPanel h2 input {
-  width: 310px;
-  border: 0;
+.detailPanel > header > div {
+  flex: 1;
+  min-width: 0;
+}
+/* 작업 제목: 담당자·우선순위처럼 위에 "제목" 이름이 있고 아래에 입력칸이 있어요. */
+.titleInput {
+  width: 100%;
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid #dfe6ee;
+  border-radius: 7px;
+  background: #fff;
   outline: 0;
-  font: 700 17px inherit;
-  color: #15213b;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  color: #23314a;
+}
+.titleInput:focus {
+  border-color: #4f5cf6;
 }
 .close {
   border: 0;
@@ -293,35 +523,173 @@
   border-radius: inherit;
   background: #4f5cf6;
 }
-.subtasks > label {
-  height: 29px;
+.subtaskRow {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
+  min-height: 34px;
   border-bottom: 1px solid #f0f2f6;
   font-size: 12px;
 }
-.subtasks > label input {
+.subtaskRow input[type="checkbox"] {
   accent-color: #4f5cf6;
 }
-.subtasks > label span {
+.subtaskInput {
   flex: 1;
+  min-width: 0;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 0 6px;
+  background: transparent;
+  color: #23314a;
+  font-size: 12.5px;
+  outline: 0;
 }
-.subtasks > label svg {
+.subtaskInput:hover {
+  border-color: #e3e8f0;
+}
+.subtaskInput:focus {
+  border-color: #4f5cf6;
+  background: #fff;
+}
+.subtaskDone {
+  color: #8a97a9;
+  text-decoration: line-through;
+}
+.subtaskDelete {
+  border: 0;
+  background: transparent;
+  padding: 3px;
   color: #f0525b;
-}
-.subtasks > div {
   display: flex;
-  justify-content: space-between;
+  cursor: pointer;
+}
+.subtaskRow {
+  position: relative;
+}
+.subtaskDragging {
+  opacity: 0.45;
+}
+/* 맨 아래 줄 밑의 여백까지 놓는 자리로 쳐서, 마지막으로 보내기 쉽게 해요. */
+.subtaskList {
+  padding-bottom: 10px;
+}
+.subtaskDropUp {
+  box-shadow: 0 -2px 0 0 #4f5cf6;
+}
+.subtaskDropDown {
+  box-shadow: 0 2px 0 0 #4f5cf6;
+}
+/* 위/아래 이동 버튼 — 줄에 마우스를 올리거나 포커스가 있을 때만 또렷하게 보여요. */
+.subtaskMove {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.subtaskRow:hover .subtaskMove,
+.subtaskMove:focus-within {
+  opacity: 1;
+}
+.subtaskMove button {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 13px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #7a899f;
+  cursor: pointer;
+}
+.subtaskMove button:hover:not(:disabled) {
+  color: #4f5cf6;
+}
+.subtaskMove button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.subtaskGrip {
+  display: flex;
+  align-items: center;
+  flex: none;
+  color: #a3aec0;
+  cursor: grab;
+  border-radius: 4px;
+}
+.subtaskGrip:hover,
+.subtaskGrip:focus-visible {
+  color: #4f5cf6;
+}
+/* 하위 작업 담당자 버튼(동그란 아바타 / 담당자 없으면 점선 원) + 메뉴 */
+.subAssignee {
+  position: relative;
+  flex: none;
+}
+.subAssigneeBtn {
+  width: 26px;
+  height: 26px;
+  border: 1px dashed #c9d2df;
+  border-radius: 50%;
+  background: #fff;
+  color: #8a97a9;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  cursor: pointer;
+}
+.subAssigneeBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.subAssigneeBtn .avatar {
+  width: 24px;
+  height: 24px;
+}
+.subAssigneeBtn:has(.avatar) {
+  border-style: solid;
+  border-color: transparent;
+}
+.subAssigneeMenu {
+  left: auto;
+  right: 0;
+  width: 190px;
+}
+.subtaskAdd {
+  display: flex;
+  gap: 8px;
   margin-top: 10px;
 }
-.subtasks > div button {
+.subtaskAdd input {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  border: 1px solid #dfe6ee;
+  border-radius: 7px;
+  padding: 0 10px;
+  font-size: 12.5px;
+  outline: 0;
+}
+.subtaskAdd input:focus {
+  border-color: #4f5cf6;
+}
+.subtaskAdd button {
   height: 34px;
   border: 1px solid #dfe6ee;
   border-radius: 7px;
   background: #fff;
-  padding: 0 10px;
+  padding: 0 11px;
   font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+.subtaskAdd button:disabled {
+  color: #a3aec0;
+  cursor: default;
 }
 .comments {
   border-top: 1px solid #edf0f5;
@@ -392,9 +760,6 @@
   .pageHeader {
     margin-bottom: 30px;
   }
-  .detailPanel h2 input {
-    width: 260px;
-  }
 }
 @media (max-width: 850px) {
   .workspace {
@@ -404,7 +769,10 @@
     border-left: 0;
     border-top: 1px solid #e1e7f0;
   }
-  .workspaceMain {
+  .workspaceMain,
+  .workspaceClosed .workspaceMain {
+    width: auto;
+    min-width: 0;
     padding: 22px 18px;
   }
   .tableWrap {
@@ -413,4 +781,130 @@
   .tableWrap table {
     min-width: 900px;
   }
+}
+
+/* ===== 담당자 선택(여러 명) / 우선순위 선택(색 점) ===== */
+.assigneeBox,
+.prioWrap {
+  position: relative;
+}
+.assigneeChips {
+  min-height: 38px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 7px;
+  border: 1px solid #dfe6ee;
+  border-radius: 7px;
+  background: #fff;
+}
+.assigneeChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 6px 0 3px;
+  border-radius: 13px;
+  background: #eef1fb;
+  color: #23314a;
+  font-size: 12px;
+  font-weight: 600;
+}
+.assigneeChip button {
+  border: 0;
+  background: transparent;
+  padding: 1px;
+  color: #7a89a3;
+  display: flex;
+  cursor: pointer;
+}
+.assigneeChip button:hover {
+  color: #e64f58;
+}
+.assigneeAdd {
+  height: 26px;
+  border: 1px dashed #c9d2df;
+  border-radius: 13px;
+  background: #fff;
+  padding: 0 10px;
+  color: #4254ed;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+.pickerMenu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 5px;
+  list-style: none;
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid #e3e8f0;
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
+}
+.pickerMenu li button {
+  width: 100%;
+  height: 36px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  padding: 0 9px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #23314a;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.pickerName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pickerMenu li button svg {
+  color: #4f5cf6;
+}
+.pickerMenu li button:hover,
+.pickerMenu li button.picked {
+  background: #f1f4fb;
+}
+.pickerEmpty {
+  padding: 10px;
+  color: #7a899f;
+  font-size: 12px;
+}
+.prioBtn {
+  width: 100%;
+  height: 38px;
+  border: 1px solid #dfe6ee;
+  border-radius: 7px;
+  background: #fff;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #23314a;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.prioBtn > svg {
+  margin-left: auto;
+  color: #7a899f;
+}
+.prioEmpty {
+  color: #7a899f;
 }

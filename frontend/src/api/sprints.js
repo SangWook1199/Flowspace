@@ -13,6 +13,13 @@ export const createSprint = async (workspaceId, form) => {
   return toSprint(data);
 };
 
+// 스프린트 수정 (이름·목표·설명·색·기간). 상태는 따로 바꿔요(updateSprintStatus).
+export const updateSprint = async (sprintId, form) => {
+  const { status, ...body } = toSprintCreateRequest(form); // eslint-disable-line no-unused-vars
+  const { data } = await client.patch(`/sprints/${sprintId}`, body);
+  return toSprint(data);
+};
+
 // 스프린트 상태 변경: PLANNING → ACTIVE → COMPLETED (완료하면 회고가 만들어지고 남은 작업은 백로그로 가요)
 export const updateSprintStatus = async (sprintId, status) => {
   const { data } = await client.patch(`/sprints/${sprintId}/status`, { status });

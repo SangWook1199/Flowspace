@@ -265,8 +265,38 @@
   font-size: 13px;
 }
 .sprintIdentity small {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   color: #62728a;
   font-size: 11px;
+}
+/* 상태별로 묶은 스프린트 목록(진행 중 / 계획됨 / 완료) */
+.sprintGroup {
+  display: grid;
+  gap: 10px;
+}
+.sprintGroup + .sprintGroup,
+.backlogCard + .sprintGroup {
+  margin-top: 14px;
+}
+.sprintGroupTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 2px 0;
+  color: #44536b;
+  font-size: 14px;
+  font-weight: 700;
+}
+.sprintGroupTitle span {
+  min-width: 20px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #eef1f7;
+  color: #5d6d85;
+  font-size: 11px;
+  text-align: center;
 }
 .sprintProgress span,
 .sprintNumbers span {

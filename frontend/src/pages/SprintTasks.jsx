@@ -1,9 +1,10 @@
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 import TaskDetailPanel from "../components/sprint/TaskDetailPanel";
 import TaskTable from "../components/sprint/TaskTable";
 import { useAuth } from "../context/useAuth";
+import useDialog from "../context/useDialog";
 import { formatDateDots, isRangeReversed } from "../utils/date";
 import styles from "../components/sprint/TaskWorkspace.module.css";
 
@@ -50,6 +51,7 @@ export default function SprintTasks() {
 
 function SprintTasksBody({ sprint }) {
   const navigate = useNavigate();
+  const { confirm, notify } = useDialog();
   const auth = useAuth();
   // 작업은 서버에서 불러온 공용 데이터예요 — 칸반 보드·페이지 TASK 블록과 같은 배열을 봐요. 다만 이 화면
   // (TaskTable/TaskRow/TaskDetailPanel)은 원래부터 담당자 1명(문자열)·한글 우선순위를 기대하게 만들어져
@@ -65,6 +67,9 @@ function SprintTasksBody({ sprint }) {
     toggleSubtask,
     addSubtasks,
     deleteSubtask,
+    renameSubtask,
+    setSubtaskAssignee,
+    moveSubtask,
   } = useOutletContext();
 
   const isBacklog = sprint.id === "backlog";
@@ -77,24 +82,16 @@ function SprintTasksBody({ sprint }) {
   );
   const [selectedId, setSelectedId] = useState(() => sprintOwnTasks[0]?.id ?? null);
   const [checkedIds, setCheckedIds] = useState([]);
-  const [notice, setNotice] = useState("");
 
   const tasks = sprintOwnTasks.map((task) => ({
     ...task,
-    assignee: task.assignees?.[0]?.name ?? "",
     priority: PRIORITY_LABEL[task.priority] ?? task.priority,
   }));
   const selectedTask = tasks.find((task) => task.id === selectedId);
-  const memberNames = members.map((member) => member.name);
 
-  // TaskDetailPanel은 onChange(key, value)로 "assignee"(문자열 이름)나 "priority"(한글)를 넘겨요 —
-  // 여기서 공용 모델 필드(assignees 배열, 영문 priority)로 바꿔요. 그 외 필드
-  // (title/startDate/dueDate/description)는 이름이 같아서 그대로 둬요.
+  // TaskDetailPanel은 우선순위를 한글 라벨로 넘겨요 — 여기서 공용 모델의 영문 priority로 바꿔요.
+  // 그 외 필드(assignees/title/startDate/dueDate/description)는 이름이 같아서 그대로 둬요.
   const toCanonicalPatch = (key, value) => {
-    if (key === "assignee") {
-      const member = members.find((item) => item.name === value);
-      return member ? { assignees: [member] } : {};
-    }
     if (key === "priority") return { priority: PRIORITY_KO_TO_EN[value] ?? value };
     return { [key]: value };
   };
@@ -130,9 +127,11 @@ function SprintTasksBody({ sprint }) {
   const toggleSubtaskAt = (index) => {
     if (selectedId != null) toggleSubtask(selectedId, index);
   };
-  const addSubtask = (multiple) => {
-    if (selectedId == null) return;
-    addSubtasks(selectedId, multiple ? ["하위 작업 1", "하위 작업 2"] : ["새 하위 작업"]);
+  const addSubtask = (text) => {
+    if (selectedId != null) addSubtasks(selectedId, [text]);
+  };
+  const renameSelectedSubtask = (subtaskId, text) => {
+    if (selectedId != null) renameSubtask(selectedId, subtaskId, text);
   };
   const removeSubtask = (index) => {
     const subtask = selectedTask?.subtasks?.[index];
@@ -157,15 +156,29 @@ function SprintTasksBody({ sprint }) {
           skipped += 1;
           return;
         }
+        if (key === "assignee") {
+          // 일괄 편집의 담당자는 "추가"예요 — 이미 있는 담당자는 그대로 두고 고른 멤버를 더해요.
+          const member = members.find((item) => item.name === value);
+          if (member && !(task.assignees ?? []).some((user) => user.id === member.id)) {
+            updateTask(task.id, { assignees: [...(task.assignees ?? []), member] });
+          }
+          return;
+        }
         updateTask(task.id, toCanonicalPatch(key, value));
       });
 
-    setNotice(skipped ? `시작일이 마감일보다 늦어지는 작업 ${skipped}개는 건너뛰었어요.` : "");
+    if (skipped) notify(`시작일이 마감일보다 늦어지는 작업 ${skipped}개는 건너뛰었어요.`, { type: "info" });
   };
 
-  const deleteChecked = () => {
+  const deleteChecked = async () => {
     // 지운 작업은 되돌릴 수 없어서 한 번 더 물어봐요.
-    if (!window.confirm(`선택한 작업 ${checkedIds.length}개를 삭제할까요?`)) return;
+    const ok = await confirm({
+      title: "작업 삭제",
+      message: `선택한 작업 ${checkedIds.length}개를 삭제할까요?\n삭제한 작업은 되돌릴 수 없어요.`,
+      confirmLabel: "삭제",
+      danger: true,
+    });
+    if (!ok) return;
 
     deleteTasks(checkedIds);
     setCheckedIds([]);
@@ -178,7 +191,7 @@ function SprintTasksBody({ sprint }) {
 
     const sprintId = target === "backlog" ? null : Number(target);
     checkedIds.forEach((id) => updateTask(id, { sprintId }));
-    setNotice(`작업 ${checkedIds.length}개를 옮겼어요.`);
+    notify(`작업 ${checkedIds.length}개를 이동했어요.`, { type: "success" });
     setCheckedIds([]);
     setSelectedId(null);
   };
@@ -186,8 +199,11 @@ function SprintTasksBody({ sprint }) {
   // 옮길 수 있는 곳: 지금 화면이 아닌 곳 중 끝나지 않은 스프린트, 그리고 (백로그가 아니면) 백로그.
   const moveTargets = sprints.filter((item) => item.id !== sprint.id && item.status !== "COMPLETED");
 
+  // 선택한 작업이 없고 여러 개 선택도 아니면(X로 닫은 뒤) 오른쪽 패널을 아예 없애서 표가 전체 폭을 써요.
+  const panelOpen = Boolean(selectedTask) || checkedIds.length > 1;
+
   return (
-    <div className={styles.workspace}>
+    <div className={`${styles.workspace}${panelOpen ? "" : ` ${styles.workspaceClosed}`}`}>
       <section className={styles.workspaceMain}>
         <header className={styles.pageHeader}>
           <div>
@@ -200,11 +216,12 @@ function SprintTasksBody({ sprint }) {
           <div>
             {checkedIds.length > 0 && (
               <select
-                aria-label="선택한 작업 옮기기"
+                className={styles.moveSelect}
+                aria-label="선택한 작업 이동하기"
                 value=""
                 onChange={(e) => moveChecked(e.target.value)}
               >
-                <option value="">{checkedIds.length}개 옮기기…</option>
+                <option value="">이동하기</option>
                 {!isBacklog && <option value="backlog">백로그</option>}
                 {moveTargets.map((item) => (
                   <option key={item.id} value={item.id}>
@@ -216,14 +233,11 @@ function SprintTasksBody({ sprint }) {
             <button type="button" onClick={() => navigate(`/sprints/${sprint.id}`)}>
               <ArrowLeft size={17} /> {isBacklog ? "백로그로 돌아가기" : "스프린트로 돌아가기"}
             </button>
-            <button type="button" onClick={() => setNotice("변경사항은 자동으로 저장돼요.")}>
-              <Save size={17} /> 저장
-            </button>
           </div>
         </header>
-        {notice && <p className={styles.notice}>{notice}</p>}
         <TaskTable
           tasks={tasks}
+          sprintRange={isBacklog ? null : { startDate: sprint.startDate, endDate: sprint.endDate }}
           selectedId={selectedId}
           checkedIds={checkedIds}
           onCheck={toggleCheck}
@@ -234,21 +248,27 @@ function SprintTasksBody({ sprint }) {
           onAdd={addTask}
         />
       </section>
-      <TaskDetailPanel
-        task={selectedTask}
-        members={memberNames}
-        selectedIds={checkedIds}
-        onChange={updateSelected}
-        onClose={() => {
-          setSelectedId(null);
-          setCheckedIds([]);
-        }}
-        onAddSubtask={addSubtask}
-        onToggleSubtask={toggleSubtaskAt}
-        onDeleteSubtask={removeSubtask}
-        onBatchChange={batchChange}
-        onDelete={deleteChecked}
-      />
+      {panelOpen && (
+        <TaskDetailPanel
+          task={selectedTask}
+          sprintRange={isBacklog ? null : { startDate: sprint.startDate, endDate: sprint.endDate }}
+          members={members}
+          selectedIds={checkedIds}
+          onChange={updateSelected}
+          onClose={() => {
+            setSelectedId(null);
+            setCheckedIds([]);
+          }}
+          onAddSubtask={addSubtask}
+          onToggleSubtask={toggleSubtaskAt}
+          onRenameSubtask={renameSelectedSubtask}
+          onDeleteSubtask={removeSubtask}
+          onAssignSubtask={(subtaskId, assigneeId) => setSubtaskAssignee(selectedId, subtaskId, assigneeId)}
+          onMoveSubtask={(from, to) => moveSubtask(selectedId, from, to)}
+          onBatchChange={batchChange}
+          onDelete={deleteChecked}
+        />
+      )}
     </div>
   );
 }

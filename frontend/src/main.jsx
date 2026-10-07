@@ -15,5 +15,6 @@ import "./styles/sprint-detail-table.css";
 import "./styles/retrospective-detail.css";
 import "./styles/workspace-create.css";
 import "./styles/auth.css";
+import "./styles/dialog.css";
 
 createRoot(document.getElementById("root")).render(<App />);

@@ -7,6 +7,7 @@ import FlowSpaceLogo from "../components/common/FlowSpaceLogo";
 import WorkspaceSwitcher from "./WorkspaceSwitcher";
 import TrashPopover from "./TrashPopover";
 import WorkspaceIcon from "../components/common/WorkspaceIcon";
+import useDialog from "../context/useDialog";
 
 // 페이지 줄을 드래그할 때 dataTransfer에 심는 커스텀 MIME이에요. Firefox는
 // dragstart에서 setData를 한 번도 안 부르면 드래그 자체를 시작하지 않아요.
@@ -38,6 +39,7 @@ export default function Sidebar({
   onReorderTopLevelPages,
   onOpenSettings,
 }) {
+  const { confirm } = useDialog();
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
@@ -173,14 +175,17 @@ export default function Sidebar({
     }
   };
 
-  const handleDeletePage = (e, page) => {
+  const handleDeletePage = async (e, page) => {
     e.stopPropagation();
     const hasChildren = pages.some((p) => p.parentPageId === page.id);
-    const confirmed = window.confirm(
-      hasChildren
-        ? "이 페이지를 삭제하면 하위 페이지도 모두 함께 휴지통으로 이동해요. 계속할까요?"
-        : "이 페이지를 휴지통으로 이동할까요? 나중에 휴지통에서 복원할 수 있어요.",
-    );
+    const confirmed = await confirm({
+      title: "페이지 삭제",
+      message: hasChildren
+        ? "이 페이지를 삭제하면 하위 페이지도 모두 함께 휴지통으로 이동해요.\n계속할까요?"
+        : "이 페이지를 휴지통으로 이동할까요?\n나중에 휴지통에서 복원할 수 있어요.",
+      confirmLabel: "삭제",
+      danger: true,
+    });
     if (!confirmed) return;
 
     // 지금 보고 있는 페이지가 삭제 대상이거나 그 하위 페이지라면
@@ -209,22 +214,28 @@ export default function Sidebar({
     onRestorePage?.(pageId);
   };
 
-  const handlePermanentlyDeletePage = (page) => {
+  const handlePermanentlyDeletePage = async (page) => {
     const hasChildren = pages.some((p) => p.parentPageId === page.id && p.trashedAt);
-    const confirmed = window.confirm(
-      hasChildren
-        ? "이 페이지와 하위 페이지를 완전히 삭제할까요? 이 작업은 되돌릴 수 없어요."
-        : "이 페이지를 완전히 삭제할까요? 이 작업은 되돌릴 수 없어요.",
-    );
+    const confirmed = await confirm({
+      title: "완전히 삭제",
+      message: hasChildren
+        ? "이 페이지와 하위 페이지를 완전히 삭제할까요?\n이 작업은 되돌릴 수 없어요."
+        : "이 페이지를 완전히 삭제할까요?\n이 작업은 되돌릴 수 없어요.",
+      confirmLabel: "완전히 삭제",
+      danger: true,
+    });
     if (!confirmed) return;
     onPermanentlyDeletePage?.(page.id);
   };
 
-  const handleEmptyTrash = () => {
+  const handleEmptyTrash = async () => {
     if (trashedPages.length === 0) return;
-    const confirmed = window.confirm(
-      "휴지통에 있는 페이지를 모두 완전히 삭제할까요? 이 작업은 되돌릴 수 없어요.",
-    );
+    const confirmed = await confirm({
+      title: "휴지통 비우기",
+      message: "휴지통에 있는 페이지를 모두 완전히 삭제할까요?\n이 작업은 되돌릴 수 없어요.",
+      confirmLabel: "모두 삭제",
+      danger: true,
+    });
     if (!confirmed) return;
     onEmptyTrash?.();
   };
@@ -375,7 +386,7 @@ export default function Sidebar({
 
               <span>{sprint.name}</span>
 
-              <b>
+              <b className={sprint.status === "ACTIVE" ? "statusActive" : undefined}>
                 {sprint.status === "ACTIVE"
                   ? "진행 중"
                   : sprint.status === "PLANNING"

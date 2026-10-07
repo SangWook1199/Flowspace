@@ -103,6 +103,11 @@ public class SprintService {
         validateMember(workspace, user);
         validateSprintDate(request.startDate(), request.endDate());
 
+        // 진행 중인 스프린트는 워크스페이스에서 하나만 둬요(칸반도 그 스프린트 하나를 보여줘요).
+        if (request.status() == SprintStatus.ACTIVE) {
+            validateNoActiveSprint(workspace);
+        }
+
         Sprint sprint = Sprint.builder().workspace(workspace).createdBy(user).name(request.name()).goal(request.goal())
             .description(request.description()).color(request.color()).startDate(request.startDate())
             .endDate(request.endDate()).status(request.status()).build();
@@ -183,6 +188,11 @@ public class SprintService {
 
         validateMember(sprint.getWorkspace(), user);
 
+        // 이미 진행 중인 다른 스프린트가 있으면 시작할 수 없어요.
+        if (request.status() == SprintStatus.ACTIVE && sprint.getStatus() != SprintStatus.ACTIVE) {
+            validateNoActiveSprint(sprint.getWorkspace());
+        }
+
         if (request.status() == SprintStatus.COMPLETED && sprint.getStatus() != SprintStatus.COMPLETED) {
 
             if (retrospectiveRepository.existsBySprint(sprint)) {
@@ -191,7 +201,7 @@ public class SprintService {
 
             createRetrospective(sprint, user);
 
-            moveTasksToBacklog(sprint);
+            moveUnfinishedTasksToBacklog(sprint);
 
             activityService.log(sprint.getWorkspace(), user, ActivityType.SPRINT_COMPLETED, ActivityTargetType.SPRINT,
                 sprint.getSprintId());
@@ -266,6 +276,32 @@ public class SprintService {
         int progress = taskCount == 0 ? 0 : (completedTaskCount * 100) / taskCount;
 
         return SprintResponse.from(sprint, progress, taskCount, completedTaskCount);
+    }
+
+    // 진행 중인 스프린트가 이미 있으면 막아요
+    private void validateNoActiveSprint(Workspace workspace) {
+
+        if (sprintRepository.existsByWorkspaceAndStatus(workspace, SprintStatus.ACTIVE)) {
+            throw new FlowSpaceException(ErrorCode.SPRINT_ALREADY_ACTIVE);
+        }
+    }
+
+    // 스프린트 완료 시: 끝나지 않은 Task만 Backlog로 보내고, 완료된 Task는 스프린트에 남겨요
+    private void moveUnfinishedTasksToBacklog(Sprint sprint) {
+
+        int position = taskRepository.findByWorkspaceAndSprintIsNullOrderByPositionAsc(sprint.getWorkspace()).size();
+
+        List<Task> sprintTasks = taskRepository.findBySprintOrderByPositionAsc(sprint);
+
+        for (Task task : sprintTasks) {
+            if (task.getStatus().getCategory() == TaskStatusCategory.DONE) {
+                continue;
+            }
+
+            task.updateSprint(null);
+            task.updatePosition(BigDecimal.valueOf(position));
+            position++;
+        }
     }
 
     // 스프린트 Task를 Backlog로 이동

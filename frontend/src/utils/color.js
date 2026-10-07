@@ -59,3 +59,6 @@ export const sprintColorToCss = (name) => findSprintColor((c) => c.name === name
 
 export const sprintHexToColor = (hex) =>
   findSprintColor((c) => c.hex.toLowerCase() === String(hex ?? "").toLowerCase()).name;
+
+// 서버 색 이름 → 색 선택기의 #hex(스프린트 수정 화면이 처음 값을 채울 때 써요).
+export const sprintColorToHex = (name) => findSprintColor((c) => c.name === name).hex;

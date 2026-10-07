@@ -14,6 +14,13 @@ const SUMMARY_ITEMS = [
   { label: "완료", status: "COMPLETED", tone: "green" },
 ];
 
+// 스프린트 목록을 묶는 순서예요.
+const GROUPS = [
+  { status: "ACTIVE", label: "진행 중" },
+  { status: "PLANNING", label: "계획됨" },
+  { status: "COMPLETED", label: "완료", newestFirst: true },
+];
+
 export default function SprintList() {
   const navigate = useNavigate();
   // 스프린트·백로그는 서버에서 불러와 MainLayout(WorkspaceProvider)이 내려줘요.
@@ -40,6 +47,19 @@ export default function SprintList() {
           sprint.name.toLowerCase().includes(keyword),
       ),
     [sprints, filter, keyword],
+  );
+
+  // 진행 중 → 계획됨 → 완료 순으로 묶어요. 진행 중·계획됨은 먼저 시작하는 순, 완료는 최근에 끝난 순이에요.
+  const groups = useMemo(
+    () =>
+      GROUPS.map(({ status, label, newestFirst }) => ({
+        status,
+        label,
+        items: visible
+          .filter((sprint) => sprint.status === status)
+          .sort((a, b) => (newestFirst ? -1 : 1) * String(a.startDate).localeCompare(String(b.startDate))),
+      })).filter((group) => group.items.length > 0),
+    [visible],
   );
 
   // 백로그는 스프린트 상태가 없어서 "전체"일 때만 보이고, 검색어는 이름/설명에 맞아야 해요(스프린트 카드와
@@ -92,13 +112,20 @@ export default function SprintList() {
           />
         )}
 
-        {/* 일반 스프린트 */}
-        {visible.map((sprint) => (
-          <SprintCard
-            key={sprint.id}
-            sprint={sprint}
-            onNavigate={(id) => navigate(`/sprints/${id}`)}
-          />
+        {/* 일반 스프린트 — 상태별로 묶어서 보여줘요 */}
+        {groups.map((group) => (
+          <div className="sprintGroup" key={group.status}>
+            {/* "전체" 탭일 때만 묶음 제목을 보여줘요(상태 탭을 고르면 이미 한 종류만 보여요). */}
+            {filter === "ALL" && (
+              <h2 className="sprintGroupTitle">
+                {group.label}
+                <span>{group.items.length}</span>
+              </h2>
+            )}
+            {group.items.map((sprint) => (
+              <SprintCard key={sprint.id} sprint={sprint} onNavigate={(id) => navigate(`/sprints/${id}`)} />
+            ))}
+          </div>
         ))}
 
         {!visible.length && !showBacklog && (

@@ -1,6 +1,7 @@
 import {
   ChevronDown,
   ChevronRight,
+  Flag,
   Plus,
   Upload,
 } from "lucide-react";
@@ -11,9 +12,10 @@ import { useMemberProfile } from "../../context/MemberProfileContext";
 
 // tasks는 공용 작업 모델(assignees 객체 배열, startDate/dueDate, subtasks {text, checked})에
 // 상태 카테고리 status("TODO" | "IN_PROGRESS" | "DONE")를 얹은 모양이에요.
-export default function SprintTaskTable({ tasks = [], onAdd }) {
-  // 처음엔 첫 번째 작업을 펼쳐둬요(작업 id를 코드에 박아두지 않고 목록에서 꺼내요).
-  const [openTask, setOpenTask] = useState(() => tasks[0]?.id ?? null);
+// onImport가 있을 때만 "가져오기" 버튼을 보여줘요(백로그·완료된 스프린트에서는 안 넘겨요).
+export default function SprintTaskTable({ tasks = [], onAdd, onImport }) {
+  // 하위 작업은 처음엔 모두 접어 두고, 화살표를 눌러야 펼쳐져요.
+  const [openTask, setOpenTask] = useState(null);
 
   return (
     <section className="detailTasks">
@@ -24,37 +26,46 @@ export default function SprintTaskTable({ tasks = [], onAdd }) {
         </div>
 
         <div>
-          <button type="button">
-            <Upload size={16} />
-            가져오기
-          </button>
-
-          <button type="button" onClick={onAdd}>
-            <Plus size={18} />
-            작업 추가
-          </button>
+          {onImport && (
+            <button type="button" onClick={onImport}>
+              <Upload size={16} />
+              가져오기
+            </button>
+          )}
+          {onAdd && (
+            <button type="button" onClick={onAdd}>
+              <Plus size={18} />
+              작업 추가
+            </button>
+          )}
         </div>
       </header>
 
-      <div className="taskHead">
-        <span>작업</span>
-        <span>담당자</span>
-        <span>우선순위</span>
-        <span>시작일</span>
-        <span>종료일</span>
-        <span>하위 작업</span>
-        <span>상태</span>
-        <span>작업</span>
-      </div>
+      {/* 작업이 몇 개든 목록 높이는 고정이에요. 넘치면 이 안에서 스크롤되고, 열 제목은 위에 붙어 있어요. */}
+      <div className="taskListBody">
+        <div className="taskHead">
+          <span />
+          <span>번호</span>
+          <span>제목</span>
+          <span>담당자</span>
+          <span>우선순위</span>
+          <span>시작일</span>
+          <span>마감일</span>
+          <span>하위 작업</span>
+          <span>상태</span>
+        </div>
 
-      {tasks.map((task) => (
-        <TaskGroup
-          key={task.id}
-          task={task}
-          open={task.id === openTask}
-          onToggle={() => setOpenTask(openTask === task.id ? null : task.id)}
-        />
-      ))}
+        {tasks.length === 0 && <p className="taskListEmpty">작업이 없어요.</p>}
+
+        {tasks.map((task) => (
+          <TaskGroup
+            key={task.id}
+            task={task}
+            open={task.id === openTask}
+            onToggle={() => setOpenTask(openTask === task.id ? null : task.id)}
+          />
+        ))}
+      </div>
     </section>
   );
 }
@@ -91,7 +102,8 @@ function TaskGroup({ task, open, onToggle }) {
   return (
     <div className="taskGroup">
       <div className="taskRow">
-        <div className="taskName">
+        {/* 하위 작업 펼침 화살표는 맨 왼쪽 칸에 둬요. */}
+        <span className="taskToggleCell">
           <button
             type="button"
             onClick={onToggle}
@@ -100,10 +112,12 @@ function TaskGroup({ task, open, onToggle }) {
           >
             {open ? <ChevronDown size={17} /> : <ChevronRight size={17} />}
           </button>
+        </span>
 
-          <i className={`taskDot ${task.tone ?? "gray"}`} />
+        <span className="taskCode">{task.code ?? task.id}</span>
 
-          <b>{task.title}</b>
+        <div className="taskName">
+          <b title={task.title}>{task.title}</b>
         </div>
 
         <div className="assigneeStack">
@@ -136,7 +150,10 @@ function TaskGroup({ task, open, onToggle }) {
           })}
         </div>
 
-        <em className={priorityClass}>{priorityLabel}</em>
+        <em className={priorityClass}>
+          <Flag size={14} />
+          {priorityLabel}
+        </em>
 
         <time>{formatDateDots(task.startDate)}</time>
         <time>{formatDateDots(task.dueDate)}</time>
@@ -160,20 +177,29 @@ function TaskGroup({ task, open, onToggle }) {
           const text = typeof subtask === "string" ? subtask : subtask?.text;
           const known = typeof subtask === "object" && typeof subtask?.checked === "boolean";
           const done = known && subtask.checked;
+          const owner = typeof subtask === "object" ? assignees.find((a) => typeof a === "object" && a?.id === subtask?.assigneeId) : null;
 
           return (
             <div className="subtask" key={`${subtask?.id ?? text}-${index}`}>
+              <span />
+              <span />
+
               <span className="subtaskName">
                 <i
                   aria-hidden="true"
                   style={known && !done ? { borderColor: "#cbd5e1", color: "transparent" } : undefined}
-                >
-                  ✓
-                </i>
+                />
                 {text}
               </span>
 
-              <span />
+              {/* 하위 작업 담당자 — 작업에 배치된 담당자 중 한 명이에요. */}
+              <div className="assigneeStack">
+                {owner && (
+                  <span className="assigneeAvatar" title={owner.name}>
+                    {owner.initial ?? owner.name?.[0]}
+                  </span>
+                )}
+              </div>
               <span />
 
               <time>{formatDateDots(task.startDate)}</time>
@@ -182,8 +208,6 @@ function TaskGroup({ task, open, onToggle }) {
               <span />
 
               <mark>{known ? (done ? "완료" : "미완료") : ""}</mark>
-
-              <span />
             </div>
           );
         })}

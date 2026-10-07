@@ -5,6 +5,7 @@ import { useNotifications } from "../context/NotificationContext";
 import { toRelativeTime } from "../api/mappers";
 import { getErrorMessage } from "../utils/apiError";
 import "../styles/notifications.css";
+import useDialog from "../context/useDialog";
 
 // 헤더의 종 아이콘이에요. 읽지 않은 알림 수를 배지로 보여주고, 누르면 알림 목록이 열려요.
 // 초대 알림은 목록 안에서 바로 수락/거절할 수 있어요(이미 처리한 초대는 버튼 없이 "처리 완료"로 보여요).
@@ -144,6 +145,7 @@ export default function NotificationBell() {
 }
 
 function NotificationItem({ notification, inviteState, onOpen, onRemove, onAccept, onDecline, onSettled }) {
+  const { confirm } = useDialog();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -196,8 +198,9 @@ function NotificationItem({ notification, inviteState, onOpen, onRemove, onAccep
           <button type="button" className="notiItem__accept" disabled={busy} onClick={() => run(onAccept, true)}>
             수락
           </button>
-          <button type="button" className="notiItem__decline" disabled={busy} onClick={() => {
-              if (window.confirm("이 워크스페이스 초대를 거절할까요?")) run(onDecline, false);
+          <button type="button" className="notiItem__decline" disabled={busy} onClick={async () => {
+              const ok = await confirm({ title: "초대 거절", message: "이 워크스페이스 초대를 거절할까요?", confirmLabel: "거절", danger: true });
+              if (ok) run(onDecline, false);
             }}>
             거절
           </button>

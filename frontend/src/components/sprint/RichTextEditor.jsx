@@ -22,7 +22,15 @@ const commands = [
 ];
 
 // maxLength는 글자 수 표시용이에요(넘으면 부모(SprintForm)가 제출을 막아요).
-export default function RichTextEditor({ value = "", onChange, maxLength = 2000 }) {
+// label/placeholder/hint는 쓰는 화면에 맞게 바꿀 수 있어요(기본값은 스프린트 만들기 문구). label을 ""로 주면 제목을 숨겨요.
+export default function RichTextEditor({
+  value = "",
+  onChange,
+  maxLength = 2000,
+  label = "상세 설명",
+  placeholder = "스프린트에 대한 상세 설명을 작성하세요. (선택)",
+  hint = "스프린트의 배경, 범위, 기대 효과 등을 자유롭게 작성할 수 있습니다.",
+}) {
   const editorRef = useRef(null);
   // 마지막으로 "우리가" 부모에게 내보낸 값이에요. 입력하는 동안은 DOM이 진짜 값이라서,
   // 부모가 돌려준 value가 이 값과 같으면(=방금 우리가 친 내용) innerHTML을 다시 쓰지 않아요.
@@ -131,7 +139,7 @@ export default function RichTextEditor({ value = "", onChange, maxLength = 2000 
 
   return (
     <section className="richEditor">
-      <label>상세 설명</label>
+      {label && <label>{label}</label>}
       <div className="editorShell">
         <div className="editorTools" role="toolbar" aria-label="서식 도구">
           {commands.map(([Icon, command, label]) => (
@@ -164,8 +172,8 @@ export default function RichTextEditor({ value = "", onChange, maxLength = 2000 
           suppressContentEditableWarning
           role="textbox"
           aria-multiline="true"
-          aria-label="상세 설명"
-          data-placeholder="스프린트에 대한 상세 설명을 작성하세요. (선택)"
+          aria-label={label || "설명"}
+          data-placeholder={placeholder}
           onInput={emit}
           onPaste={handlePaste}
           onDrop={handleDrop}
@@ -175,9 +183,7 @@ export default function RichTextEditor({ value = "", onChange, maxLength = 2000 
         />
       </div>
       <div className="fieldFooter">
-        <span>
-          스프린트의 배경, 범위, 기대 효과 등을 자유롭게 작성할 수 있습니다.
-        </span>
+        <span>{hint}</span>
         <b>{htmlToText(value).length} / {maxLength}</b>
       </div>
     </section>

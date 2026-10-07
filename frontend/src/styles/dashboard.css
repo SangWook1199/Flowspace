@@ -62,7 +62,7 @@
   position: relative;
   overflow: hidden;
   border-radius: 22px;
-  padding: 26px 28px 24px;
+  padding: 22px 28px 20px;
   background: linear-gradient(135deg, #eef4ff 0%, #dce8ff 100%);
   border: 1px solid #e5ecff;
 }
@@ -96,7 +96,7 @@
   grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
   gap: 36px;
 
-  min-height: 195px;
+  min-height: 150px;
 }
 
 .heroLeft {
@@ -116,7 +116,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: 10px 0 12px;
+  margin: 8px 0 10px;
 }
 
 .heroTitle h2 {
@@ -161,7 +161,7 @@
 
 .heroProgress {
   width: 100%;
-  margin-top: 20px;
+  margin-top: 14px;
 }
 
 .heroProgressRow {
@@ -360,6 +360,42 @@
   height: 100%;
 }
 
+/* 대시보드 3열 카드는 내용이 늘거나 줄어도 높이가 변하지 않게 고정하고, 넘치는 부분은 카드 안에서 스크롤해요. */
+.dashboardMain .panel {
+  height: 500px;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboardMain .panelHeader,
+.dashboardMain .taskFilter,
+.dashboardMain .calendarDate {
+  flex-shrink: 0;
+}
+
+/* 내용이 없을 때 보여주는 안내 문구예요. */
+.emptyText {
+  margin: auto;
+  padding: 24px 0;
+  color: #94a3b8;
+  font-size: 13px;
+  text-align: center;
+}
+
+.panelScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* 표 머리글은 스크롤해도 위에 남아 있어요. */
+.panelScroll .taskTable th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fff;
+}
+
 .panelHeader {
   display: flex;
   justify-content: space-between;
@@ -418,50 +454,46 @@
 
 .taskTable th {
   text-align: left;
-  padding: 12px 8px;
+  padding: 8px 8px;
   color: #94a3b8;
   font-size: 12px;
   font-weight: 600;
 }
 
 .taskTable td {
-  padding: 14px 8px;
+  padding: 9px 8px;
   border-top: 1px solid #eef2f7;
   font-size: 13px;
   vertical-align: middle;
 }
 
 /* ===== Column Width ===== */
+/* 1=우선순위 2=작업 제목 3=상태 4=담당 5=마감 6=(빈 칸) */
 
 .taskTable th:nth-child(1),
 .taskTable td:nth-child(1) {
-  width: 36px;
+  width: 82px;
 }
 
 .taskTable th:nth-child(2),
 .taskTable td:nth-child(2) {
-  width: 82px;
+  width: 35%;
 }
 
 .taskTable th:nth-child(3),
 .taskTable td:nth-child(3) {
-  width: 35%;
-}
-
-.taskTable th:nth-child(4),
-.taskTable td:nth-child(4) {
   width: 130px;
   text-align: center;
 }
 
-.taskTable th:nth-child(5),
-.taskTable td:nth-child(5) {
+.taskTable th:nth-child(4),
+.taskTable td:nth-child(4) {
   width: 120px;
   text-align: left;
 }
 
-.taskTable th:nth-child(6),
-.taskTable td:nth-child(6) {
+.taskTable th:nth-child(5),
+.taskTable td:nth-child(5) {
   width: 110px;
 }
 
@@ -627,6 +659,9 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .timelineRow {
@@ -683,6 +718,9 @@
 .activityList {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .activityItem {

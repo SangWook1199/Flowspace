@@ -43,6 +43,10 @@ public class Task extends BaseEntity {
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
 
+    // 워크스페이스 안에서 1부터 올라가는 작업 번호예요(T-1, T-2 …). 스프린트를 옮겨도 그대로예요.
+    @Column(name = "task_number", nullable = false)
+    private Integer taskNumber;
+
     @Column(name = "title", nullable = false, length = 200)
     private String title;
 

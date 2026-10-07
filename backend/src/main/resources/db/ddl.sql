@@ -144,6 +144,7 @@ CREATE TABLE tasks (
     workspace_id BIGINT NOT NULL,
     sprint_id BIGINT NULL,
     status_id BIGINT NOT NULL,
+    task_number INT NOT NULL,
     position DECIMAL(20,10) NOT NULL DEFAULT 0,
     created_by BIGINT NOT NULL,
     title VARCHAR(200) NOT NULL,
@@ -157,7 +158,8 @@ CREATE TABLE tasks (
     FOREIGN KEY (workspace_id) REFERENCES workspaces(workspace_id),
     FOREIGN KEY (sprint_id) REFERENCES sprints(sprint_id),
     FOREIGN KEY (status_id) REFERENCES task_statuses(status_id),
-    FOREIGN KEY (created_by) REFERENCES users(user_id)
+    FOREIGN KEY (created_by) REFERENCES users(user_id),
+    CONSTRAINT uk_task_workspace_number UNIQUE (workspace_id, task_number)
 );
 
 CREATE TABLE task_assignees (

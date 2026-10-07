@@ -29,6 +29,7 @@ import ColumnResizeHandle from "./ColumnResizeHandle";
 import PopoverPortal from "./PopoverPortal";
 import { useWorkspace } from "../../context/WorkspaceContext";
 import { getAvatarTone } from "../../utils/avatarColor";
+import useDialog from "../../context/useDialog";
 
 // 컬럼에 width가 없으면(예전 목데이터, 새로 만든 컬럼) 쓰는 기본값이에요.
 // block_database_columns DDL엔 너비 컬럼이 없지만, pageId·kind처럼 이것도
@@ -134,6 +135,7 @@ export default function DatabaseBlock({
   onRenameRowPage,
   onDeleteRowPage,
 }) {
+  const { confirm } = useDialog();
   const { columns, rows, cells, title } = database;
   const navigate = useNavigate();
 
@@ -292,12 +294,15 @@ export default function DatabaseBlock({
   // 행 = 페이지라서, 행을 지우면 그 페이지(안의 내용까지 전부)도 같이
   // 휴지통으로 이동해요 — deletePage가 이제 소프트 삭제라 필요하면
   // 휴지통에서 복원할 수 있어요.
-  const deleteRow = (rowId) => {
+  const deleteRow = async (rowId) => {
     const row = rows.find((r) => r.id === rowId);
     if (row?.pageId) {
-      const confirmed = window.confirm(
-        "이 행을 지우면 연결된 페이지도 함께 휴지통으로 이동해요. 계속할까요?",
-      );
+      const confirmed = await confirm({
+        title: "행 삭제",
+        message: "이 행을 지우면 연결된 페이지도 함께 휴지통으로 이동해요.\n계속할까요?",
+        confirmLabel: "계속",
+        danger: true,
+      });
       if (!confirmed) return;
       onDeleteRowPage?.(row.pageId);
     }
@@ -323,7 +328,7 @@ export default function DatabaseBlock({
     setTypeMenuFor(id);
   };
 
-  const deleteColumn = (columnId) => {
+  const deleteColumn = async (columnId) => {
     const target = columns.find((c) => c.id === columnId);
     // 제목(TITLE) 열은 노션처럼 삭제할 수 없어요 — 행 = 페이지 구조를
     // 지탱하는 자리라서요.
@@ -331,7 +336,15 @@ export default function DatabaseBlock({
     if (columns.length <= 1) return;
     // 열을 지우면 그 열의 값도 모두 사라져요 — 값이 있을 때만 한 번 물어봐요.
     const hasData = cells.some((c) => c.columnId === columnId && (Array.isArray(c.value) ? c.value.length > 0 : c.value != null && c.value !== "" && c.value !== false));
-    if (hasData && !window.confirm(`'${target?.name || "이름 없음"}' 열을 삭제할까요? 열에 입력된 값도 모두 사라져요.`)) return;
+    if (hasData) {
+      const ok = await confirm({
+        title: "열 삭제",
+        message: `'${target?.name || "이름 없음"}' 열을 삭제할까요?\n열에 입력된 값도 모두 사라져요.`,
+        confirmLabel: "삭제",
+        danger: true,
+      });
+      if (!ok) return;
+    }
     onChange({
       ...database,
       columns: columns.filter((c) => c.id !== columnId),

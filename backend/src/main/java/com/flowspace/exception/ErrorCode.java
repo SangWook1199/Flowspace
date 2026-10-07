@@ -43,6 +43,7 @@ public enum ErrorCode {
     // Sprint
     SPRINT_NOT_FOUND(HttpStatus.NOT_FOUND, "스프린트를 찾을 수 없습니다."),
     INVALID_SPRINT_DATE(HttpStatus.BAD_REQUEST, "종료일은 시작일보다 빠를 수 없습니다."),
+    SPRINT_ALREADY_ACTIVE(HttpStatus.CONFLICT, "이미 진행 중인 스프린트가 있어요. 먼저 완료한 뒤 시작해 주세요."),
     RETROSPECTIVE_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 회고가 생성된 스프린트입니다."),
 
     // Task

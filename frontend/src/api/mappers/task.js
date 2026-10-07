@@ -9,19 +9,21 @@ export const toAssignee = (dto) => ({
   profileImageUrl: fileUrl(dto.profileImageUrl),
 });
 
-// 서버 SubTaskResponse → 화면 하위 작업 {id, text, checked}
+// 서버 SubTaskResponse → 화면 하위 작업 {id, text, checked, assigneeId}
+// assigneeId는 하위 작업 담당자(작업 담당자 중 한 명)의 사용자 id예요(없으면 null).
 export const toSubtask = (dto) => ({
   id: dto.subtaskId,
   text: dto.content,
   checked: Boolean(dto.isCompleted),
+  assigneeId: dto.assigneeId ?? null,
   position: dto.position ?? 0,
 });
 
 // 서버 TaskResponse → 화면 작업.
-// 서버의 endDate는 화면에서 dueDate(마감일)로 불러요. code는 화면에 보여주는 번호예요.
+// 서버의 endDate는 화면에서 dueDate(마감일)로 불러요. code는 화면에 보여주는 번호로, 워크스페이스 기준 작업 번호(taskNumber)예요.
 export const toTask = (dto) => ({
   id: dto.taskId,
-  code: `T-${dto.taskId}`,
+  code: `T-${dto.taskNumber ?? dto.taskId}`,
   workspaceId: dto.workspaceId,
   sprintId: dto.sprintId ?? null,
   statusId: dto.statusId,

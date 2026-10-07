@@ -7,6 +7,7 @@ import { useAuth } from "../../context/useAuth";
 import * as authApi from "../../api/auth";
 import { getInitial } from "../../utils/initial";
 import { getErrorMessage, getErrorCode } from "../../utils/apiError";
+import useDialog from "../../context/useDialog";
 
 // 입력 규칙. 닉네임 30자는 users.nickname 컬럼(length 30)에 맞춘 값이라,
 // 이보다 길게 보내면 서버에서 저장하다 실패해요.
@@ -16,6 +17,7 @@ const NICKNAME_MAX_LENGTH = 30;
 const PROFILE_MAX_BYTES = 5 * 1024 * 1024;
 
 export default function SignupForm() {
+  const { notify } = useDialog();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
   const { signup, setUser } = useAuth();
@@ -137,7 +139,7 @@ export default function SignupForm() {
           nickname,
         },
         // 가입이 끝나면 로그인 상태로 넘어가기 전에 성공했다고 한 번 알려줘요.
-        { beforeLogin: () => window.alert("회원가입에 성공했어요!") },
+        { beforeLogin: () => notify("회원가입에 성공했어요!", { type: "success" }) },
       );
 
       // 프로필 사진은 가입 요청(email/password/nickname)에는 안 들어가요

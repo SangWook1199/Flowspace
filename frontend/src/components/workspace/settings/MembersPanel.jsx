@@ -7,6 +7,7 @@ import { getErrorMessage } from "../../../utils/apiError";
 import { useEmailSuggest } from "../../../hooks/useEmailSuggest";
 import EmailSuggestList from "../../common/EmailSuggestList";
 import { useMemberProfile } from "../../../context/MemberProfileContext";
+import useDialog from "../../../context/useDialog";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -35,6 +36,7 @@ export default function MembersPanel({
   onRemove,
   onTransfer,
 }) {
+  const { confirm } = useDialog();
   const openMemberProfile = useMemberProfile();
   const emailId = useId();
   const [email, setEmail] = useState("");
@@ -82,7 +84,8 @@ export default function MembersPanel({
   };
 
   const runAction = async (member, confirmText, action) => {
-    if (!window.confirm(confirmText)) return;
+    const ok = await confirm({ title: "멤버 관리", message: confirmText, confirmLabel: "확인", danger: true });
+    if (!ok) return;
     setBusyId(member.id);
     setActionError(null);
     try {

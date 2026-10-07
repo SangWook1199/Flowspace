@@ -24,6 +24,8 @@ export default function CalendarCard({ events = [], date }) {
 
       {/* 타임라인 */}
       <div className={styles.timeline}>
+        {events.length === 0 && <p className={styles.emptyText}>오늘 일정이 없어요.</p>}
+
         {events.map((event, index) => (
           // 같은 시각에 일정이 둘 이상이면 time만으로는 key가 겹쳐요. id가 있으면 id, 없으면 순번을 같이 써요.
           <div key={event.id ?? `${event.time}-${index}`} className={styles.timelineRow}>

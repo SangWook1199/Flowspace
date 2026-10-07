@@ -6,6 +6,7 @@ import WorkspaceSettingsModal from "./WorkspaceSettingsModal";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import ErrorBoundary from "../components/common/ErrorBoundary";
 import { useAuth } from "../context/useAuth";
+import useDialog from "../context/useDialog";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { MemberProfileProvider } from "../context/MemberProfileProvider";
 
@@ -20,6 +21,7 @@ import { MemberProfileProvider } from "../context/MemberProfileProvider";
 const SPRINT_ORDER = { ACTIVE: 0, PLANNING: 1, COMPLETED: 2 };
 
 export default function MainLayout() {
+  const { confirm } = useDialog();
   const {
     navigation,
     members,
@@ -42,6 +44,7 @@ export default function MainLayout() {
     sprintDataError,
     reloadSprintData,
     createSprint,
+    updateSprint,
     changeSprintStatus,
     deleteSprint,
     createTask,
@@ -51,6 +54,9 @@ export default function MainLayout() {
     toggleSubtask,
     addSubtasks,
     deleteSubtask,
+    renameSubtask,
+    setSubtaskAssignee,
+    moveSubtask,
     createStatus,
     saveStatus,
     deleteStatus,
@@ -93,7 +99,9 @@ export default function MainLayout() {
               <button type="button" onClick={() => navigate("/workspace/create")}>
                 워크스페이스 만들기
               </button>
-              <button type="button" onClick={() => window.confirm("로그아웃할까요?") && logout()}>
+              <button type="button" onClick={async () => {
+                  if (await confirm({ title: "로그아웃", message: "로그아웃할까요?", confirmLabel: "로그아웃" })) logout();
+                }}>
                 로그아웃
               </button>
             </div>
@@ -156,6 +164,7 @@ export default function MainLayout() {
             sprintDataError,
             reloadSprintData,
             createSprint,
+            updateSprint,
             changeSprintStatus,
             deleteSprint,
             createTask,
@@ -165,6 +174,9 @@ export default function MainLayout() {
             toggleSubtask,
             addSubtasks,
             deleteSubtask,
+            renameSubtask,
+            setSubtaskAssignee,
+            moveSubtask,
             createStatus,
             saveStatus,
             deleteStatus,

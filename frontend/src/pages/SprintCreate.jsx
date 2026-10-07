@@ -15,7 +15,9 @@ export default function SprintCreate() {
   return (
     <div className="sprintCreatePage">
       <div className="breadcrumb">
-        <span>스프린트</span>
+        <button type="button" className="breadcrumbLink" onClick={() => navigate("/sprints")}>
+          스프린트
+        </button>
         <ChevronRight size={16} />
         <b>새 스프린트 생성</b>
       </div>

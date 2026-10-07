@@ -3,6 +3,7 @@ import { MoreHorizontal, Plus, Trash2 } from "lucide-react";
 
 import ColumnResizeHandle from "./ColumnResizeHandle";
 import PopoverPortal from "./PopoverPortal";
+import useDialog from "../../context/useDialog";
 
 // 기존 200px의 3/4로 줄였어요.
 const DEFAULT_COLUMN_WIDTH = 150;
@@ -14,6 +15,7 @@ const DEFAULT_COLUMN_WIDTH = 150;
 // 블록을 쓰면 되니까요. block.database.kind === "TABLE"일 때만 이 컴포넌트가
 // 쓰이고, 실제 저장되는 block.type은 여전히 'DATABASE'예요.
 export default function SimpleTableBlock({ table, onChange }) {
+  const { confirm } = useDialog();
   const { columns, rows, cells } = table;
 
   const nextColumnId = useRef(Math.max(0, ...columns.map((c) => c.id)) + 1);
@@ -54,10 +56,13 @@ export default function SimpleTableBlock({ table, onChange }) {
 
   const hasData = (c) => (Array.isArray(c.value) ? c.value.length > 0 : c.value != null && c.value !== "" && c.value !== false);
 
-  const deleteColumn = (columnId) => {
+  const deleteColumn = async (columnId) => {
     if (columns.length <= 1) return;
     // 값이 들어 있는 열만 한 번 물어봐요(빈 열은 바로 지워요).
-    if (cells.some((c) => c.columnId === columnId && hasData(c)) && !window.confirm("이 열을 삭제할까요? 열에 입력된 값도 모두 사라져요.")) return;
+    if (cells.some((c) => c.columnId === columnId && hasData(c))) {
+      const ok = await confirm({ title: "열 삭제", message: "이 열을 삭제할까요?\n열에 입력된 값도 모두 사라져요.", confirmLabel: "삭제", danger: true });
+      if (!ok) return;
+    }
     onChange({
       ...table,
       columns: columns.filter((c) => c.id !== columnId),
@@ -70,9 +75,12 @@ export default function SimpleTableBlock({ table, onChange }) {
     onChange({ ...table, rows: [...rows, { id }] });
   };
 
-  const deleteRow = (rowId) => {
+  const deleteRow = async (rowId) => {
     if (rows.length <= 1) return;
-    if (cells.some((c) => c.rowId === rowId && hasData(c)) && !window.confirm("이 행을 삭제할까요? 행에 입력된 값도 모두 사라져요.")) return;
+    if (cells.some((c) => c.rowId === rowId && hasData(c))) {
+      const ok = await confirm({ title: "행 삭제", message: "이 행을 삭제할까요?\n행에 입력된 값도 모두 사라져요.", confirmLabel: "삭제", danger: true });
+      if (!ok) return;
+    }
     onChange({
       ...table,
       rows: rows.filter((r) => r.id !== rowId),

@@ -49,6 +49,11 @@
   padding: 3px 6px;
   white-space: nowrap;
 }
+/* 진행 중인 스프린트는 초록색 배지로 눈에 띄게 해요. */
+.sidebarSprints > button b.statusActive {
+  color: #1f9a63;
+  background: #e3f6ec;
+}
 .sidebarSprints > button.allSprints {
   margin-top: 6px;
   color: #273851;

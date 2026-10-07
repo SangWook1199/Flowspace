@@ -7,6 +7,7 @@ import { getErrorMessage } from "../utils/apiError";
 import { getSavedWorkspaceId, saveWorkspaceId } from "../utils/workspaceStorage";
 
 import { useSprintData } from "./useSprintData";
+import useDialog from "./useDialog";
 
 // 사이드바 메뉴 목록은 아직 목데이터예요(대시보드 연결 M4에서 정리해요).
 import { NAVIGATION } from "../utils/navigation";
@@ -70,6 +71,7 @@ export function WorkspaceProvider({ children }) {
   // 로그인한 사람이 바뀌면(로그인·로그아웃·계정 전환) 워크스페이스·페이지 상태를 전부 비우고
   // 새로 불러와요. AuthProvider 안쪽에 마운트되지만, 혹시 밖에서 쓰여도 죽지 않게 옵셔널 체이닝으로 받아요.
   const auth = useAuth();
+  const { notify } = useDialog();
   const userId = auth?.user?.id ?? null;
   const creatorName = auth?.user?.nickname || DEFAULT_CREATOR;
 
@@ -234,8 +236,8 @@ export function WorkspaceProvider({ children }) {
     loadPages(currentWorkspaceId);
   };
 
-  // 서버 호출이 실패했을 때 사용자에게 알려요(토스트 UI가 생기기 전까지 alert).
-  const notifyError = (err, fallback) => window.alert(getErrorMessage(err, fallback));
+  // 서버 호출이 실패했을 때 앱 토스트로 알려요.
+  const notifyError = (err, fallback) => notify(getErrorMessage(err, fallback));
 
   /* ---------- 스프린트 · 작업 · 칸반 상태 (서버 연결) ---------- */
 
@@ -676,6 +678,7 @@ export function WorkspaceProvider({ children }) {
     sprintDataError: sprintData.error,
     reloadSprintData: sprintData.reload,
     createSprint: sprintData.createSprint,
+    updateSprint: sprintData.updateSprint,
     changeSprintStatus: sprintData.changeSprintStatus,
     deleteSprint: sprintData.deleteSprint,
     createTask: sprintData.createTask,
@@ -685,6 +688,9 @@ export function WorkspaceProvider({ children }) {
     toggleSubtask: sprintData.toggleSubtask,
     addSubtasks: sprintData.addSubtasks,
     deleteSubtask: sprintData.deleteSubtask,
+    renameSubtask: sprintData.renameSubtask,
+    setSubtaskAssignee: sprintData.setSubtaskAssignee,
+    moveSubtask: sprintData.moveSubtask,
     createStatus: sprintData.createStatus,
     saveStatus: sprintData.saveStatus,
     deleteStatus: sprintData.deleteStatus,

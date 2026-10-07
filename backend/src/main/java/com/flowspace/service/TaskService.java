@@ -241,8 +241,11 @@ public class TaskService {
         BigDecimal position = BigDecimal
             .valueOf(taskRepository.findByWorkspaceAndStatusOrderByPositionAsc(workspace, status).size());
 
+        // 작업 번호는 워크스페이스 기준으로 다음 번호를 줘요(스프린트와 상관없이 T-1, T-2 … 로 이어져요).
+        int taskNumber = taskRepository.findMaxTaskNumber(workspace) + 1;
+
         Task task = Task.builder().workspace(workspace).sprint(sprint).createdBy(user).status(status)
-            .position(position).title(request.title()).description(request.description()).startDate(request.startDate())
+            .taskNumber(taskNumber).position(position).title(request.title()).description(request.description()).startDate(request.startDate())
             .endDate(request.endDate()).priority(request.priority()).build();
 
         taskRepository.save(task);
@@ -379,6 +382,14 @@ public class TaskService {
         }
 
         List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
+
+        // 하위 작업 담당자는 작업 담당자 중에서만 고를 수 있어서, 작업 담당자에서 빠진 사람은 하위 작업에서도 비워요.
+        for (SubTask subtask : subtasks) {
+            if (subtask.getAssignee() != null && !assigneeIds.contains(subtask.getAssignee().getUserId())) {
+                subtask.update(subtask.getContent(), null);
+            }
+        }
+
         List<CommentResponse> comments = getTaskCommentResponses(task);
         List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task);
 

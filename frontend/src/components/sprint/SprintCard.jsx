@@ -22,7 +22,8 @@ export default function SprintCard({ sprint, onNavigate }) {
           </h2>
           <p>{sprint.goal}</p>
           <small>
-            ▣　{formatDateDots(sprint.startDate)} ~ {formatDateDots(sprint.endDate)}
+            <CalendarDays size={13} />
+            {formatDateDots(sprint.startDate)} ~ {formatDateDots(sprint.endDate)}
             {remaining && `　·　${remaining}`}
           </small>
         </div>

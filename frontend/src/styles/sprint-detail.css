@@ -54,30 +54,6 @@
   gap: 7px;
   color: #5d6d86;
 }
-.detailProgress > div:first-child {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-bottom: 11px;
-}
-.detailProgress button {
-  height: 35px;
-  border: 1px solid #dfe6ef;
-  border-radius: 8px;
-  background: #fff;
-  font-weight: 700;
-}
-.detailProgress button:first-child {
-  width: 41px;
-  display: grid;
-  place-items: center;
-}
-.detailProgress button:last-child {
-  padding: 0 14px;
-  color: #fff;
-  background: #4f5cf6;
-  border-color: #4f5cf6;
-}
 .detailProgress {
   position: relative;
 }
@@ -193,8 +169,9 @@
 .taskRow {
   display: grid;
   grid-template-columns:
-    minmax(245px, 2.2fr)
-    116px 102px 126px 126px 150px 105px 90px;
+    44px 76px minmax(150px, 1.25fr)
+    minmax(120px, 1fr) minmax(104px, 0.8fr) minmax(104px, 0.8fr) minmax(104px, 0.8fr)
+    minmax(140px, 1.1fr) minmax(90px, 0.8fr);
   align-items: center;
 }
 .taskHead {
@@ -204,7 +181,7 @@
   color: #617089;
   font-size: 12px;
 }
-.taskHead span:nth-child(n + 2) {
+.taskHead span {
   text-align: center;
 }
 .taskRow {
@@ -266,17 +243,36 @@
   font-size: 11px;
   font-style: normal;
 }
-.taskRow em.높음 {
+/* 우선순위: 색 알약 + 깃발 아이콘(높음 빨강 / 보통 주황 / 낮음 초록) — 작업 페이지와 같아요 */
+.taskRow em {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.taskRow em.high {
   color: #e65353;
   background: #feeaea;
 }
-.taskRow em.보통 {
+.taskRow em.medium {
   color: #d8820c;
   background: #fff2df;
 }
-.taskRow em.낮음 {
+.taskRow em.low {
   color: #199866;
   background: #e4f8ee;
+}
+.taskRow .taskCode {
+  justify-self: center;
+  color: #7a899f;
+  font-size: 12px;
+  font-weight: 600;
+}
+.taskRow .assigneeStack {
+  justify-self: center;
 }
 .taskRow time,
 .subtask time {
@@ -326,8 +322,9 @@
   min-height: 39px;
   display: grid;
   grid-template-columns:
-    minmax(245px, 2.2fr)
-    116px 102px 126px 126px 150px 105px 90px;
+    44px 76px minmax(150px, 1.25fr)
+    minmax(120px, 1fr) minmax(104px, 0.8fr) minmax(104px, 0.8fr) minmax(104px, 0.8fr)
+    minmax(140px, 1.1fr) minmax(90px, 0.8fr);
   align-items: center;
   padding: 0 22px 0 66px;
   border-top: 1px solid #f0f2f6;
@@ -343,15 +340,6 @@
   place-items: center;
   font-size: 10px;
   margin-right: 11px;
-}
-.subtask time:nth-of-type(1) {
-  grid-column: 4;
-}
-.subtask time:nth-of-type(2) {
-  grid-column: 5;
-}
-.subtask mark {
-  grid-column: 7;
 }
 .detailBottomActions {
   position: fixed;
@@ -376,8 +364,14 @@
   padding: 0 22px;
   font-weight: 700;
 }
-.detailBottomActions button:first-child {
+.detailBottomActions button.dangerAction {
   color: #e95154;
+}
+.detailBottomActions .actionLabel {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
 }
 .detailBottomActions button:last-child {
   min-width: 290px;
@@ -488,4 +482,261 @@
   .detailBottomActions button:last-child {
     min-width: 180px;
   }
+}
+
+/* ===== 작업 가져오기 모달 ===== */
+/* kanban.css의 .statusModal(430px)보다 우선하도록 클래스를 겹쳐 써요. */
+.statusModal.importModal {
+  width: 560px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+}
+.importModal__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 22px 16px;
+}
+.importModal__empty {
+  margin: 32px 0;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 13px;
+}
+.importModal__group {
+  margin-top: 14px;
+}
+.importModal__group > header label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 13px;
+  cursor: pointer;
+}
+.importModal__group > header span {
+  color: #94a3b8;
+  font-size: 12px;
+}
+.importModal__group ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid #eef1f5;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.importModal__group li + li {
+  border-top: 1px solid #eef1f5;
+}
+.importModal__group li label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  cursor: pointer;
+}
+.importModal__group li label:hover {
+  background: #f8fafc;
+}
+.importModal__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+.importModal__assignees {
+  display: flex;
+}
+.importModal__assignees i {
+  width: 22px;
+  height: 22px;
+  margin-left: -4px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #e8eaff;
+  color: #4f5cf6;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+}
+.importModal__status {
+  min-width: 52px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 11px;
+  font-style: normal;
+  text-align: center;
+}
+.importModal__status.in_progress {
+  background: #eaf2ff;
+  color: #2769ed;
+}
+.importModal__status.done {
+  background: #ddf8ea;
+  color: #15803d;
+}
+.importModal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 22px;
+  border-top: 1px solid #eef2f7;
+}
+.importModal__footer button {
+  height: 38px;
+  padding: 0 16px;
+  border: 1px solid #dfe5ee;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.importModal__footer button.primary {
+  border-color: #4f5cf6;
+  background: #4f5cf6;
+  color: #fff;
+}
+.importModal__footer button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===== 작업 목록: 높이 고정 + 빈 상태 ===== */
+.taskListBody {
+  height: 400px;
+  overflow-y: auto;
+}
+.taskListEmpty {
+  margin: 0;
+  padding: 80px 0;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+/* 열 제목은 스크롤해도 위에 붙어 있어요. */
+.taskListBody .taskHead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* ===== 스프린트 상단 카드: 크기가 변하지 않게 고정 + 설명 팝오버 ===== */
+.detailHero {
+  position: relative;
+  min-height: 200px;
+}
+/* 이름은 한 줄, 목표는 두 줄까지만 보여줘서 글이 길어도 카드가 커지지 않아요. */
+.detailTitle {
+  min-width: 0;
+}
+.detailTitle h1 {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.detailTitle h1 em {
+  font-style: normal;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.detailTitle h1 span {
+  flex: none;
+  vertical-align: baseline;
+}
+.detailTitle p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-height: 22px;
+}
+.heroActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.heroDescWrap {
+  position: relative;
+}
+.heroAction {
+  height: 30px;
+  padding: 0 11px;
+  border: 1px solid #dfe5ee;
+  border-radius: 8px;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.heroAction:hover,
+.heroAction.on {
+  border-color: #4f5cf6;
+  color: #4f5cf6;
+}
+.heroAction .flip {
+  transform: rotate(180deg);
+}
+/* 카드를 밀어내지 않고 위에 떠요. */
+.heroDescPopover {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 8px);
+  left: 0;
+  width: min(560px, 80vw);
+  max-height: 260px;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 14px 16px;
+  border: 1px solid #e3e8f0;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.14);
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.heroDescPopover ul,
+.heroDescPopover ol {
+  margin: 2px 0;
+  padding-left: 20px;
+}
+.heroDescPopover a {
+  color: #4f5cf6;
+}
+.heroDescPopover section + section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed #e3e8f0;
+}
+.heroDescPopover h3 {
+  margin: 0 0 4px;
+  color: #1e293b;
+  font-size: 12px;
+}
+.heroDescPopover p {
+  margin: 0;
+  min-height: 0;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  font-weight: 400;
 }

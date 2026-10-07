@@ -3,6 +3,7 @@ import * as sprintApi from "../api/sprints";
 import * as taskApi from "../api/tasks";
 import { getErrorMessage } from "../utils/apiError";
 import { percentOf } from "../utils/date";
+import useDialog from "./useDialog";
 
 // 작업 정보(제목·담당자·날짜 등)를 고칠 때 서버에 보내기까지 기다리는 시간(타이핑 중 요청 폭주 방지).
 const TASK_SAVE_DELAY_MS = 600;
@@ -21,9 +22,6 @@ const BACKLOG_BASE = {
   icon: "Archive",
 };
 
-// 서버 호출이 실패했을 때 사용자에게 알려요(토스트 UI가 생기기 전까지 alert).
-const notifyError = (err, fallback) => window.alert(getErrorMessage(err, fallback));
-
 // 스프린트·작업·칸반 상태를 워크스페이스 단위로 불러와서 들고 있는 훅이에요.
 // WorkspaceProvider가 이 훅의 결과를 그대로 화면에 내보내요(스프린트 목록/상세, 작업 목록, 칸반, 페이지 TASK 블록이
 // 모두 같은 데이터를 봐요).
@@ -31,6 +29,10 @@ const notifyError = (err, fallback) => window.alert(getErrorMessage(err, fallbac
 // 구조: 스프린트 목록 + 상태(컬럼) 목록 + 모든 작업(스프린트별 + 백로그)을 한 번에 받아와요.
 // 작업 수가 많지 않은 팀 단위 서비스라 이렇게 받아두면 화면마다 따로 불러올 필요가 없어요.
 export function useSprintData({ userId, workspaceId }) {
+  // 서버 호출이 실패했을 때 앱 토스트로 알려요.
+  const { notify } = useDialog();
+  const notifyError = (err, fallback) => notify(getErrorMessage(err, fallback));
+
   const [sprints, setSprints] = useState([]); // 서버 스프린트(백로그 제외)
   const [statuses, setStatuses] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -168,6 +170,13 @@ export function useSprintData({ userId, workspaceId }) {
     return sprint;
   };
 
+  // 스프린트 정보(이름·목표·설명·색·기간)를 고쳐요. 실패하면 예외를 던져요(수정 화면이 안내 문구를 보여줘요).
+  const updateSprint = async (sprintId, form) => {
+    const updated = await sprintApi.updateSprint(sprintId, form);
+    setSprints((prev) => prev.map((sprint) => (sprint.id === sprintId ? updated : sprint)));
+    return updated;
+  };
+
   // 스프린트 시작(ACTIVE)·완료(COMPLETED). 완료하면 서버가 회고를 만들고 남은 작업을 백로그로 보내서 다시 맞춰요.
   const changeSprintStatus = async (sprintId, status) => {
     try {
@@ -244,7 +253,22 @@ export function useSprintData({ userId, workspaceId }) {
   // 작업 값을 고쳐요. 화면에는 바로 반영하고, 서버에는 잠깐 기다렸다가 한 번만 보내요.
   // patch는 화면 작업 모양의 일부({title, assignees, priority, startDate, dueDate, description, statusId, sprintId …})예요.
   const updateTask = (taskId, patch) => {
-    setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, ...patch } : task)));
+    setTasks((prev) =>
+      prev.map((task) => {
+        if (task.id !== taskId) return task;
+
+        const next = { ...task, ...patch };
+        // 하위 작업 담당자는 작업 담당자 중에서만 고를 수 있어서, 작업 담당자에서 빠진 사람은 하위 작업에서도 비워요
+        // (서버도 같은 처리를 해요).
+        if (patch.assignees) {
+          const ids = new Set(patch.assignees.map((user) => user.id));
+          next.subtasks = (task.subtasks ?? []).map((item) =>
+            item.assigneeId != null && !ids.has(item.assigneeId) ? { ...item, assigneeId: null } : item,
+          );
+        }
+        return next;
+      }),
+    );
     scheduleTaskSave(taskId);
   };
 
@@ -319,9 +343,59 @@ export function useSprintData({ userId, workspaceId }) {
     patchSubtasks(taskId, (list) => list.map((item) => (item.id === subtask.id ? { ...item, checked } : item)));
 
     try {
-      await taskApi.updateSubtask(subtask.id, { content: subtask.text, isCompleted: checked });
+      await taskApi.updateSubtask(subtask.id, { content: subtask.text, isCompleted: checked, assigneeId: subtask.assigneeId });
     } catch (err) {
       notifyError(err, "하위 작업을 저장하지 못했어요.");
+      await refresh();
+    }
+  };
+
+  // 하위 작업 이름을 바꿔요(체크 여부는 그대로 보내요).
+  const renameSubtask = async (taskId, subtaskId, text) => {
+    const subtask = tasksRef.current.find((task) => task.id === taskId)?.subtasks?.find((item) => item.id === subtaskId);
+    const content = text.trim();
+    if (!subtask || !content || content === subtask.text) return;
+
+    patchSubtasks(taskId, (list) => list.map((item) => (item.id === subtaskId ? { ...item, text: content } : item)));
+
+    try {
+      await taskApi.updateSubtask(subtaskId, { content, isCompleted: subtask.checked, assigneeId: subtask.assigneeId });
+    } catch (err) {
+      notifyError(err, "하위 작업 이름을 저장하지 못했어요.");
+      await refresh();
+    }
+  };
+
+  // 하위 작업 담당자를 바꿔요(assigneeId가 null이면 담당자 없음). 작업 담당자 중에서만 고를 수 있어요.
+  const setSubtaskAssignee = async (taskId, subtaskId, assigneeId) => {
+    const subtask = tasksRef.current.find((task) => task.id === taskId)?.subtasks?.find((item) => item.id === subtaskId);
+    if (!subtask || subtask.assigneeId === assigneeId) return;
+
+    patchSubtasks(taskId, (list) => list.map((item) => (item.id === subtaskId ? { ...item, assigneeId } : item)));
+
+    try {
+      await taskApi.updateSubtask(subtaskId, { content: subtask.text, isCompleted: subtask.checked, assigneeId });
+    } catch (err) {
+      notifyError(err, "하위 작업 담당자를 저장하지 못했어요.");
+      await refresh();
+    }
+  };
+
+  // 하위 작업 순서를 바꿔요(fromIndex 자리의 것을 toIndex 자리로). 순서는 0부터 차례로 다시 매겨서 저장해요.
+  const moveSubtask = async (taskId, fromIndex, toIndex) => {
+    const list = tasksRef.current.find((task) => task.id === taskId)?.subtasks ?? [];
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= list.length || toIndex >= list.length) return;
+
+    const next = [...list];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    const ordered = next.map((item, index) => ({ ...item, position: index }));
+    patchSubtasks(taskId, () => ordered);
+
+    try {
+      await taskApi.reorderSubtasks(ordered.map((item) => ({ subtaskId: item.id, position: item.position })));
+    } catch (err) {
+      notifyError(err, "하위 작업 순서를 저장하지 못했어요.");
       await refresh();
     }
   };
@@ -412,6 +486,7 @@ export function useSprintData({ userId, workspaceId }) {
     error,
     reload,
     createSprint,
+    updateSprint,
     changeSprintStatus,
     deleteSprint,
     createTask,
@@ -421,6 +496,9 @@ export function useSprintData({ userId, workspaceId }) {
     toggleSubtask,
     addSubtasks,
     deleteSubtask,
+    renameSubtask,
+    setSubtaskAssignee,
+    moveSubtask,
     createStatus,
     saveStatus,
     deleteStatus,

@@ -150,37 +150,36 @@ export default function useMultiBlockTextSelection({
 
     const { head, tail, headLength } = sliceBlocksAroundRange(startEl, endEl, range);
     const removed = list.filter((b) => removeIds.has(b.id));
-    if (!deleteOwnedPages(removed, "선택한 범위에 포함된 블록을 지우면 연결된 하위 페이지도 함께 휴지통으로 이동해요. 계속할까요?")) {
-      return true;
-    }
-
-    const insertHtml = replacement ? escapePlainTextToHtml(replacement).replace(/ /g, "&nbsp;") : "";
-    const merged = sanitizeInlineHtml(head + insertHtml + tail);
-    pushUndoSnapshot();
-    sel.removeAllRanges();
-    setEditorSingleHost(false);
-    const apply = () => {
-      // 서식 툴바는 지워질 블록의 DOM을 들고 있으니 같이 숨겨요(사라진 DOM으로 선택 범위를 계산하면 에러가 나요).
-      setSelectionToolbar(null);
-      setBlocks((prev) =>
-        prev
-          .filter((b) => !removeIds.has(b.id))
-          .map((b) => (b.id === startId ? { ...b, content: merged, richText: true } : b)),
-      );
-    };
-    const placeCaret = () => {
-      const el = inputRefs.current[startId];
-      if (el) restoreCaretOffset(el, headLength + replacement.length);
-    };
-    if (sync) {
-      // 한글 같은 조합 입력은 시작 이벤트가 끝나면 곧바로 브라우저가 "지금 커서 자리"에 글자를 넣어요.
-      // 그래서 그 전에 화면(DOM)까지 바로 고치고 커서를 합쳐진 블록에 옮겨둬요.
-      flushSync(apply);
-      placeCaret();
-    } else {
-      apply();
-      requestAnimationFrame(placeCaret);
-    }
+    // 하위 페이지를 가진 블록이 섞여 있으면 확인창이 떠서 이어지는 편집이 잠깐 미뤄져요(그동안 입력은 막아 둬요).
+    deleteOwnedPages(removed, "선택한 범위에 포함된 블록을 지우면 연결된 하위 페이지도 함께 휴지통으로 이동해요. 계속할까요?", () => {
+      const insertHtml = replacement ? escapePlainTextToHtml(replacement).replace(/ /g, "&nbsp;") : "";
+      const merged = sanitizeInlineHtml(head + insertHtml + tail);
+      pushUndoSnapshot();
+      sel.removeAllRanges();
+      setEditorSingleHost(false);
+      const apply = () => {
+        // 서식 툴바는 지워질 블록의 DOM을 들고 있으니 같이 숨겨요(사라진 DOM으로 선택 범위를 계산하면 에러가 나요).
+        setSelectionToolbar(null);
+        setBlocks((prev) =>
+          prev
+            .filter((b) => !removeIds.has(b.id))
+            .map((b) => (b.id === startId ? { ...b, content: merged, richText: true } : b)),
+        );
+      };
+      const placeCaret = () => {
+        const el = inputRefs.current[startId];
+        if (el) restoreCaretOffset(el, headLength + replacement.length);
+      };
+      if (sync) {
+        // 한글 같은 조합 입력은 시작 이벤트가 끝나면 곧바로 브라우저가 "지금 커서 자리"에 글자를 넣어요.
+        // 그래서 그 전에 화면(DOM)까지 바로 고치고 커서를 합쳐진 블록에 옮겨둬요.
+        flushSync(apply);
+        placeCaret();
+      } else {
+        apply();
+        requestAnimationFrame(placeCaret);
+      }
+    });
     return true;
   };
 

@@ -42,8 +42,10 @@ const validate = (form) => {
 };
 
 // onSubmit(값)은 스프린트를 만드는 함수예요(Promise를 돌려줘요). 실패해서 예외를 던지면 그 메시지를 폼 아래에 보여줘요.
-export default function SprintForm({ onSubmit }) {
-  const [form, setForm] = useState(makeInitialForm);
+// initial을 주면 "수정" 모드예요: 그 값으로 채우고, 취소는 입력 초기화 대신 onCancel(보통 이전 화면으로)을 불러요.
+export default function SprintForm({ onSubmit, initial, onCancel: onCancelEdit, submitLabel }) {
+  const isEdit = Boolean(initial);
+  const [form, setForm] = useState(() => (initial ? { ...makeInitialForm(), ...initial } : makeInitialForm()));
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const update = (key, value) =>
@@ -62,12 +64,13 @@ export default function SprintForm({ onSubmit }) {
     try {
       await onSubmit?.(payload);
     } catch (err) {
-      setMessage(getErrorMessage(err, "스프린트를 만들지 못했어요."));
+      setMessage(getErrorMessage(err, isEdit ? "스프린트를 저장하지 못했어요." : "스프린트를 만들지 못했어요."));
     } finally {
       setSubmitting(false);
     }
   };
   const cancel = () => {
+    if (isEdit) return onCancelEdit?.();
     setForm(makeInitialForm());
     setMessage("입력 내용을 초기화했습니다.");
   };
@@ -124,6 +127,7 @@ export default function SprintForm({ onSubmit }) {
       {message && <p className="formMessage">{message}</p>}
       <FormActions
         onCancel={cancel}
+        submitLabel={submitLabel}
         disabled={Boolean(validate(form)) || submitting}
       />
     </form>

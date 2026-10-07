@@ -46,10 +46,10 @@ export default function TodayWorkCard({ tasks = [] }) {
         ))}
       </div>
 
+      <div className={styles.panelScroll}>
       <table className={styles.taskTable}>
         <thead>
           <tr>
-            <th width="28"></th>
             <th>우선순위</th>
             <th>작업 제목</th>
             <th>상태</th>
@@ -63,25 +63,16 @@ export default function TodayWorkCard({ tasks = [] }) {
           {visibleTasks.length === 0 && (
             <tr>
               <td
-                colSpan={7}
+                colSpan={6}
                 style={{ textAlign: "center", color: "#94a3b8", padding: "24px 0" }}
               >
-                해당하는 작업이 없어요.
+                {tasks.length === 0 ? "오늘 할 작업이 없어요." : "해당하는 작업이 없어요."}
               </td>
             </tr>
           )}
 
           {visibleTasks.map((task) => (
             <tr key={task.id}>
-              <td>
-                <input
-                  type="checkbox"
-                  checked={task.done}
-                  readOnly
-                  aria-label={`${task.title} 완료 여부`}
-                />
-              </td>
-
               <td>
                 <span
                   className={`${styles.priority} ${
@@ -123,6 +114,7 @@ export default function TodayWorkCard({ tasks = [] }) {
           ))}
         </tbody>
       </table>
+      </div>
     </section>
   );
 }

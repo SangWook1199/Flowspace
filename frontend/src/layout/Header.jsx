@@ -9,6 +9,7 @@ import NotificationBell from "./NotificationBell";
 import AccountSettingsModal from "./AccountSettingsModal";
 import HeaderSearch from "./HeaderSearch";
 import { useMemberProfile } from "../context/MemberProfileContext";
+import useDialog from "../context/useDialog";
 
 // 헤더에 아바타로 바로 보여주는 최대 인원(넘으면 "+N명")
 const MAX_VISIBLE_MEMBERS = 5;
@@ -29,6 +30,7 @@ function HeaderAvatarContent({ member }) {
 // 자리로 옮겼어요(사이드바 그 자리엔 워크스페이스 설정 버튼이
 // 대신 들어감). 순서는 벨 다음, 프로필 앞이에요.
 export default function Header({ members = [], workspaceId }) {
+  const { confirm } = useDialog();
   const onlineCount = members.filter((member) => member.online).length;
   const openMemberProfile = useMemberProfile();
 
@@ -96,9 +98,9 @@ export default function Header({ members = [], workspaceId }) {
     };
   }, [menuOpen]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setMenuOpen(false);
-    if (!window.confirm("로그아웃할까요?")) return;
+    if (!(await confirm({ title: "로그아웃", message: "로그아웃할까요?", confirmLabel: "로그아웃" }))) return;
     logout();
     navigate("/login", { replace: true });
   };

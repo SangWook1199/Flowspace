@@ -14,6 +14,7 @@ import WorkspaceInviteStep from "../components/workspace/WorkspaceInviteStep";
 import FlowSpaceLogo from "../components/common/FlowSpaceLogo";
 
 import "../styles/workspace-create.css";
+import useDialog from "../context/useDialog";
 
 const DEFAULT_INITIALS = "H";
 
@@ -44,6 +45,7 @@ function deriveInitials(name) {
 }
 
 export default function WorkspaceCreatePage() {
+  const { notify } = useDialog();
   const [step, setStep] = useState(1);
   const [workspace, setWorkspace] = useState(INITIAL_WORKSPACE);
   // 2단계에서 사용자가 이니셜을 직접 고쳤는지. 고쳤다면 1단계로 돌아가 이름을
@@ -148,8 +150,8 @@ export default function WorkspaceCreatePage() {
 
       // 워크스페이스는 이미 만들어진 뒤라서, 초대가 실패한 이메일만 알려주고 계속 진행해요.
       if (created.failedInvites.length > 0) {
-        window.alert(
-          `워크스페이스는 만들었지만 아래 이메일은 초대하지 못했어요.\n\n${created.failedInvites
+        notify(
+          `워크스페이스는 만들었지만 아래 이메일은 초대하지 못했어요.\n${created.failedInvites
             .map((item) => `· ${item.email} — ${item.message}`)
             .join("\n")}`,
         );

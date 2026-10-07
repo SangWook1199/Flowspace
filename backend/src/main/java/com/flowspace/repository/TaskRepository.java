@@ -23,6 +23,10 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
 
     List<Task> findByStatusOrderByPositionAsc(TaskStatus status);
 
+    // 워크스페이스에서 지금까지 쓴 가장 큰 작업 번호(작업이 없으면 0)
+    @Query("select coalesce(max(t.taskNumber), 0) from Task t where t.workspace = :workspace")
+    int findMaxTaskNumber(@Param("workspace") Workspace workspace);
+
     long countBySprint(Sprint sprint);
 
     long countBySprintAndStatus_Category(Sprint sprint, TaskStatusCategory category);
