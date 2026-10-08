@@ -142,6 +142,7 @@ export default function MainLayout() {
           context={{
             workspaceId: currentWorkspace.id,
             pages,
+            pagesInWorkspace,
             setPages,
             pagesLoading,
             pagesError,

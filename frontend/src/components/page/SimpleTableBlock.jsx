@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { MoreHorizontal, Plus, Trash2 } from "lucide-react";
 
 import ColumnResizeHandle from "./ColumnResizeHandle";
+import { cellListHandlers } from "./lib/cellList";
 import PopoverPortal from "./PopoverPortal";
 import useDialog from "../../context/useDialog";
 
@@ -230,7 +231,7 @@ export default function SimpleTableBlock({ table, onChange }) {
                       className="db-cell-input"
                       rows={1}
                       value={cellValue(row.id, col.id)}
-                      onChange={(e) => setCellValue(row.id, col.id, e.target.value)}
+                      {...cellListHandlers((v) => setCellValue(row.id, col.id, v))}
                       ref={(el) => {
                         if (!el) return;
                         el.style.height = "auto";

@@ -428,6 +428,48 @@
   flex-wrap: wrap;
 }
 
+/* 탭(상태 필터)과 검색칸을 한 줄에 놓아요. */
+.taskToolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+}
+
+.taskSearch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 190px;
+  height: 31px;
+  padding: 0 11px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #94a3b8;
+}
+
+.taskSearch:focus-within {
+  background: #eef2ff;
+  box-shadow: 0 0 0 1.5px #c7d2fe;
+}
+
+.taskSearch input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  color: #334155;
+}
+
+.taskSearch input::placeholder {
+  color: #94a3b8;
+}
+
 .taskFilter button {
   border: none;
   background: #f1f5f9;
@@ -460,6 +502,33 @@
   font-weight: 600;
 }
 
+/* 정렬할 수 있는 머리글은 글자와 화살표가 한 덩어리 버튼이에요. */
+.sortBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.sortBtn svg {
+  opacity: 0.6;
+}
+
+.sortBtn:hover,
+.sortBtn.sortActive {
+  color: #475569;
+}
+
+.sortBtn.sortActive svg {
+  opacity: 1;
+  color: #4f46e5;
+}
+
 .taskTable td {
   padding: 9px 8px;
   border-top: 1px solid #eef2f7;
@@ -477,7 +546,7 @@
 
 .taskTable th:nth-child(2),
 .taskTable td:nth-child(2) {
-  width: 35%;
+  width: 28%;
 }
 
 .taskTable th:nth-child(3),
@@ -488,8 +557,8 @@
 
 .taskTable th:nth-child(4),
 .taskTable td:nth-child(4) {
-  width: 120px;
-  text-align: left;
+  width: 160px;
+  text-align: center;
 }
 
 .taskTable th:nth-child(5),
@@ -581,8 +650,12 @@
 .assigneeGroup {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  gap: 6px;
+  justify-content: center;
+}
+
+/* 아이콘끼리 살짝 겹치고, 흰 테두리로 서로 구분해요. */
+.assigneeGroup > span + span {
+  margin-left: -8px;
 }
 
 .assignee {
@@ -595,6 +668,22 @@
   font-size: 12px;
   font-weight: 700;
   flex-shrink: 0;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.assigneeMore {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef2f7;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px #fff;
 }
 
 .assignee.blue {

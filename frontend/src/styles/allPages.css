@@ -1,0 +1,274 @@
+/* ===========================
+   모든 페이지
+=========================== */
+
+.allPages {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 28px 28px 40px;
+  box-sizing: border-box;
+}
+
+.allPagesHead h1 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  color: #1f2328;
+}
+
+.allPagesHead p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #758198;
+}
+
+.allPagesBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin: 22px 0 14px;
+}
+
+.allPagesTabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.allPagesTabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 13px;
+  border: 0;
+  border-radius: 999px;
+  background: #f1f5f9;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.allPagesTabs button b {
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.allPagesTabs button.active {
+  background: #eef2ff;
+  color: #4338ca;
+  font-weight: 600;
+}
+
+.allPagesTabs button.active b {
+  color: #6366f1;
+}
+
+.allPagesTools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.allPagesSearch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 210px;
+  height: 34px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #94a3b8;
+}
+
+.allPagesSearch:focus-within {
+  background: #eef2ff;
+  box-shadow: 0 0 0 1.5px #c7d2fe;
+}
+
+.allPagesSearch input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  color: #334155;
+}
+
+.allPagesTools select {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: #475569;
+}
+
+.allPagesList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #e6e8ec;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.allPagesList li {
+  display: flex;
+  align-items: center;
+  border-top: 1px solid #f0f2f5;
+}
+
+.allPagesList li:first-child {
+  border-top: 0;
+}
+
+.allPagesList li:hover {
+  background: #f8f9fc;
+}
+
+.allPagesRow {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 8px 12px 18px;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.allPagesIcon {
+  width: 24px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+  color: #64748b;
+}
+
+.allPagesName {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.allPagesName b {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2328;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.allPagesName small {
+  font-size: 12px;
+  color: #94a3b8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.allPagesBadge {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f3e8ff;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  color: #7c3aed;
+}
+
+.allPagesTime {
+  flex: none;
+  min-width: 64px;
+  text-align: right;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.allPagesStar {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #b4bcc8;
+  cursor: pointer;
+}
+
+.allPagesStar:hover {
+  background: #fff6dd;
+  color: #d99a06;
+}
+
+.allPagesStar.on {
+  color: #e8a90a;
+}
+
+.allPagesStar.on svg {
+  fill: currentColor;
+}
+
+.allPagesEmpty {
+  margin: 0;
+  padding: 48px 0;
+  text-align: center;
+  font-size: 13.5px;
+  color: #94a3b8;
+}
+
+.allPagesEmpty button {
+  margin-top: 8px;
+  padding: 7px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .allPages {
+    padding: 18px 14px 32px;
+  }
+
+  .allPagesSearch {
+    flex: 1;
+    width: auto;
+  }
+
+  .allPagesTools {
+    width: 100%;
+  }
+
+  .allPagesTime {
+    display: none;
+  }
+}

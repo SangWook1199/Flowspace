@@ -19,11 +19,14 @@ public record PageResponse(
     Long createdBy,
     LocalDateTime createdAt,
     LocalDateTime updatedAt,
-    LocalDateTime deletedAt
+    LocalDateTime deletedAt,
+
+    // 스프린트 회고에 연결된 페이지인지 (회고 페이지는 스프린트마다 자동으로 생겨서 화면이 따로 묶어 보여줘요)
+    boolean retrospective
 
 ) {
 
-    public static PageResponse from(Page page) {
+    public static PageResponse from(Page page, boolean retrospective) {
         return new PageResponse(
             page.getPageId(),
             page.getWorkspace().getWorkspaceId(),
@@ -35,7 +38,8 @@ public record PageResponse(
             page.getCreatedBy().getUserId(),
             page.getCreatedAt(),
             page.getUpdatedAt(),
-            page.getDeletedAt()
+            page.getDeletedAt(),
+            retrospective
         );
     }
 }

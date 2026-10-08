@@ -27,7 +27,11 @@ export default function NotificationBell() {
   } = useNotifications();
 
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState("all");
+  // 열 때마다 "안 읽음" 탭으로 시작해요. 새 소식만 바로 보이고, 지난 알림은 "전체" 탭에서 찾아요.
+  const [tab, setTab] = useState("unread");
+  // 창을 열 때 안 읽음이던 알림 id예요. 열어 둔 동안 읽음 처리돼도(알림을 누르거나 "모두 읽음")
+  // 안 읽음 탭에서 바로 사라지지 않고 남아 있다가, 창을 닫았다 다시 열면 정리돼요.
+  const [openedUnreadIds, setOpenedUnreadIds] = useState(() => new Set());
   const rootRef = useRef(null);
   const triggerRef = useRef(null);
 
@@ -55,13 +59,18 @@ export default function NotificationBell() {
 
   const toggle = () => {
     // 열 때마다 받은 초대를 다시 확인해서 수락/거절 버튼이 최신 상태로 보이게 해요.
-    if (!open) loadInvites();
+    if (!open) {
+      loadInvites();
+      setTab("unread");
+      setOpenedUnreadIds(new Set(notifications.filter((n) => !n.read).map((n) => n.id)));
+    }
     setOpen((prev) => !prev);
   };
 
   const visible = useMemo(
-    () => (tab === "unread" ? notifications.filter((n) => !n.read) : notifications),
-    [tab, notifications],
+    () =>
+      tab === "unread" ? notifications.filter((n) => !n.read || openedUnreadIds.has(n.id)) : notifications,
+    [tab, notifications, openedUnreadIds],
   );
 
   const handleOpen = (notification) => {

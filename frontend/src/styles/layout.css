@@ -91,6 +91,11 @@
 }
 .pageArea {
   margin-top: 18px;
+  /* 페이지가 많아져도 사이드바 아래(설정·휴지통)가 밀려나지 않게 이 영역만 스크롤해요. */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 .divider {
   height: 1px;
@@ -188,10 +193,109 @@
   background: #fde8e8;
   color: #e65353;
 }
+/* 즐겨찾기 별 — 평소엔 숨어 있다가 줄에 호버하면 보이고, 즐겨찾기한 페이지는 항상 노란 별로 보여요. */
+.pageNavRow__pin {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #96a2b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+.pageNavRow:hover .pageNavRow__pin,
+.pageNavRow__pin:focus-visible,
+.pageNavRow__pin.on {
+  opacity: 1;
+}
+.pageNavRow__pin:hover {
+  background: #fff6dd;
+  color: #d99a06;
+}
+.pageNavRow__pin.on {
+  color: #e8a90a;
+}
+.pageNavRow__pin.on svg {
+  fill: currentColor;
+}
+/* "페이지" 구역 제목 줄 — 누르면 목록을 접고 펼쳐요. */
+.pageArea > p.pageSectionHead {
+  margin-top: 8px;
+  margin-bottom: 6px;
+}
+.pageSectionHead button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  margin: 0 -4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.pageSectionHead button:hover {
+  background: #eef1f7;
+}
+.pageSectionHead svg {
+  transition: transform 0.15s;
+}
+.pageSectionHead svg.closed {
+  transform: rotate(-90deg);
+}
+.pageSectionHead small {
+  margin-left: 2px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #eef1f7;
+  font-size: 11px;
+  font-weight: 600;
+}
+/* "N개 더 보기" / "모든 페이지 보기" — 스프린트 쪽 "모든 스프린트 보기"와 같은 톤이에요. */
+.pageMoreBtn,
+.pageAllLink {
+  width: 100%;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  color: #758198;
+  text-align: left;
+  cursor: pointer;
+}
+.pageMoreBtn:hover,
+.pageAllLink:hover {
+  background: #f1f4fa;
+}
+.pageAllLink {
+  color: #273851;
+  font-weight: 600;
+}
+.pageAllLink svg {
+  color: #4e6dff;
+}
+.pageAllLink.selected {
+  background: #ebefff;
+  color: #4e6dff;
+}
 /* 휴지통 — 사이드바 맨 아래 설정 버튼 옆에 아이콘만 두고, 누르면 위로 팝업이 열려요.
    삭제 관련 UI라 회색 계열로 톤을 낮췄어요. */
 .sidebarFooter {
   margin-top: auto;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 8px;

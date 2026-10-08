@@ -12,6 +12,9 @@ export const toPage = (dto) => ({
   position: dto.position ?? 0,
   createdBy: dto.createdBy,
   createdAt: dto.createdAt,
+  updatedAt: dto.updatedAt ?? dto.createdAt ?? null,
+  // 스프린트 회고에 연결된 페이지예요(스프린트마다 자동으로 생겨서 사이드바 목록에서는 따로 빼요).
+  isRetrospective: Boolean(dto.retrospective),
   trashedAt: dto.deletedAt ?? null,
 });
 

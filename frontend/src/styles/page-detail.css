@@ -5,8 +5,6 @@
    우선순위 높음=red/보통=orange/낮음=green */
 
 .page-detail-page {
-  /* 상단 바(.page-detail__topbar-zone)가 커버 사진 위에 떠 있는
-     오버레이라(position:absolute) 여기가 그 기준점이 돼요. */
   position: relative;
   width: 100%;
 }
@@ -51,7 +49,7 @@
    없어요. 아이콘도 이때 커버 쪽으로 끌어올려 겹쳐요(아래
    .page-detail__icon-wrap--overlap). */
 .page-detail__container--body {
-  padding-top: 56px;
+  padding-top: 24px;
   padding-bottom: 90px;
 }
 
@@ -66,22 +64,13 @@
   text-align: center;
 }
 
-/* ---------- 상단 바: 상위 페이지 이동 + 삭제 ---------- */
+/* ---------- 상단 바: 상위 페이지 경로 + 커버 추가 ---------- */
 
-/* 노션은 이 줄(상위 페이지 경로 · 삭제)이 따로 없지만, 이 앱은 페이지
-   트리 탐색/삭제가 필요해서 남겨뒀어요 — 대신 문서 흐름을 차지하지
-   않게 커버 위에 떠 있는 오버레이로 바꿨어요(position:absolute,
-   .page-detail-page 기준). 그래야 커버가 있든 없든 아이콘이 항상
-   커버 바로 아래(또는 커버가 없으면 페이지 맨 위)에서 시작할 수
-   있어요 — 상단 바가 문서 흐름 안에 있으면 그만큼 아이콘 시작
-   위치가 밀려서 "커버에 아이콘이 겹친다"는 느낌이 약해졌을 거예요. */
+/* 노션처럼 화면 왼쪽 위에 놓이는 페이지 헤더 줄이에요. 문서 흐름 안에 있어서
+   커버가 있으면 이 줄 바로 아래에 붙어요. 앱 상단 헤더(.header)와 좌우 여백(30px)을 맞춰서
+   본문 칼럼이 아니라 화면 왼쪽 가장자리를 기준으로 놓아요. */
 .page-detail__topbar-zone {
-  position: absolute;
-  top: 0;
-  left: 0;
   width: 100%;
-  z-index: 5;
-  padding-top: 16px;
 }
 
 .page-detail__topbar {
@@ -89,20 +78,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  min-height: 32px;
-}
-
-/* 커버 사진 위/흰 배경 위 어디서든 글자가 잘 읽히도록, 상단 바
-   버튼들을 반투명 흰 알약(pill) 배경으로 한 번 더 감싸요. */
-.page-detail__topbar-surface {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(4px);
-  min-width: 0;
+  height: 48px;
+  padding: 0 30px;
 }
 
 .page-detail__breadcrumb {
@@ -144,6 +121,25 @@
 .page-detail__breadcrumb-seg button:hover {
   background: #f0efff;
   color: #4f5cf6;
+}
+
+/* 경로의 마지막 칸 — 지금 보고 있는 페이지예요(눌러도 이동하지 않아요). */
+.page-detail__breadcrumb-current {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  max-width: 260px;
+  color: #111a2f;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.page-detail__breadcrumb-current span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .page-detail__delete-btn {

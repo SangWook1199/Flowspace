@@ -112,7 +112,7 @@ public class PageService {
 
         activityService.log(workspace, user, ActivityType.PAGE_CREATED, ActivityTargetType.PAGE, page.getPageId());
 
-        return PageResponse.from(page);
+        return toResponse(page);
     }
 
     // 페이지 목록 조회
@@ -127,8 +127,8 @@ public class PageService {
         workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        return pageRepository.findByWorkspaceAndIsDeletedFalseOrderByPositionAscCreatedAtAsc(workspace).stream()
-            .map(PageResponse::from).toList();
+        return toResponses(workspace,
+            pageRepository.findByWorkspaceAndIsDeletedFalseOrderByPositionAscCreatedAtAsc(workspace));
     }
 
     // 페이지 단건 조회
@@ -143,7 +143,7 @@ public class PageService {
         workspaceMemberRepository.findByWorkspaceAndUser(page.getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        return PageResponse.from(page);
+        return toResponse(page);
     }
 
     // 페이지 수정
@@ -173,7 +173,7 @@ public class PageService {
 
         page.update(request.title(), request.icon(), page.getCoverFile(), parent);
 
-        return PageResponse.from(page);
+        return toResponse(page);
     }
 
     // 페이지 삭제
@@ -221,8 +221,7 @@ public class PageService {
         workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        return pageRepository.findByWorkspaceAndIsDeletedTrueOrderByDeletedAtDesc(workspace).stream()
-            .map(PageResponse::from).toList();
+        return toResponses(workspace, pageRepository.findByWorkspaceAndIsDeletedTrueOrderByDeletedAtDesc(workspace));
     }
 
     // 휴지통 페이지 복원
@@ -252,7 +251,7 @@ public class PageService {
             }
         }
 
-        return PageResponse.from(page);
+        return toResponse(page);
     }
 
     // 휴지통 페이지 영구 삭제
@@ -533,7 +532,7 @@ public class PageService {
         activityService.log(workspace, user, ActivityType.PAGE_CREATED, ActivityTargetType.PAGE,
             rootCopy.getPageId());
 
-        return PageResponse.from(rootCopy);
+        return toResponse(rootCopy);
     }
 
     // 페이지의 블록 복사
@@ -714,7 +713,7 @@ public class PageService {
 
         page.updateCover(cover);
 
-        return PageResponse.from(page);
+        return toResponse(page);
     }
 
     // 페이지 커버 삭제
@@ -734,7 +733,7 @@ public class PageService {
             page.updateCover(null);
         }
 
-        return PageResponse.from(page);
+        return toResponse(page);
     }
 
     // 기본 커버 적용
@@ -757,6 +756,19 @@ public class PageService {
 
         page.updateCover(cover);
 
-        return PageResponse.from(page);
+        return toResponse(page);
+    }
+
+    // 페이지 하나를 응답으로 바꿔요 (회고 페이지 여부를 함께 담아요)
+    private PageResponse toResponse(Page page) {
+        return PageResponse.from(page, retrospectiveRepository.existsByPage(page));
+    }
+
+    // 페이지 목록을 응답으로 바꿔요 (회고 페이지 id를 한 번만 조회해서 페이지마다 쿼리하지 않아요)
+    private List<PageResponse> toResponses(Workspace workspace, List<Page> pages) {
+        Set<Long> retrospectivePageIds = new HashSet<>(retrospectiveRepository.findPageIdsByWorkspace(workspace));
+
+        return pages.stream().map(page -> PageResponse.from(page, retrospectivePageIds.contains(page.getPageId())))
+            .toList();
     }
 }

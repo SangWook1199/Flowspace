@@ -115,6 +115,8 @@ export default function Dashboard() {
           assignees: task.assignees ?? [],
           // 작업에는 시각이 없어서 마감일을 보여줘요.
           time: task.dueDate ? `~ ${formatDateDots(task.dueDate)}` : "-",
+          // 마감일 정렬에 쓰는 원래 날짜예요(없으면 빈 문자열).
+          dueDate: task.dueDate || "",
           done,
         };
       });

@@ -1330,17 +1330,25 @@ export default function BlockEditor({
     // 요청: "마크다운 단축키" — 빈 텍스트 블록에서 "- ", "1. ", "[] ", "# ", "## ", "### ",
     // "> "(토글), 따옴표+공백(인용), "```"(코드), "---"(구분선)를 치면 그 자리에서 블록
     // 타입이 바뀌어요. 글자를 지우는 중(내용이 줄어드는 입력)엔 동작하지 않아요.
-    if (block.type === "TEXT" && !block.pageId && stripHtml(value).length > stripHtml(block.content).length) {
+    // 요청: "표나 콜아웃 같은 다른 블록에서도" — 텍스트 블록뿐 아니라 빈 콜아웃·인용·토글·제목·목록
+    // 블록에서도 같은 단축키로 그 블록 타입을 바로 바꿔요(이미 같은 타입이면 그대로 둬요).
+    // 콜아웃은 타입이 바뀌면서 배경색도 같이 지워요(Backspace로 일반 텍스트가 될 때와 같아요).
+    // 구분선·코드는 안에 자식이 있는 블록에는 쓸 수 없어서 자식이 있으면 바꾸지 않아요.
+    if (RICH_TEXT_TYPES.includes(block.type) && !block.pageId && stripHtml(value).length > stripHtml(block.content).length) {
       const shortcut = matchMarkdownShortcut(value);
-      if (shortcut) {
+      const blockIndex = blocks.findIndex((b) => b.id === block.id);
+      const hasChildren = (blocks[blockIndex + 1]?.indent || 0) > (block.indent || 0);
+      const cannotHaveChildren = shortcut?.type === "DIVIDER" || shortcut?.type === "CODE";
+      if (shortcut && shortcut.type !== block.type && !(cannotHaveChildren && hasChildren)) {
         if (shortcut.type === "DIVIDER") {
-          updateBlock(block.id, { type: "DIVIDER", content: "" });
+          updateBlock(block.id, { type: "DIVIDER", content: "", ...(block.type === "CALLOUT" ? { color: null } : {}) });
           insertBlockAfter(block.id, "TEXT");
           return;
         }
         updateBlock(block.id, {
           type: shortcut.type,
           content: "",
+          ...(block.type === "CALLOUT" ? { color: null } : {}),
           ...(shortcut.type === "CODE" ? {} : { richText: true }),
           ...(shortcut.type === "TODO" ? { checked: false } : {}),
           ...(shortcut.type === "TOGGLE" ? { collapsed: false } : {}),

@@ -30,6 +30,7 @@ import PopoverPortal from "./PopoverPortal";
 import { useWorkspace } from "../../context/WorkspaceContext";
 import { getAvatarTone } from "../../utils/avatarColor";
 import useDialog from "../../context/useDialog";
+import { cellListHandlers } from "./lib/cellList";
 
 // 컬럼에 width가 없으면(예전 목데이터, 새로 만든 컬럼) 쓰는 기본값이에요.
 // block_database_columns DDL엔 너비 컬럼이 없지만, pageId·kind처럼 이것도
@@ -980,7 +981,7 @@ function DatabaseCell({
       className="db-cell-input"
       rows={1}
       value={value}
-      onChange={(e) => onChange(e.target.value)}
+      {...cellListHandlers(onChange)}
       ref={(el) => {
         if (!el) return;
         el.style.height = "auto";
