@@ -233,7 +233,6 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
     const detail = await getPageDetail(pageId);
 
     // 다른 멤버가 새로 만든 데이터베이스 블록은 내용도 같이 받아와요(안 받으면 내 다음 저장이 그 블록을 지워요).
-    const localIds = new Set(latest.current.map((b) => String(b.id)));
     const serverToEditor = new Map();
     for (const [editorId, serverId] of idMap.current) serverToEditor.set(serverId, editorId);
 
@@ -401,7 +400,7 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
           await pullRemote();
         } catch (err) {
           console.warn("다른 멤버의 변경을 받아오지 못했어요", err);
-          throw new Error("다른 멤버의 변경을 확인하지 못해서 저장을 멈췄어요. 잠시 뒤 다시 시도해 주세요.");
+          throw new Error("다른 멤버의 변경을 확인하지 못해서 저장을 멈췄어요. 잠시 뒤 다시 시도해 주세요.", { cause: err });
         }
 
         const snapshot = latest.current;
@@ -419,7 +418,7 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
             // 받아온 뒤 저장하기 전에 다른 멤버가 먼저 저장했어요 — 처음부터(받아와서 합치기) 다시 해요.
             if (isVersionConflict(err)) {
               if (conflictRetries.current >= MAX_CONFLICT_RETRIES) {
-                throw new Error("다른 멤버가 계속 수정하고 있어서 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.");
+                throw new Error("다른 멤버가 계속 수정하고 있어서 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.", { cause: err });
               }
               conflictRetries.current += 1;
               again.current = true;
@@ -477,7 +476,6 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
   // 임시 페이지가 서버에 만들어져 실제 id를 받으면 하위 페이지 링크의 pageId가 바뀌어서 다시 저장해요.
   const mapSize = Object.keys(pageIdMap).length;
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (mapSize > 0) schedule();
   }, [mapSize, schedule]);
 

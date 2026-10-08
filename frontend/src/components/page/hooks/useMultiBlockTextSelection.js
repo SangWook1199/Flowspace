@@ -244,7 +244,7 @@ export default function useMultiBlockTextSelection({
     const extendOnce = (sel, key) => {
       if (!isPlaced(sel)) normalizeBackwardFocus(sel);
       const vertical = key === "ArrowUp" || key === "ArrowDown";
-      let pos = null;
+      let pos;
       if (vertical) {
         pos = computeVerticalTarget(sel, el, key === "ArrowUp", goalXRef);
       } else {

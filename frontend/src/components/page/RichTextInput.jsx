@@ -308,7 +308,6 @@ export default function RichTextInput({
       el.innerHTML = sanitizeInlineHtml(value || "");
     }
     lastSyncedRef.current = value;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
   const sentinelRef = useRef(null);

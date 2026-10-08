@@ -45,7 +45,6 @@ export default function TaskTable({
     };
     document.addEventListener("mousedown", onPointerDown);
     return () => document.removeEventListener("mousedown", onPointerDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adding]);
   return (
     <section className={styles.tableWrap}>

@@ -9,7 +9,7 @@ import { CODE_LANGUAGES, detectLanguage, highlightCode } from "./codeHighlight";
 function replaceRange(ta, start, end, text, caret = start + text.length, caretEnd = caret) {
   const before = ta.value;
   const expected = before.slice(0, start) + text + before.slice(end);
-  let ok = false;
+  let ok;
   try {
     ta.focus();
     ta.setSelectionRange(start, end);

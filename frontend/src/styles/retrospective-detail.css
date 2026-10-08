@@ -402,7 +402,7 @@
    이기는지가 import 순서에 좌우되는 취약한 상태였는데, 이제 이 페이지도
    BlockEditor 하나만 쓰니까 그 중복 정의를 여기서 걷어내고
    page-detail.css 것 하나만 쓰게 했어요. Keep/Problem/Try 표 전용이던
-   .review-table*/.review-line* 도 같은 이유로 걷어냈어요(SimpleTableBlock이
+   .review-table, .review-line 관련 클래스도 같은 이유로 걷어냈어요(SimpleTableBlock이
    그 자리를 대신해요).
 =========================== */
 

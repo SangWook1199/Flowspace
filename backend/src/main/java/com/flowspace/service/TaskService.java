@@ -40,7 +40,6 @@ import com.flowspace.entity.enums.ActivityTargetType;
 import com.flowspace.entity.enums.ActivityType;
 import com.flowspace.entity.enums.NotificationType;
 import com.flowspace.entity.enums.TaskStatusCategory;
-import com.flowspace.entity.enums.WorkspaceRole;
 import com.flowspace.entity.id.WorkspaceTaskStatusId;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
@@ -198,13 +197,9 @@ public class TaskService {
             .findById(new WorkspaceTaskStatusId(request.workspaceId(), statusId))
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
 
-        WorkspaceMember member = workspaceMemberRepository.findByWorkspaceAndUser(mapping.getWorkspace(), user)
+        // 상태(컬럼) 삭제는 워크스페이스 멤버라면 누구나 할 수 있어요(삭제할 상태의 작업은 다른 상태로 옮겨져요).
+        workspaceMemberRepository.findByWorkspaceAndUser(mapping.getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
-
-        // 상태 삭제는 모든 작업의 상태를 바꾸는 일이라 관리자 이상만 할 수 있어요.
-        if (!member.getRole().isAtLeast(WorkspaceRole.ADMIN)) {
-            throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
-        }
 
         // 마지막 남은 상태는 삭제할 수 없고, 작업을 옮길 대상이 삭제하는 상태 자신일 수도 없다
         if (workspaceTaskStatusRepository.countByWorkspace(mapping.getWorkspace()) <= 1) {

@@ -83,7 +83,6 @@ export default function KanbanColumn({
     };
     document.addEventListener("mousedown", onPointerDown);
     return () => document.removeEventListener("mousedown", onPointerDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adding]);
 
   const menuRef = useRef(null);

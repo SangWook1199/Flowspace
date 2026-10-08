@@ -228,7 +228,7 @@ function SprintTasksBody({ sprint }) {
             <h1>{sprint.name} 작업</h1>
             <p>
               {sprint.name}
-              {!isBacklog && `　|　${formatDateDots(sprint.startDate)} ~ ${formatDateDots(sprint.endDate)}`}
+              {!isBacklog && `\u3000|\u3000${formatDateDots(sprint.startDate)} ~ ${formatDateDots(sprint.endDate)}`}
             </p>
           </div>
           <div>

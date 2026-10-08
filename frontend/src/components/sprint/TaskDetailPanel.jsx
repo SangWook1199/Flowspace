@@ -541,7 +541,7 @@ function TaskComments({ taskId }) {
               }}
             >
               {comment.author}
-            </b>　<small>{toRelativeTime(comment.createdAt)}</small>
+            </b>{"\u3000"}<small>{toRelativeTime(comment.createdAt)}</small>
             {comment.editedAt && <small> (수정됨)</small>}
             {isMine && (
               <Trash2

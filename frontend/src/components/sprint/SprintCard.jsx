@@ -37,7 +37,7 @@ export default function SprintCard({ sprint, onNavigate }) {
           <small>
             <CalendarDays size={13} />
             {formatDateDots(sprint.startDate)} ~ {formatDateDots(sprint.endDate)}
-            {remaining && `　·　${remaining}`}
+            {remaining && `\u3000·\u3000${remaining}`}
           </small>
         </div>
       </div>
@@ -68,7 +68,7 @@ export default function SprintCard({ sprint, onNavigate }) {
           onNavigate(sprint.id);
         }}
       >
-        상세보기　›
+        상세보기{"\u3000"}›
       </button>
     </article>
   );

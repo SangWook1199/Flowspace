@@ -1509,7 +1509,7 @@ export default function BlockEditor({
   const handleImageUrlEmbed = (block, url) => {
     const trimmed = url.trim();
     if (!trimmed) return;
-    let fileName = "파일";
+    let fileName;
     try {
       fileName = decodeURIComponent(trimmed.split("/").pop()?.split("?")[0] || "파일");
     } catch {
