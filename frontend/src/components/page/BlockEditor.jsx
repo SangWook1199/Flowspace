@@ -26,6 +26,7 @@ import { useAuth } from "../../context/useAuth";
 import { formatFileSize } from "./blocks/MediaBlocks";
 import { getOwnedPageIds, createEmptyBlock, createDefaultDatabase, createSimpleTable, normalizeBlockShape } from "./lib/blockFactory.js";
 import useBlockHistory from "./hooks/useBlockHistory.js";
+import useDialog from "../../context/useDialog.js";
 import useBlockSelectionState from "./hooks/useBlockSelectionState.js";
 import useBlockSelectionShortcuts from "./hooks/useBlockSelectionShortcuts.js";
 import createBlockKeyDownHandler from "./hooks/blockKeyDown.js";
@@ -57,6 +58,7 @@ export default function BlockEditor({
   // 다른 멤버가 저장한 내용을 합친 블록 배열을 통째로 화면에 넣는 함수를 여기에 등록해 둬요(usePageBlocks가 불러요).
   applyRef,
 }) {
+  const { confirm } = useDialog();
   // pages/{pageId}/blocks API로 교체 예정. onChange가 있으면 상위(페이지 목록
   // 상태)로 변경 사항을 올려서 다른 화면에서도 최신 블록이 보이게 해요.
   //
@@ -499,22 +501,26 @@ export default function BlockEditor({
   // 블록이 소유한 하위 페이지가 있으면(getOwnedPageIds) 확인을 받고
   // DatabaseBlock.deleteRow와 같은 방식으로 onDeleteRowPage(=
   // MainLayout의 deletePage, 하위 페이지까지 재귀적으로 같이 지움)를
-  // 호출해요. 소유한 페이지가 없으면 그냥 true(진행해도 됨). 사용자가
-  // 확인 창에서 취소하면 false를 돌려줘서, 호출한 쪽(deleteBlock/
-  // convertBlock)이 나머지 작업을 멈추게 해요. 블록 하나뿐 아니라
+  // 호출해요. 소유한 페이지가 없으면 바로 proceed()를 실행하고, 있으면 확인창에서
+  // "계속"을 눌렀을 때만 페이지를 지운 뒤 proceed()를 실행해요(취소하면 아무것도 안 해요). 블록 하나뿐 아니라
   // 배열(예: deleteBlock이 지우려는 블록 + 그 자식 전체)을 넘겨도 되게
   // 해서, 자식 중 하나라도 하위 페이지를 갖고 있으면 한 번에 같이
   // 확인·정리해요.
-  const deleteOwnedPages = (blockOrBlocks, confirmMessage) => {
+  const deleteOwnedPages = (blockOrBlocks, confirmMessage, proceed) => {
     const list = Array.isArray(blockOrBlocks) ? blockOrBlocks : [blockOrBlocks];
     const ownedPageIds = list.flatMap((b) => getOwnedPageIds(b));
-    if (ownedPageIds.length === 0) return true;
+    // 소유한 하위 페이지가 없으면 묻지 않고 바로 이어서 해요(키 입력 흐름이 그대로 이어져요).
+    if (ownedPageIds.length === 0) {
+      proceed();
+      return;
+    }
 
-    const confirmed = window.confirm(confirmMessage);
-    if (!confirmed) return false;
-
-    ownedPageIds.forEach((pageId) => onDeleteRowPage?.(pageId));
-    return true;
+    // 있으면 앱 확인창으로 물어보고, "계속"을 누르면 페이지를 휴지통으로 보낸 뒤 이어서 해요.
+    confirm({ title: "하위 페이지도 함께 이동해요", message: confirmMessage, confirmLabel: "계속", danger: true }).then((ok) => {
+      if (!ok) return;
+      ownedPageIds.forEach((pageId) => onDeleteRowPage?.(pageId));
+      proceed();
+    });
   };
 
   // 요청: "상위 블록을 이동하면 하위 블록도 같이 이동해... 배경색이나
@@ -535,40 +541,41 @@ export default function BlockEditor({
       subtreeIds.length > 1
         ? "이 블록과 하위 블록을 지우면 연결된 하위 페이지도 함께 휴지통으로 이동해요. 계속할까요?"
         : "이 블록을 지우면 연결된 하위 페이지도 함께 휴지통으로 이동해요. 계속할까요?";
-    if (!deleteOwnedPages(subtreeBlocks, confirmMessage)) return;
+    deleteOwnedPages(subtreeBlocks, confirmMessage, () => {
 
-    pushUndoSnapshot();
-    setBlocks((prev) => {
-      const removeIndex = prev.findIndex((b) => b.id === id);
-      if (removeIndex === -1) return prev;
+      pushUndoSnapshot();
+      setBlocks((prev) => {
+        const removeIndex = prev.findIndex((b) => b.id === id);
+        if (removeIndex === -1) return prev;
 
-      const removeIds = new Set(keepChildren ? [id] : getSubtreeIds(prev, removeIndex));
-      const childIds = keepChildren ? new Set(getSubtreeIds(prev, removeIndex).filter((cid) => cid !== id)) : null;
-      const next = prev
-        .filter((b) => !removeIds.has(b.id))
-        .map((b) => (childIds && childIds.has(b.id) ? { ...b, indent: Math.max(0, (b.indent || 0) - 1) } : b));
+        const removeIds = new Set(keepChildren ? [id] : getSubtreeIds(prev, removeIndex));
+        const childIds = keepChildren ? new Set(getSubtreeIds(prev, removeIndex).filter((cid) => cid !== id)) : null;
+        const next = prev
+          .filter((b) => !removeIds.has(b.id))
+          .map((b) => (childIds && childIds.has(b.id) ? { ...b, indent: Math.max(0, (b.indent || 0) - 1) } : b));
 
-      // 에디터가 완전히 비면 안 돼요(bulkDeleteSelected의 빈 텍스트
-      // 블록 대체와 같은 이유) — 자식까지 지우고 나니 블록이 하나도
-      // 안 남았다면 빈 텍스트 블록 하나를 대신 남겨요.
-      if (next.length === 0) {
-        const fallback = createEmptyBlock(nextId(), "TEXT", onCreateChildPage);
-        focusBlock(fallback.id);
-        return [fallback];
-      }
+        // 에디터가 완전히 비면 안 돼요(bulkDeleteSelected의 빈 텍스트
+        // 블록 대체와 같은 이유) — 자식까지 지우고 나니 블록이 하나도
+        // 안 남았다면 빈 텍스트 블록 하나를 대신 남겨요.
+        if (next.length === 0) {
+          const fallback = createEmptyBlock(nextId(), "TEXT", onCreateChildPage);
+          focusBlock(fallback.id);
+          return [fallback];
+        }
 
-      // 커서는 바로 위의 "글자를 쓸 수 있는" 블록 끝으로 보내요. 바로 위가 이미지·구분선이거나 접힌 토글
-      // 안에 숨은 블록이면 그 위의 쓸 수 있는 블록으로, 위에 없으면 아래쪽 첫 블록으로 가요.
-      const hiddenNow = computeHiddenBlockIds(next);
-      const canFocus = (b) => !hiddenNow.has(b.id) && (RICH_TEXT_TYPES.includes(b.type) || b.type === "CODE");
-      let target = null;
-      for (let i = Math.min(removeIndex, next.length) - 1; i >= 0 && !target; i -= 1) if (canFocus(next[i])) target = next[i];
-      for (let i = removeIndex; i < next.length && !target; i += 1) if (canFocus(next[i])) target = next[i];
-      if (target) focusBlock(target.id);
+        // 커서는 바로 위의 "글자를 쓸 수 있는" 블록 끝으로 보내요. 바로 위가 이미지·구분선이거나 접힌 토글
+        // 안에 숨은 블록이면 그 위의 쓸 수 있는 블록으로, 위에 없으면 아래쪽 첫 블록으로 가요.
+        const hiddenNow = computeHiddenBlockIds(next);
+        const canFocus = (b) => !hiddenNow.has(b.id) && (RICH_TEXT_TYPES.includes(b.type) || b.type === "CODE");
+        let target = null;
+        for (let i = Math.min(removeIndex, next.length) - 1; i >= 0 && !target; i -= 1) if (canFocus(next[i])) target = next[i];
+        for (let i = removeIndex; i < next.length && !target; i += 1) if (canFocus(next[i])) target = next[i];
+        if (target) focusBlock(target.id);
 
-      return next;
+        return next;
+      });
+      setBlockMenu(null);
     });
-    setBlockMenu(null);
   };
 
   // 요청: "모든 핸들버튼에 복제하기를 넣어서 누르면 똑같은게 바로 밑에
@@ -1019,10 +1026,11 @@ export default function BlockEditor({
       // 기존 페이지를 지우기 전에 그냥 빠져나가게 해요.
       const newPage = onCreateChildPage?.();
       if (!newPage) return;
-      if (!deleteOwnedPages(current, confirmMessage)) return;
-      updateBlock(id, { type: "TEXT", content: "", pageId: newPage.id });
-      setSlashMenu(null);
-      setBlockMenu(null);
+      deleteOwnedPages(current, confirmMessage, () => {
+        updateBlock(id, { type: "TEXT", content: "", pageId: newPage.id });
+        setSlashMenu(null);
+        setBlockMenu(null);
+      });
       return;
     }
 
@@ -1030,48 +1038,50 @@ export default function BlockEditor({
       // "표"도 CHILD_PAGE와 같은 패턴이에요 — DDL엔 TABLE이라는 blocks.type이
       // 없어서, 실제로 저장되는 type은 여전히 'DATABASE'고 database.kind로만
       // "표"(단순 텍스트 그리드)인지 "데이터베이스"(속성 타입)인지 갈라요.
-      if (!deleteOwnedPages(current, confirmMessage)) return;
-      updateBlock(id, { type: "DATABASE", content: "", pageId: null, database: createSimpleTable() });
-      setSlashMenu(null);
-      setBlockMenu(null);
+      deleteOwnedPages(current, confirmMessage, () => {
+        updateBlock(id, { type: "DATABASE", content: "", pageId: null, database: createSimpleTable() });
+        setSlashMenu(null);
+        setBlockMenu(null);
+      });
       return;
     }
 
-    if (!deleteOwnedPages(current, confirmMessage)) return;
+    deleteOwnedPages(current, confirmMessage, () => {
 
-    // 핸들 메뉴/툴바의 "타입 변경"은 노션의 "Turn into"처럼 글자를 그대로 가져가요. 슬래시 메뉴로 바꿀 때는
-    // 블록 내용이 "/명령" 글자라서 비워요. 글자 없는 블록(이미지·표 등)으로 바뀌는 경우도 비워요.
-    const fromSlash = slashMenu?.blockId === id;
-    const textLike = (t) => RICH_TEXT_TYPES.includes(t) || t === "CODE";
-    let keptContent = "";
-    if (!fromSlash && current && !current.pageId && textLike(current.type) && textLike(type)) {
-      const raw = current.content || "";
-      if (current.type === "CODE" && type !== "CODE") keptContent = escapePlainTextToHtml(raw).replace(/\n/g, "<br>");
-      else if (current.type !== "CODE" && type === "CODE") keptContent = stripHtml(raw.replace(/<br\s*\/?>/gi, "\n"));
-      else keptContent = raw;
-    }
-    updateBlock(id, {
-      type,
-      content: keptContent,
-      ...(keptContent && type !== "CODE" ? { richText: true } : {}),
-      pageId: null, // 이전에 하위 페이지 링크였을 수도 있으니 항상 초기화
-      ...(type === "TODO" ? { checked: false } : {}),
-      ...(type === "IMAGE" || type === "FILE" ? { image: null } : {}),
-      ...(type === "DATABASE" ? { database: createDefaultDatabase(onCreateChildPage) } : {}),
-      ...(type === "TASK" ? { taskId: null } : {}),
-      ...(type === "EVENT" ? { eventId: null } : {}),
-      ...(type === "SPRINT" ? { sprintId: null } : {}),
-      ...(type === "TOGGLE" ? { collapsed: false } : {}),
-      // 요청: "블록 종류가 노션보다 적어요"(콜아웃) — 다른 타입에서
-      // 콜아웃으로 바꿀 때도 createEmptyBlock과 똑같이 기본 아이콘·
-      // 회색 배경으로 시작해요(이미 콜아웃이었다가 다른 타입을 거쳐
-      // 다시 콜아웃으로 돌아온 경우엔 원래 쓰던 아이콘/색을 그대로
-      // 살려요).
-      ...(type === "CALLOUT" ? { calloutIcon: current?.calloutIcon || "💡", color: current?.color || "gray" } : {}),
+      // 핸들 메뉴/툴바의 "타입 변경"은 노션의 "Turn into"처럼 글자를 그대로 가져가요. 슬래시 메뉴로 바꿀 때는
+      // 블록 내용이 "/명령" 글자라서 비워요. 글자 없는 블록(이미지·표 등)으로 바뀌는 경우도 비워요.
+      const fromSlash = slashMenu?.blockId === id;
+      const textLike = (t) => RICH_TEXT_TYPES.includes(t) || t === "CODE";
+      let keptContent = "";
+      if (!fromSlash && current && !current.pageId && textLike(current.type) && textLike(type)) {
+        const raw = current.content || "";
+        if (current.type === "CODE" && type !== "CODE") keptContent = escapePlainTextToHtml(raw).replace(/\n/g, "<br>");
+        else if (current.type !== "CODE" && type === "CODE") keptContent = stripHtml(raw.replace(/<br\s*\/?>/gi, "\n"));
+        else keptContent = raw;
+      }
+      updateBlock(id, {
+        type,
+        content: keptContent,
+        ...(keptContent && type !== "CODE" ? { richText: true } : {}),
+        pageId: null, // 이전에 하위 페이지 링크였을 수도 있으니 항상 초기화
+        ...(type === "TODO" ? { checked: false } : {}),
+        ...(type === "IMAGE" || type === "FILE" ? { image: null } : {}),
+        ...(type === "DATABASE" ? { database: createDefaultDatabase(onCreateChildPage) } : {}),
+        ...(type === "TASK" ? { taskId: null } : {}),
+        ...(type === "EVENT" ? { eventId: null } : {}),
+        ...(type === "SPRINT" ? { sprintId: null } : {}),
+        ...(type === "TOGGLE" ? { collapsed: false } : {}),
+        // 요청: "블록 종류가 노션보다 적어요"(콜아웃) — 다른 타입에서
+        // 콜아웃으로 바꿀 때도 createEmptyBlock과 똑같이 기본 아이콘·
+        // 회색 배경으로 시작해요(이미 콜아웃이었다가 다른 타입을 거쳐
+        // 다시 콜아웃으로 돌아온 경우엔 원래 쓰던 아이콘/색을 그대로
+        // 살려요).
+        ...(type === "CALLOUT" ? { calloutIcon: current?.calloutIcon || "💡", color: current?.color || "gray" } : {}),
+      });
+      setSlashMenu(null);
+      setBlockMenu(null);
+      focusBlock(id);
     });
-    setSlashMenu(null);
-    setBlockMenu(null);
-    focusBlock(id);
   };
 
   // 이미지 ↔ 파일 전환 — 요청: 이미지 블록은 "타입 변경" 대신 "파일로
@@ -1161,24 +1171,17 @@ export default function BlockEditor({
     const targets = blocks.filter((b) => doomedIds.has(b.id));
     if (targets.length === 0) return;
 
-    const ownedPageIds = targets.flatMap((b) => getOwnedPageIds(b));
-    if (ownedPageIds.length > 0) {
-      const confirmed = window.confirm(
-        "선택한 블록을 지우면 연결된 하위 페이지도 함께 휴지통으로 이동해요. 계속할까요?",
-      );
-      if (!confirmed) return;
-      ownedPageIds.forEach((pageId) => onDeleteRowPage?.(pageId));
-    }
+    deleteOwnedPages(targets, "선택한 블록을 지우면 연결된 하위 페이지도 함께 휴지통으로 이동해요. 계속할까요?", () => {
+      pushUndoSnapshot();
+      setBlocks((prev) => {
+        const next = prev.filter((b) => !doomedIds.has(b.id));
+        return next.length > 0 ? next : [createEmptyBlock(nextId(), "TEXT", onCreateChildPage)];
+      });
 
-    pushUndoSnapshot();
-    setBlocks((prev) => {
-      const next = prev.filter((b) => !doomedIds.has(b.id));
-      return next.length > 0 ? next : [createEmptyBlock(nextId(), "TEXT", onCreateChildPage)];
+      setSelectedBlockIds(new Set());
+      selectionAnchorIdRef.current = null;
+      setBulkMenu(null);
     });
-
-    setSelectedBlockIds(new Set());
-    selectionAnchorIdRef.current = null;
-    setBulkMenu(null);
   };
 
   // 요청: 노션 도움말을 보니 cmd/ctrl+D로 선택된 블록을 복제할 수 있고,
@@ -1327,17 +1330,25 @@ export default function BlockEditor({
     // 요청: "마크다운 단축키" — 빈 텍스트 블록에서 "- ", "1. ", "[] ", "# ", "## ", "### ",
     // "> "(토글), 따옴표+공백(인용), "```"(코드), "---"(구분선)를 치면 그 자리에서 블록
     // 타입이 바뀌어요. 글자를 지우는 중(내용이 줄어드는 입력)엔 동작하지 않아요.
-    if (block.type === "TEXT" && !block.pageId && stripHtml(value).length > stripHtml(block.content).length) {
+    // 요청: "표나 콜아웃 같은 다른 블록에서도" — 텍스트 블록뿐 아니라 빈 콜아웃·인용·토글·제목·목록
+    // 블록에서도 같은 단축키로 그 블록 타입을 바로 바꿔요(이미 같은 타입이면 그대로 둬요).
+    // 콜아웃은 타입이 바뀌면서 배경색도 같이 지워요(Backspace로 일반 텍스트가 될 때와 같아요).
+    // 구분선·코드는 안에 자식이 있는 블록에는 쓸 수 없어서 자식이 있으면 바꾸지 않아요.
+    if (RICH_TEXT_TYPES.includes(block.type) && !block.pageId && stripHtml(value).length > stripHtml(block.content).length) {
       const shortcut = matchMarkdownShortcut(value);
-      if (shortcut) {
+      const blockIndex = blocks.findIndex((b) => b.id === block.id);
+      const hasChildren = (blocks[blockIndex + 1]?.indent || 0) > (block.indent || 0);
+      const cannotHaveChildren = shortcut?.type === "DIVIDER" || shortcut?.type === "CODE";
+      if (shortcut && shortcut.type !== block.type && !(cannotHaveChildren && hasChildren)) {
         if (shortcut.type === "DIVIDER") {
-          updateBlock(block.id, { type: "DIVIDER", content: "" });
+          updateBlock(block.id, { type: "DIVIDER", content: "", ...(block.type === "CALLOUT" ? { color: null } : {}) });
           insertBlockAfter(block.id, "TEXT");
           return;
         }
         updateBlock(block.id, {
           type: shortcut.type,
           content: "",
+          ...(block.type === "CALLOUT" ? { color: null } : {}),
           ...(shortcut.type === "CODE" ? {} : { richText: true }),
           ...(shortcut.type === "TODO" ? { checked: false } : {}),
           ...(shortcut.type === "TOGGLE" ? { collapsed: false } : {}),
@@ -1498,7 +1509,7 @@ export default function BlockEditor({
   const handleImageUrlEmbed = (block, url) => {
     const trimmed = url.trim();
     if (!trimmed) return;
-    let fileName = "파일";
+    let fileName;
     try {
       fileName = decodeURIComponent(trimmed.split("/").pop()?.split("?")[0] || "파일");
     } catch {

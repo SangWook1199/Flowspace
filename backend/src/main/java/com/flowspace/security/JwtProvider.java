@@ -78,6 +78,25 @@ public class JwtProvider {
         }
     }
 
+    // 요청 인증에 쓰는 access token인지 확인해요. access token에는 email 클레임이 있고 refresh token에는 없어서,
+    // 재발급 전용 refresh token으로는 일반 API·WebSocket에 들어올 수 없게 해요.
+    public boolean isAccessToken(String token) {
+        try {
+            return validateToken(token) && getEmail(token) != null;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    // 재발급(/api/auth/refresh)에 쓰는 refresh token인지 확인해요(email 클레임이 없는 서명된 토큰).
+    public boolean isRefreshToken(String token) {
+        try {
+            return validateToken(token) && getEmail(token) == null;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     public Long getUserId(String token) {
         Claims claims = Jwts.parser()
                 .verifyWith(secretKey)

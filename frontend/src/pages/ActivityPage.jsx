@@ -143,7 +143,9 @@ export default function ActivityPage() {
         )}
 
         {!state.error && !state.loading && state.items.length === 0 && (
-          <p className="activity-page__hint">아직 활동 기록이 없어요.</p>
+          <p className="activity-page__hint">
+            {category === "" && userId === "" ? "아직 활동 기록이 없어요." : "조건에 맞는 활동 기록이 없어요."}
+          </p>
         )}
 
         {groups.map((group) => (

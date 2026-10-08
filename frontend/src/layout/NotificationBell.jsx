@@ -5,6 +5,7 @@ import { useNotifications } from "../context/NotificationContext";
 import { toRelativeTime } from "../api/mappers";
 import { getErrorMessage } from "../utils/apiError";
 import "../styles/notifications.css";
+import useDialog from "../context/useDialog";
 
 // 헤더의 종 아이콘이에요. 읽지 않은 알림 수를 배지로 보여주고, 누르면 알림 목록이 열려요.
 // 초대 알림은 목록 안에서 바로 수락/거절할 수 있어요(이미 처리한 초대는 버튼 없이 "처리 완료"로 보여요).
@@ -16,7 +17,11 @@ export default function NotificationBell() {
     loading,
     pendingInviteIds,
     invitesLoaded,
+    error,
+    loadMoreError,
+    invitesError,
     loadMore,
+    refresh,
     loadInvites,
     markAllRead,
     remove,
@@ -26,7 +31,11 @@ export default function NotificationBell() {
   } = useNotifications();
 
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState("all");
+  // 열 때마다 "안 읽음" 탭으로 시작해요. 새 소식만 바로 보이고, 지난 알림은 "전체" 탭에서 찾아요.
+  const [tab, setTab] = useState("unread");
+  // 창을 열 때 안 읽음이던 알림 id예요. 열어 둔 동안 읽음 처리돼도(알림을 누르거나 "모두 읽음")
+  // 안 읽음 탭에서 바로 사라지지 않고 남아 있다가, 창을 닫았다 다시 열면 정리돼요.
+  const [openedUnreadIds, setOpenedUnreadIds] = useState(() => new Set());
   const rootRef = useRef(null);
   const triggerRef = useRef(null);
 
@@ -54,13 +63,18 @@ export default function NotificationBell() {
 
   const toggle = () => {
     // 열 때마다 받은 초대를 다시 확인해서 수락/거절 버튼이 최신 상태로 보이게 해요.
-    if (!open) loadInvites();
+    if (!open) {
+      loadInvites();
+      setTab("unread");
+      setOpenedUnreadIds(new Set(notifications.filter((n) => !n.read).map((n) => n.id)));
+    }
     setOpen((prev) => !prev);
   };
 
   const visible = useMemo(
-    () => (tab === "unread" ? notifications.filter((n) => !n.read) : notifications),
-    [tab, notifications],
+    () =>
+      tab === "unread" ? notifications.filter((n) => !n.read || openedUnreadIds.has(n.id)) : notifications,
+    [tab, notifications, openedUnreadIds],
   );
 
   const handleOpen = (notification) => {
@@ -105,7 +119,33 @@ export default function NotificationBell() {
           </div>
 
           <div className="notiPanel__list">
-            {visible.length === 0 ? (
+            {/* 목록을 못 받았을 때 — 이전 목록이 있으면 위에 한 줄로, 없으면 빈 화면 자리에 보여줘요. */}
+            {error && notifications.length > 0 && (
+              <p className="notiPanel__notice" role="alert">
+                <span>{error}</span>
+                <button type="button" onClick={refresh} disabled={loading}>
+                  {loading ? "불러오는 중…" : "다시 시도"}
+                </button>
+              </p>
+            )}
+            {!error && invitesError && notifications.some((n) => n.type === "WORKSPACE_INVITE") && (
+              <p className="notiPanel__notice" role="alert">
+                <span>{invitesError}</span>
+                <button type="button" onClick={loadInvites}>
+                  다시 시도
+                </button>
+              </p>
+            )}
+
+            {error && notifications.length === 0 ? (
+              <p className="notiPanel__empty" role="alert">
+                <Inbox size={26} />
+                {error}
+                <button type="button" className="notiPanel__retry" onClick={refresh} disabled={loading}>
+                  {loading ? "불러오는 중…" : "다시 시도"}
+                </button>
+              </p>
+            ) : visible.length === 0 ? (
               <p className="notiPanel__empty">
                 <Inbox size={26} />
                 {tab === "unread" ? "안 읽은 알림이 없어요." : "아직 알림이 없어요."}
@@ -133,7 +173,7 @@ export default function NotificationBell() {
 
             {hasNext && tab === "all" && (
               <button type="button" className="notiPanel__more" onClick={loadMore} disabled={loading}>
-                {loading ? "불러오는 중…" : "더 보기"}
+                {loading ? "불러오는 중…" : loadMoreError ? "더 불러오지 못했어요. 다시 시도" : "더 보기"}
               </button>
             )}
           </div>
@@ -144,6 +184,7 @@ export default function NotificationBell() {
 }
 
 function NotificationItem({ notification, inviteState, onOpen, onRemove, onAccept, onDecline, onSettled }) {
+  const { confirm } = useDialog();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -196,8 +237,9 @@ function NotificationItem({ notification, inviteState, onOpen, onRemove, onAccep
           <button type="button" className="notiItem__accept" disabled={busy} onClick={() => run(onAccept, true)}>
             수락
           </button>
-          <button type="button" className="notiItem__decline" disabled={busy} onClick={() => {
-              if (window.confirm("이 워크스페이스 초대를 거절할까요?")) run(onDecline, false);
+          <button type="button" className="notiItem__decline" disabled={busy} onClick={async () => {
+              const ok = await confirm({ title: "초대 거절", message: "이 워크스페이스 초대를 거절할까요?", confirmLabel: "거절", danger: true });
+              if (ok) run(onDecline, false);
             }}>
             거절
           </button>

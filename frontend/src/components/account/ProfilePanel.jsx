@@ -6,6 +6,7 @@ import { useAuth } from "../../context/useAuth";
 import { getAvatarTone } from "../../utils/avatarColor";
 import { getErrorMessage } from "../../utils/apiError";
 import { getInitial } from "../../utils/initial";
+import useDialog from "../../context/useDialog";
 
 const PROFILE_MAX_BYTES = 5 * 1024 * 1024;
 const BIO_MAX = 100;
@@ -14,6 +15,7 @@ const NICKNAME_MAX = 30;
 // 프로필 탭: 사진 · 이름 · 한 줄 소개를 바꿔요(이메일은 보여주기만 해요).
 // 사진을 고르면 미리 보여주다가 "저장"을 눌러야 올라가고, "사진 삭제"는 바로 지워져요.
 export default function ProfilePanel({ onSaved }) {
+  const { confirm } = useDialog();
   const { user, setUser } = useAuth();
 
   const nicknameId = useId();
@@ -67,7 +69,8 @@ export default function ProfilePanel({ onSaved }) {
     }
 
     if (saving) return;
-    if (!window.confirm("프로필 사진을 삭제할까요?")) return;
+    const ok = await confirm({ title: "프로필 사진 삭제", message: "프로필 사진을 삭제할까요?", confirmLabel: "삭제", danger: true });
+    if (!ok) return;
     setSaving(true);
     setMessage(null);
     try {

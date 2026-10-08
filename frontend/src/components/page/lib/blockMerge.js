@@ -87,3 +87,33 @@ export function mergeBlocks({ base, local, remote, sig }) {
   const unchanged = merged.length === local.length && merged.every((block, i) => block === local[i]);
   return unchanged ? local : merged;
 }
+
+
+// 같은 블록을 나도 고치고 다른 멤버도 (서로 다르게) 고친 블록의 id 목록이에요.
+// 병합에서는 내 것이 이기니까, 이 블록들은 저장하면 상대가 고친 내용을 덮어써요 — 화면에서 알려주는 데 써요.
+// 데이터베이스 블록은 여기서 합치지 않으니 빼요.
+export function findConflicts({ base, local, remote, sig }) {
+  const baseMap = new Map(base.map((b) => [idOf(b), b]));
+  const remoteMap = new Map(remote.map((b) => [idOf(b), b]));
+  const conflicts = [];
+
+  for (const mine of local) {
+    if (mine.type === "DATABASE") continue;
+
+    const id = idOf(mine);
+    const original = baseMap.get(id);
+    const theirs = remoteMap.get(id);
+    if (!original || !theirs) continue;
+
+    const originalSig = sig(original);
+    const mineSig = sig(mine);
+    if (mineSig === originalSig) continue; // 내가 안 고친 블록
+
+    const theirsSig = sig(theirs);
+    if (theirsSig === originalSig || theirsSig === mineSig) continue; // 상대가 안 고쳤거나 결과가 같아요
+
+    conflicts.push(id);
+  }
+
+  return conflicts;
+}

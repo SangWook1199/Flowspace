@@ -65,14 +65,14 @@ export const buildSprintDayLabel = (sprint, today) => {
 
 // KPI 카드 4개를 만들어요. kpiMeta는 mock의 모양 정보(아이콘/색/이름), 나머지는 계산에 쓰는 데이터예요.
 export const buildKpis = (kpiMeta, { banner, tasks, schedule, members }) => {
-  const openTasks = tasks.filter((task) => !task.done).length;
   const onlineMembers = members.filter((member) => member.online);
 
   const values = {
     completion: banner
       ? { value: `${banner.progress}%`, note: `${banner.completed} / ${banner.total} 작업 완료` }
-      : { value: "-", note: "진행 중인 스프린트 없음" },
-    todayTasks: { value: `${openTasks}건`, note: `전체 ${tasks.length}건 중` },
+      : { value: "-", note: "진행 중인 스프린트가 없어요" },
+    // 오늘의 작업 목록은 끝나지 않은 작업만 담고 있어서 그 개수가 곧 "오늘 할 일"이에요.
+    todayTasks: { value: `${tasks.length}건`, note: "오늘 마무리할 작업" },
     todaySchedule: { value: `${schedule.length}건`, note: "오늘 예정된 일정" },
     online: {
       value: `${onlineMembers.length} / ${members.length}명`,

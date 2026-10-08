@@ -55,19 +55,27 @@ public class RetrospectiveService {
         List<TaskSnapshot> snapshots = taskSnapshotRepository
             .findByRetrospectiveOrderBySnapshotStatus_PositionAscPositionAsc(retrospective);
 
-        RetrospectiveSummary summary = createSummary(snapshots);
+        Map<Long, List<TaskSnapshotAssignee>> assigneesBySnapshot = groupAssignees(snapshots);
+
+        RetrospectiveSummary summary = createSummary(snapshots, assigneesBySnapshot);
 
         PageDetailResponse page = pageService.getPageDetail(retrospective.getPage().getPageId(), email);
 
-        List<TaskSnapshotItem> taskItems = snapshots.stream().map(snapshot -> {
+        // 하위 작업은 스냅샷마다 따로 읽지 않고 한 번에 읽어서 나눠 담아요.
+        Map<Long, List<SubTaskSnapshot>> subtasksBySnapshot = new HashMap<>();
 
-            List<TaskSnapshotAssignee> assignees = taskSnapshotAssigneeRepository
-                .findBySnapshotOrderBySnapshotAssigneeIdAsc(snapshot);
+        if (!snapshots.isEmpty()) {
+            for (SubTaskSnapshot subtask : subTaskSnapshotRepository.findBySnapshotInOrderByPositionAsc(snapshots)) {
+                subtasksBySnapshot.computeIfAbsent(subtask.getSnapshot().getSnapshotId(), key -> new ArrayList<>())
+                    .add(subtask);
+            }
+        }
 
-            List<SubTaskSnapshot> subtasks = subTaskSnapshotRepository.findBySnapshotOrderByPositionAsc(snapshot);
-
-            return TaskSnapshotItem.from(snapshot, assignees, subtasks);
-        }).toList();
+        List<TaskSnapshotItem> taskItems = snapshots.stream()
+            .map(snapshot -> TaskSnapshotItem.from(snapshot,
+                assigneesBySnapshot.getOrDefault(snapshot.getSnapshotId(), List.of()),
+                subtasksBySnapshot.getOrDefault(snapshot.getSnapshotId(), List.of())))
+            .toList();
 
         return RetrospectiveResponse.from(retrospective, summary,
             statuses.stream().map(StatusSnapshotItem::from).toList(), taskItems, page);
@@ -85,48 +93,102 @@ public class RetrospectiveService {
         workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        return sprintRepository.findByWorkspaceOrderByStartDateDesc(workspace).stream()
-            .map(sprint -> retrospectiveRepository.findBySprint(sprint).map(retrospective -> {
+        List<Sprint> sprints = sprintRepository.findByWorkspaceOrderByStartDateDesc(workspace);
 
-                List<TaskSnapshot> snapshots = taskSnapshotRepository
-                    .findByRetrospectiveOrderBySnapshotStatus_PositionAscPositionAsc(retrospective);
+        if (sprints.isEmpty()) {
+            return List.of();
+        }
 
-                return RetrospectiveListItem.of(sprint, retrospective, createSummary(snapshots),
-                    countActionItems(retrospective));
+        // 스프린트마다 따로 읽지 않고 회고·스냅샷·담당자·TODO 블록을 각각 한 번에 읽어요.
+        Map<Long, Retrospective> retrospectiveBySprint = new HashMap<>();
 
-            }).orElseGet(() -> RetrospectiveListItem.withoutRetrospective(sprint))).toList();
+        for (Retrospective retrospective : retrospectiveRepository.findWithPageBySprintIn(sprints)) {
+            retrospectiveBySprint.put(retrospective.getSprint().getSprintId(), retrospective);
+        }
+
+        List<TaskSnapshot> allSnapshots = retrospectiveBySprint.isEmpty()
+            ? List.of()
+            : taskSnapshotRepository.findByRetrospectiveInOrderBySnapshotStatus_PositionAscPositionAsc(
+                retrospectiveBySprint.values());
+
+        Map<Long, List<TaskSnapshot>> snapshotsByRetrospective = new HashMap<>();
+
+        for (TaskSnapshot snapshot : allSnapshots) {
+            snapshotsByRetrospective.computeIfAbsent(snapshot.getRetrospective().getRetrospectiveId(),
+                key -> new ArrayList<>()).add(snapshot);
+        }
+
+        Map<Long, List<TaskSnapshotAssignee>> assigneesBySnapshot = groupAssignees(allSnapshots);
+
+        Map<Long, Integer> actionItemsByPage = countActionItemsByPage(
+            retrospectiveBySprint.values().stream().map(Retrospective::getPage).toList());
+
+        return sprints.stream().map(sprint -> {
+
+            Retrospective retrospective = retrospectiveBySprint.get(sprint.getSprintId());
+
+            if (retrospective == null) {
+                return RetrospectiveListItem.withoutRetrospective(sprint);
+            }
+
+            List<TaskSnapshot> snapshots = snapshotsByRetrospective
+                .getOrDefault(retrospective.getRetrospectiveId(), List.of());
+
+            return RetrospectiveListItem.of(sprint, retrospective, createSummary(snapshots, assigneesBySnapshot),
+                actionItemsByPage.getOrDefault(retrospective.getPage().getPageId(), 0));
+        }).toList();
     }
 
-    // 회고 페이지의 미완료 TODO 블록 수 (Action Item)
-    private int countActionItems(Retrospective retrospective) {
+    // 스냅샷들의 담당자를 한 번에 읽어서 스냅샷 id별로 나눠 담아요.
+    private Map<Long, List<TaskSnapshotAssignee>> groupAssignees(List<TaskSnapshot> snapshots) {
 
-        int count = 0;
+        Map<Long, List<TaskSnapshotAssignee>> result = new HashMap<>();
 
-        for (Block block : blockRepository.findByPageOrderByPositionAsc(retrospective.getPage())) {
+        if (snapshots.isEmpty()) {
+            return result;
+        }
 
-            if (block.getType() != BlockType.TODO) {
-                continue;
-            }
+        for (TaskSnapshotAssignee assignee : taskSnapshotAssigneeRepository
+            .findBySnapshotInOrderBySnapshotAssigneeIdAsc(snapshots)) {
+            result.computeIfAbsent(assignee.getSnapshot().getSnapshotId(), key -> new ArrayList<>()).add(assignee);
+        }
 
-            boolean checked = false;
+        return result;
+    }
 
-            try {
-                JsonNode node = block.getContent() == null ? null : OBJECT_MAPPER.readTree(block.getContent());
-                checked = node != null && node.path("checked").asBoolean(false);
-            } catch (Exception e) {
-                // 형식이 올바르지 않은 content는 미완료로 계산해요.
-            }
+    // 회고 페이지들의 미완료 TODO 블록 수 (Action Item), 페이지 id별로
+    private Map<Long, Integer> countActionItemsByPage(Collection<Page> pages) {
 
-            if (!checked) {
-                count++;
+        Map<Long, Integer> result = new HashMap<>();
+
+        if (pages.isEmpty()) {
+            return result;
+        }
+
+        for (Block block : blockRepository.findByPageInAndType(pages, BlockType.TODO)) {
+
+            if (!isChecked(block)) {
+                result.merge(block.getPage().getPageId(), 1, Integer::sum);
             }
         }
 
-        return count;
+        return result;
+    }
+
+    // TODO 블록이 체크됐는지 (형식이 올바르지 않은 content는 미완료로 계산해요)
+    private boolean isChecked(Block block) {
+
+        try {
+            JsonNode node = block.getContent() == null ? null : OBJECT_MAPPER.readTree(block.getContent());
+            return node != null && node.path("checked").asBoolean(false);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     // 회고 요약 생성
-    private RetrospectiveSummary createSummary(List<TaskSnapshot> snapshots) {
+    private RetrospectiveSummary createSummary(List<TaskSnapshot> snapshots,
+        Map<Long, List<TaskSnapshotAssignee>> assigneesBySnapshot) {
 
         int total = snapshots.size();
 
@@ -140,10 +202,8 @@ public class RetrospectiveService {
 
         for (TaskSnapshot snapshot : snapshots) {
 
-            List<TaskSnapshotAssignee> assignees = taskSnapshotAssigneeRepository
-                .findBySnapshotOrderBySnapshotAssigneeIdAsc(snapshot);
-
-            for (TaskSnapshotAssignee assignee : assignees) {
+            for (TaskSnapshotAssignee assignee : assigneesBySnapshot.getOrDefault(snapshot.getSnapshotId(),
+                List.of())) {
 
                 if (assignee.getOriginalUserId() == null) {
                     continue;

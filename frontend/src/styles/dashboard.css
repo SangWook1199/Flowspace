@@ -62,7 +62,7 @@
   position: relative;
   overflow: hidden;
   border-radius: 22px;
-  padding: 26px 28px 24px;
+  padding: 22px 28px 20px;
   background: linear-gradient(135deg, #eef4ff 0%, #dce8ff 100%);
   border: 1px solid #e5ecff;
 }
@@ -88,6 +88,17 @@
     );
 }
 
+/* 스프린트가 없을 때 배너 자리에 보여주는 안내 문구 */
+.heroEmpty {
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  padding: 18px 0;
+  color: #64748b;
+  font-size: 14px;
+  text-align: center;
+}
+
 .heroContent {
   position: relative;
   z-index: 2;
@@ -96,7 +107,7 @@
   grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
   gap: 36px;
 
-  min-height: 195px;
+  min-height: 150px;
 }
 
 .heroLeft {
@@ -116,7 +127,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: 10px 0 12px;
+  margin: 8px 0 10px;
 }
 
 .heroTitle h2 {
@@ -161,7 +172,7 @@
 
 .heroProgress {
   width: 100%;
-  margin-top: 20px;
+  margin-top: 14px;
 }
 
 .heroProgressRow {
@@ -360,6 +371,42 @@
   height: 100%;
 }
 
+/* 대시보드 3열 카드는 내용이 늘거나 줄어도 높이가 변하지 않게 고정하고, 넘치는 부분은 카드 안에서 스크롤해요. */
+.dashboardMain .panel {
+  height: 500px;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboardMain .panelHeader,
+.dashboardMain .taskFilter,
+.dashboardMain .calendarDate {
+  flex-shrink: 0;
+}
+
+/* 내용이 없을 때 보여주는 안내 문구예요. */
+.emptyText {
+  margin: auto;
+  padding: 24px 0;
+  color: #94a3b8;
+  font-size: 13px;
+  text-align: center;
+}
+
+.panelScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* 표 머리글은 스크롤해도 위에 남아 있어요. */
+.panelScroll .taskTable th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fff;
+}
+
 .panelHeader {
   display: flex;
   justify-content: space-between;
@@ -392,6 +439,48 @@
   flex-wrap: wrap;
 }
 
+/* 탭(상태 필터)과 검색칸을 한 줄에 놓아요. */
+.taskToolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+}
+
+.taskSearch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 190px;
+  height: 31px;
+  padding: 0 11px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #94a3b8;
+}
+
+.taskSearch:focus-within {
+  background: #eef2ff;
+  box-shadow: 0 0 0 1.5px #c7d2fe;
+}
+
+.taskSearch input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  color: #334155;
+}
+
+.taskSearch input::placeholder {
+  color: #94a3b8;
+}
+
 .taskFilter button {
   border: none;
   background: #f1f5f9;
@@ -418,50 +507,73 @@
 
 .taskTable th {
   text-align: left;
-  padding: 12px 8px;
+  padding: 8px 8px;
   color: #94a3b8;
   font-size: 12px;
   font-weight: 600;
 }
 
+/* 정렬할 수 있는 머리글은 글자와 화살표가 한 덩어리 버튼이에요. */
+.sortBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.sortBtn svg {
+  opacity: 0.6;
+}
+
+.sortBtn:hover,
+.sortBtn.sortActive {
+  color: #475569;
+}
+
+.sortBtn.sortActive svg {
+  opacity: 1;
+  color: #4f46e5;
+}
+
 .taskTable td {
-  padding: 14px 8px;
+  padding: 9px 8px;
   border-top: 1px solid #eef2f7;
   font-size: 13px;
   vertical-align: middle;
 }
 
 /* ===== Column Width ===== */
+/* 1=우선순위 2=작업 제목 3=상태 4=담당 5=마감 6=(빈 칸) */
 
 .taskTable th:nth-child(1),
 .taskTable td:nth-child(1) {
-  width: 36px;
+  width: 82px;
 }
 
 .taskTable th:nth-child(2),
 .taskTable td:nth-child(2) {
-  width: 82px;
+  width: 28%;
 }
 
 .taskTable th:nth-child(3),
 .taskTable td:nth-child(3) {
-  width: 35%;
+  width: 130px;
+  text-align: center;
 }
 
 .taskTable th:nth-child(4),
 .taskTable td:nth-child(4) {
-  width: 130px;
+  width: 160px;
   text-align: center;
 }
 
 .taskTable th:nth-child(5),
 .taskTable td:nth-child(5) {
-  width: 120px;
-  text-align: left;
-}
-
-.taskTable th:nth-child(6),
-.taskTable td:nth-child(6) {
   width: 110px;
 }
 
@@ -474,7 +586,7 @@
 /* ===== Title ===== */
 
 .taskTitle {
-  font-weight: 600;
+  font-weight: 400;
   color: #111827;
   white-space: nowrap;
   overflow: hidden;
@@ -549,8 +661,12 @@
 .assigneeGroup {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  gap: 6px;
+  justify-content: center;
+}
+
+/* 아이콘끼리 살짝 겹치고, 흰 테두리로 서로 구분해요. */
+.assigneeGroup > span + span {
+  margin-left: -8px;
 }
 
 .assignee {
@@ -563,6 +679,22 @@
   font-size: 12px;
   font-weight: 700;
   flex-shrink: 0;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.assigneeMore {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef2f7;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px #fff;
 }
 
 .assignee.blue {
@@ -627,6 +759,9 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .timelineRow {
@@ -683,6 +818,9 @@
 .activityList {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .activityItem {

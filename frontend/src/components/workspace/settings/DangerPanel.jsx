@@ -1,10 +1,12 @@
 import { useId, useState } from "react";
 
 import { getErrorMessage } from "../../../utils/apiError";
+import useDialog from "../../../context/useDialog";
 
 // 위험 구역: 일반 멤버는 "나가기", 소유자는 "삭제"(이름을 직접 입력해야 눌려요).
 // 내가 속한 워크스페이스가 이것 하나뿐이면 둘 다 막혀요(서버도 막아요) — 쓸 곳이 없어지니까요.
 export default function DangerPanel({ workspace, isOwner, isOnlyWorkspace, onLeave, onDelete }) {
+  const { confirm } = useDialog();
   const confirmId = useId();
   const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState(false);
@@ -21,8 +23,14 @@ export default function DangerPanel({ workspace, isOwner, isOnlyWorkspace, onLea
     }
   };
 
-  const handleLeave = () => {
-    if (!window.confirm(`'${workspace.name}' 워크스페이스에서 나갈까요? 다시 들어오려면 초대를 받아야 해요.`)) return;
+  const handleLeave = async () => {
+    const ok = await confirm({
+      title: "워크스페이스 나가기",
+      message: `'${workspace.name}' 워크스페이스에서 나갈까요?\n다시 들어오려면 초대를 받아야 해요.`,
+      confirmLabel: "나가기",
+      danger: true,
+    });
+    if (!ok) return;
     run(onLeave);
   };
 

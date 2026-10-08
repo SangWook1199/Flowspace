@@ -7,10 +7,26 @@ import FlowSpaceLogo from "../components/common/FlowSpaceLogo";
 import WorkspaceSwitcher from "./WorkspaceSwitcher";
 import TrashPopover from "./TrashPopover";
 import WorkspaceIcon from "../components/common/WorkspaceIcon";
+import useDialog from "../context/useDialog";
+import usePinnedPages from "../hooks/usePinnedPages";
+import { isAdminOrOwner } from "../utils/workspaceRole";
 
 // 페이지 줄을 드래그할 때 dataTransfer에 심는 커스텀 MIME이에요. Firefox는
 // dragstart에서 setData를 한 번도 안 부르면 드래그 자체를 시작하지 않아요.
 const PAGE_DRAG_MIME = "application/x-flowspace-page";
+
+// 사이드바 "페이지" 목록에서 처음 보여주는 페이지 수예요. 나머지는 "더 보기"로 펼치거나 "모든 페이지 보기"에서 봐요.
+const MAX_VISIBLE_PAGES = 7;
+
+// "페이지" 섹션을 접었는지는 이 브라우저에 기억해요(저장소를 못 쓰면 매번 펼친 채로 시작해요).
+const PAGES_OPEN_KEY = "flowspace.sidebar.pagesOpen";
+const loadPagesOpen = () => {
+  try {
+    return localStorage.getItem(PAGES_OPEN_KEY) !== "0";
+  } catch {
+    return true;
+  }
+};
 
 // 컴포넌트 안에서 Icon을 정의하면 Sidebar가 렌더될 때마다 "새로운 컴포넌트"가 돼서
 // 아이콘 DOM이 매번 지워졌다 다시 만들어져요 — 그러면 휴지통 화살표(chevron)의
@@ -29,6 +45,9 @@ export default function Sidebar({
   workspaces,
   currentWorkspace,
   sprints = [],
+  // 목록을 아직 불러오는 중이거나 실패했을 땐 "없어요" 안내를 숨겨요(없는 게 아니라 못 받은 거라서요).
+  pagesReady = true,
+  sprintsReady = true,
   onSwitchWorkspace,
   onCreatePage,
   onDeletePage,
@@ -38,6 +57,7 @@ export default function Sidebar({
   onReorderTopLevelPages,
   onOpenSettings,
 }) {
+  const { confirm } = useDialog();
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
@@ -84,9 +104,41 @@ export default function Sidebar({
   // 안의 "하위 페이지" 목록에서 오가는 구조라, 트리로 펼치는 건 아직 안 함.
   // 휴지통으로 간 페이지는 여기 목록엔 안 보이고 맨 아래 휴지통 팝업에서만
   // 보여요(중첩 여부와 상관없이 trashedAt이 있으면 전부 후보).
+  // topLevelPages는 최상위 페이지 전체(회고 페이지 포함)예요 — 순서를 서버에 보낼 때 모두 필요해서 따로 들고 있어요.
   const topLevelPages = pages.filter((page) => !page.parentPageId && !page.trashedAt);
   const trashedPages = pages.filter((page) => page.trashedAt);
   const isPageActive = (page) => pathname === `/pages/${page.id}`;
+
+  // 즐겨찾기한 페이지는 위쪽 "즐겨찾기"에 따로 모아 보여주고(최상위가 아닌 페이지도 가능해요),
+  // "페이지" 목록에서는 즐겨찾기와 회고 페이지를 뺀 최상위 페이지만 보여줘요.
+  // 회고 페이지는 스프린트마다 자동으로 생겨서 계속 늘어나기 때문에 "회고" 메뉴와 "모든 페이지 보기"에서 찾아요.
+  const { pinnedIds, isPinned, togglePin } = usePinnedPages(currentWorkspace?.id);
+  const livePages = pages.filter((page) => !page.trashedAt);
+  const pinnedPages = pinnedIds.map((id) => livePages.find((page) => page.id === id)).filter(Boolean);
+  const regularPages = topLevelPages.filter((page) => !page.isRetrospective && !isPinned(page.id));
+
+  const [showAll, setShowAll] = useState(false);
+  const [pagesOpen, setPagesOpen] = useState(loadPagesOpen);
+
+  const togglePagesOpen = () => {
+    setPagesOpen((prev) => {
+      try {
+        localStorage.setItem(PAGES_OPEN_KEY, prev ? "0" : "1");
+      } catch {
+        // 저장하지 못해도 이번 화면에서는 접힌 채로 동작해요.
+      }
+      return !prev;
+    });
+  };
+
+  // 처음에는 앞의 몇 개만 보여줘요. 지금 보고 있는 페이지가 그 뒤에 있으면 같이 보여줘서 어디 있는지 알 수 있어요.
+  const visibleRegular = (() => {
+    if (showAll) return regularPages;
+    const head = regularPages.slice(0, MAX_VISIBLE_PAGES);
+    const active = regularPages.find(isPageActive);
+    return active && !head.includes(active) ? [...head, active] : head;
+  })();
+  const hiddenCount = regularPages.length - visibleRegular.length;
 
   // 최상위 페이지 순서를 마우스로 드래그해서 바꿔요 — 블록 에디터의
   // 블록 드래그(BlockEditor.jsx의 handleBlockDragOver/commitBlockDrop)와
@@ -100,8 +152,8 @@ export default function Sidebar({
   const handlePageDragOver = (hoveredPageId, isAfter) => {
     if (dragPageId === null || dragPageId === hoveredPageId) return;
 
-    const hoveredIndex = topLevelPages.findIndex((p) => p.id === hoveredPageId);
-    const nextPage = isAfter ? topLevelPages[hoveredIndex + 1] : null;
+    const hoveredIndex = visibleRegular.findIndex((p) => p.id === hoveredPageId);
+    const nextPage = isAfter ? visibleRegular[hoveredIndex + 1] : null;
     const beforePageId = isAfter ? (nextPage ? nextPage.id : null) : hoveredPageId;
 
     if (beforePageId === dragPageId) {
@@ -109,14 +161,14 @@ export default function Sidebar({
       return;
     }
 
-    const fromIndex = topLevelPages.findIndex((p) => p.id === dragPageId);
+    const fromIndex = visibleRegular.findIndex((p) => p.id === dragPageId);
     if (beforePageId === null) {
-      if (fromIndex === topLevelPages.length - 1) {
+      if (fromIndex === visibleRegular.length - 1) {
         setPageDropTarget((prev) => (prev === null ? prev : null));
         return;
       }
     } else {
-      const targetIndex = topLevelPages.findIndex((p) => p.id === beforePageId);
+      const targetIndex = visibleRegular.findIndex((p) => p.id === beforePageId);
       if (targetIndex === fromIndex + 1) {
         setPageDropTarget((prev) => (prev === null ? prev : null));
         return;
@@ -130,7 +182,7 @@ export default function Sidebar({
 
   const commitPageDrop = () => {
     if (dragPageId !== null && pageDropTarget) {
-      const next = [...topLevelPages];
+      const next = [...visibleRegular];
       const fromIndex = next.findIndex((p) => p.id === dragPageId);
       if (fromIndex !== -1) {
         const [moved] = next.splice(fromIndex, 1);
@@ -141,7 +193,16 @@ export default function Sidebar({
           if (toIndex === -1) next.push(moved);
           else next.splice(toIndex, 0, moved);
         }
-        onReorderTopLevelPages?.(next.map((p) => p.id));
+
+        // 화면에 보이는 페이지들끼리만 순서를 바꿔요. 서버에는 최상위 페이지 전체의 순서를 보내야 해서,
+        // 보이는 페이지가 원래 차지하던 자리에 새 순서를 끼워 넣고(회고·즐겨찾기·접힌 페이지는 제자리) 보내요.
+        const shownIds = new Set(visibleRegular.map((p) => p.id));
+        const fullOrder = topLevelPages.map((p) => p.id);
+        let cursor = 0;
+        fullOrder.forEach((id, index) => {
+          if (shownIds.has(id)) fullOrder[index] = next[cursor++].id;
+        });
+        onReorderTopLevelPages?.(fullOrder);
       }
     }
     setDragPageId(null);
@@ -173,14 +234,17 @@ export default function Sidebar({
     }
   };
 
-  const handleDeletePage = (e, page) => {
+  const handleDeletePage = async (e, page) => {
     e.stopPropagation();
     const hasChildren = pages.some((p) => p.parentPageId === page.id);
-    const confirmed = window.confirm(
-      hasChildren
-        ? "이 페이지를 삭제하면 하위 페이지도 모두 함께 휴지통으로 이동해요. 계속할까요?"
-        : "이 페이지를 휴지통으로 이동할까요? 나중에 휴지통에서 복원할 수 있어요.",
-    );
+    const confirmed = await confirm({
+      title: "페이지 삭제",
+      message: hasChildren
+        ? "이 페이지를 삭제하면 하위 페이지도 모두 함께 휴지통으로 이동해요.\n계속할까요?"
+        : "이 페이지를 휴지통으로 이동할까요?\n나중에 휴지통에서 복원할 수 있어요.",
+      confirmLabel: "삭제",
+      danger: true,
+    });
     if (!confirmed) return;
 
     // 지금 보고 있는 페이지가 삭제 대상이거나 그 하위 페이지라면
@@ -209,24 +273,119 @@ export default function Sidebar({
     onRestorePage?.(pageId);
   };
 
-  const handlePermanentlyDeletePage = (page) => {
+  const handlePermanentlyDeletePage = async (page) => {
     const hasChildren = pages.some((p) => p.parentPageId === page.id && p.trashedAt);
-    const confirmed = window.confirm(
-      hasChildren
-        ? "이 페이지와 하위 페이지를 완전히 삭제할까요? 이 작업은 되돌릴 수 없어요."
-        : "이 페이지를 완전히 삭제할까요? 이 작업은 되돌릴 수 없어요.",
-    );
+    const confirmed = await confirm({
+      title: "완전히 삭제",
+      message: hasChildren
+        ? "이 페이지와 하위 페이지를 완전히 삭제할까요?\n이 작업은 되돌릴 수 없어요."
+        : "이 페이지를 완전히 삭제할까요?\n이 작업은 되돌릴 수 없어요.",
+      confirmLabel: "완전히 삭제",
+      danger: true,
+    });
     if (!confirmed) return;
     onPermanentlyDeletePage?.(page.id);
   };
 
-  const handleEmptyTrash = () => {
+  const handleEmptyTrash = async () => {
     if (trashedPages.length === 0) return;
-    const confirmed = window.confirm(
-      "휴지통에 있는 페이지를 모두 완전히 삭제할까요? 이 작업은 되돌릴 수 없어요.",
-    );
+    const confirmed = await confirm({
+      title: "휴지통 비우기",
+      message: "휴지통에 있는 페이지를 모두 완전히 삭제할까요?\n이 작업은 되돌릴 수 없어요.",
+      confirmLabel: "모두 삭제",
+      danger: true,
+    });
     if (!confirmed) return;
     onEmptyTrash?.();
+  };
+
+  // 페이지 한 줄이에요. sortable이면 드래그로 순서를 바꿀 수 있고(일반 페이지 목록),
+  // 아니면 즐겨찾기 줄이에요(순서 변경 없음). 별표로 즐겨찾기를 켜고 끌 수 있어요.
+  const renderPageRow = (page, sortable) => {
+    const pinned = isPinned(page.id);
+    // 아직 서버에 만들어지는 중인 임시 페이지(음수 id)는 별표를 못 눌러요.
+    const canPin = Number(page.id) > 0;
+
+    return (
+      <div
+        key={sortable ? undefined : page.id}
+        className={`${styles.navItem} pageNavRow ${isPageActive(page) ? styles.selected : ""} ${
+          dragPageId === page.id ? "dragging" : ""
+        }`}
+        onDragEnter={sortable ? (e) => e.preventDefault() : undefined}
+        onDragOver={
+          sortable
+            ? (e) => {
+                e.preventDefault();
+                const rect = e.currentTarget.getBoundingClientRect();
+                const ratio = (e.clientY - rect.top) / rect.height;
+                handlePageDragOver(page.id, ratio >= 2 / 3);
+              }
+            : undefined
+        }
+        onDrop={
+          sortable
+            ? (e) => {
+                e.preventDefault();
+                commitPageDrop();
+              }
+            : undefined
+        }
+      >
+        {sortable && (
+          <button
+            type="button"
+            className="pageNavRow__grip"
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.effectAllowed = "move";
+              e.dataTransfer.setData(PAGE_DRAG_MIME, String(page.id));
+              setDragPageId(page.id);
+            }}
+            onDragEnd={handlePageDragEnd}
+            title="드래그해서 순서 변경"
+            aria-label={`${page.title || "제목 없음"} 순서 변경`}
+          >
+            <Icon name="GripVertical" size={14} />
+          </button>
+        )}
+
+        <button type="button" className="pageNavRow__link" onClick={() => navigate(`/pages/${page.id}`)}>
+          {page.icon ? (
+            <span style={{ fontSize: 16, lineHeight: 1, width: 18, textAlign: "center" }}>{page.icon}</span>
+          ) : (
+            <Icon name="FileText" />
+          )}
+          <span>{page.title || "제목 없음"}</span>
+        </button>
+
+        {canPin && (
+          <button
+            type="button"
+            className={`pageNavRow__pin${pinned ? " on" : ""}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              togglePin(page.id);
+            }}
+            title={pinned ? "즐겨찾기 해제" : "즐겨찾기"}
+            aria-label={`${page.title || "제목 없음"} ${pinned ? "즐겨찾기 해제" : "즐겨찾기"}`}
+            aria-pressed={pinned}
+          >
+            <Icon name="Star" size={14} />
+          </button>
+        )}
+
+        <button
+          type="button"
+          className="pageNavRow__delete"
+          onClick={(e) => handleDeletePage(e, page)}
+          title="페이지 삭제"
+          aria-label={`${page.title || "제목 없음"} 삭제`}
+        >
+          <Icon name="Trash2" size={14} />
+        </button>
+      </div>
+    );
   };
 
   return (
@@ -265,11 +424,51 @@ export default function Sidebar({
       <div className={styles.pageArea}>
         <div className={styles.divider} />
 
-        <p>페이지</p>
+        {/* 즐겨찾기: 별표한 페이지만 따로 모아 보여줘요(없으면 이 구역이 안 보여요). */}
+        {pinnedPages.length > 0 && (
+          <>
+            <p>즐겨찾기</p>
+            {pinnedPages.map((page) => renderPageRow(page, false))}
+          </>
+        )}
 
-        {topLevelPages.map((page) => (
-          <Fragment key={page.id}>
-            {pageDropTarget?.beforePageId === page.id && (
+        <p className="pageSectionHead">
+          <button
+            type="button"
+            onClick={togglePagesOpen}
+            aria-expanded={pagesOpen}
+            title={pagesOpen ? "페이지 접기" : "페이지 펼치기"}
+          >
+            <Icon name="ChevronDown" size={14} className={pagesOpen ? "" : "closed"} />
+            페이지
+            <small>{regularPages.length}</small>
+          </button>
+        </p>
+
+        {pagesOpen && (
+          <>
+            {pagesReady && regularPages.length === 0 && pinnedPages.length === 0 && (
+              <p className="sidebarEmpty">아직 페이지가 없어요.</p>
+            )}
+
+            {visibleRegular.map((page) => (
+              <Fragment key={page.id}>
+                {pageDropTarget?.beforePageId === page.id && (
+                  <div
+                    className="page-drop-indicator"
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      commitPageDrop();
+                    }}
+                  />
+                )}
+
+                {renderPageRow(page, true)}
+              </Fragment>
+            ))}
+
+            {pageDropTarget?.beforePageId === null && (
               <div
                 className="page-drop-indicator"
                 onDragOver={(e) => e.preventDefault()}
@@ -280,75 +479,13 @@ export default function Sidebar({
               />
             )}
 
-            <div
-              className={`${styles.navItem} pageNavRow ${
-                isPageActive(page) ? styles.selected : ""
-              } ${dragPageId === page.id ? "dragging" : ""}`}
-              onDragEnter={(e) => e.preventDefault()}
-              onDragOver={(e) => {
-                e.preventDefault();
-                const rect = e.currentTarget.getBoundingClientRect();
-                const ratio = (e.clientY - rect.top) / rect.height;
-                handlePageDragOver(page.id, ratio >= 2 / 3);
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                commitPageDrop();
-              }}
-            >
-              <button
-                type="button"
-                className="pageNavRow__grip"
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.effectAllowed = "move";
-                  e.dataTransfer.setData(PAGE_DRAG_MIME, String(page.id));
-                  setDragPageId(page.id);
-                }}
-                onDragEnd={handlePageDragEnd}
-                title="드래그해서 순서 변경"
-                aria-label={`${page.title || "제목 없음"} 순서 변경`}
-              >
-                <Icon name="GripVertical" size={14} />
+            {(hiddenCount > 0 || showAll) && regularPages.length > MAX_VISIBLE_PAGES && (
+              <button type="button" className="pageMoreBtn" onClick={() => setShowAll((prev) => !prev)}>
+                <Icon name={showAll ? "ChevronUp" : "ChevronDown"} size={14} />
+                {showAll ? "접기" : `${hiddenCount}개 더 보기`}
               </button>
-
-              <button
-                type="button"
-                className="pageNavRow__link"
-                onClick={() => navigate(`/pages/${page.id}`)}
-              >
-                {page.icon ? (
-                  <span style={{ fontSize: 16, lineHeight: 1, width: 18, textAlign: "center" }}>
-                    {page.icon}
-                  </span>
-                ) : (
-                  <Icon name="FileText" />
-                )}
-                <span>{page.title || "제목 없음"}</span>
-              </button>
-
-              <button
-                type="button"
-                className="pageNavRow__delete"
-                onClick={(e) => handleDeletePage(e, page)}
-                title="페이지 삭제"
-                aria-label={`${page.title || "제목 없음"} 삭제`}
-              >
-                <Icon name="Trash2" size={14} />
-              </button>
-            </div>
-          </Fragment>
-        ))}
-
-        {pageDropTarget?.beforePageId === null && (
-          <div
-            className="page-drop-indicator"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault();
-              commitPageDrop();
-            }}
-          />
+            )}
+          </>
         )}
 
         <button
@@ -359,12 +496,23 @@ export default function Sidebar({
           <span>새 페이지</span>
         </button>
 
+        <button
+          type="button"
+          className={`pageAllLink${pathname === "/pages" ? " selected" : ""}`}
+          onClick={() => navigate("/pages")}
+        >
+          <Icon name="LayoutList" size={15} />
+          <span>모든 페이지 보기</span>
+        </button>
+
         {/* ---------- Sprint ---------- */}
 
         <div className="sidebarSprints">
           <div className="sidebarSprintDivider" />
 
           <p>현재 스프린트</p>
+
+          {sprintsReady && sprints.length === 0 && <p className="sidebarEmpty">아직 스프린트가 없어요.</p>}
 
           {sprints.slice(0, 3).map((sprint) => (
             <button
@@ -375,7 +523,7 @@ export default function Sidebar({
 
               <span>{sprint.name}</span>
 
-              <b>
+              <b className={sprint.status === "ACTIVE" ? "statusActive" : undefined}>
                 {sprint.status === "ACTIVE"
                   ? "진행 중"
                   : sprint.status === "PLANNING"
@@ -424,12 +572,15 @@ export default function Sidebar({
           {currentWorkspace?.role === "MEMBER" && (
             <em className="workspaceSettingsBtn__badge">멤버</em>
           )}
+          {currentWorkspace?.role === "ADMIN" && (
+            <em className="workspaceSettingsBtn__badge">관리자</em>
+          )}
         </button>
 
         <TrashPopover
           pages={trashedPages}
           allPages={pages}
-          canManage={currentWorkspace?.role === "OWNER"}
+          canManage={isAdminOrOwner(currentWorkspace?.role)}
           onRestore={handleRestorePage}
           onPermanentlyDelete={handlePermanentlyDeletePage}
           onEmpty={handleEmptyTrash}

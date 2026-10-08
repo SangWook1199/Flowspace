@@ -14,5 +14,7 @@ public interface SprintRepository extends JpaRepository<Sprint, Long> {
 
     List<Sprint> findByWorkspaceAndStatusOrderByStartDateDesc(Workspace workspace, SprintStatus status);
 
+    boolean existsByWorkspaceAndStatus(Workspace workspace, SprintStatus status);
+
     Optional<Sprint> findFirstByWorkspaceAndStatusOrderByStartDateAsc(Workspace workspace, SprintStatus status);
 }

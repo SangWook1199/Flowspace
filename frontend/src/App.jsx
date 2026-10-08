@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import SprintCreate from "./pages/SprintCreate";
+import SprintEdit from "./pages/SprintEdit";
 import SprintList from "./pages/SprintList";
 import SprintDetail from "./pages/SprintDetail";
 import SprintTasks from "./pages/SprintTasks";
@@ -9,6 +10,7 @@ import Calendar from "./pages/Calendar";
 import RetrospectiveList from "./pages/RetrospectiveList";
 import RetrospectiveDetailPage from "./pages/RetrospectiveDetailPage";
 import PageDetailPage from "./pages/PageDetailPage";
+import AllPages from "./pages/AllPages";
 import ActivityPage from "./pages/ActivityPage";
 import WorkspaceCreatePage from "./pages/WorkspaceCreatePage";
 import LoginPage from "./pages/LoginPage";
@@ -16,6 +18,7 @@ import SignupPage from "./pages/SignupPage";
 
 import MainLayout from "./layout/MainLayout";
 import { AuthProvider } from "./context/AuthProvider";
+import { DialogProvider } from "./context/DialogProvider";
 import { WorkspaceProvider } from "./context/WorkspaceProvider";
 import { NotificationProvider } from "./context/NotificationProvider";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -32,6 +35,7 @@ function RouteErrorBoundary({ children }) {
 
 function App() {
   return (
+    <DialogProvider>
     <AuthProvider>
       {/* 워크스페이스·페이지·작업 상태는 라우트 바깥에 둬요 — /workspace/create처럼 MainLayout 밖으로 나갔다 돌아와도
           만들어 둔 페이지가 초기화되지 않고, API를 붙일 때도 이 Provider 한 곳만 바꾸면 돼요. */}
@@ -53,6 +57,7 @@ function App() {
                 <Route path="sprints/:sprintId" element={<SprintDetail />} />
                 <Route path="sprints/:sprintId/tasks" element={<SprintTasks />} />
                 <Route path="sprints/new" element={<SprintCreate />} />
+                <Route path="sprints/:sprintId/edit" element={<SprintEdit />} />
                 <Route path="kanban" element={<Kanban />} />
                 <Route path="calendar" element={<Calendar />} />
                 <Route path="/retrospectives" element={<RetrospectiveList />} />
@@ -60,6 +65,7 @@ function App() {
                   path="/retrospectives/:sprintId"
                   element={<RetrospectiveDetailPage />}
                 />
+                <Route path="pages" element={<AllPages />} />
                 <Route path="pages/:pageId" element={<PageDetailPage />} />
                 <Route path="activities" element={<ActivityPage />} />
               </Route>
@@ -99,6 +105,7 @@ function App() {
         </BrowserRouter>
       </WorkspaceProvider>
     </AuthProvider>
+    </DialogProvider>
   );
 }
 

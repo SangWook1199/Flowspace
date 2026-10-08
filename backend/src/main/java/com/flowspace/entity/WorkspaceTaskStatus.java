@@ -33,7 +33,15 @@ public class WorkspaceTaskStatus {
     @Builder.Default
     private Boolean isDefault = false;
 
+    // 한 컬럼에 동시에 둘 수 있는 작업 수의 권장 상한(WIP 제한). 비어 있으면 제한 없음. 넘어도 막지는 않고 화면에서 표시만 한다.
+    @Column(name = "wip_limit")
+    private Integer wipLimit;
+
     public void updatePosition(Integer position) {
         this.position = position;
+    }
+
+    public void updateWipLimit(Integer wipLimit) {
+        this.wipLimit = wipLimit;
     }
 }

@@ -28,7 +28,7 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
 
         String token = UriComponentsBuilder.fromUri(request.getURI()).build().getQueryParams().getFirst("token");
 
-        if (token == null || token.isBlank() || !jwtProvider.validateToken(token)) {
+        if (token == null || token.isBlank() || !jwtProvider.isAccessToken(token)) {
             response.setStatusCode(HttpStatus.UNAUTHORIZED);
             return false;
         }

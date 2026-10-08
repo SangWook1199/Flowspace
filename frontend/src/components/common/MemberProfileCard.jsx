@@ -4,6 +4,7 @@ import { CalendarDays, Clock3, Mail } from "lucide-react";
 import { toRelativeTime } from "../../api/mappers";
 import { getAvatarTone } from "../../utils/avatarColor";
 import { parseDateKey } from "../../utils/date";
+import { roleLabel } from "../../utils/workspaceRole";
 import "../../styles/member-profile.css";
 
 const PRIORITY_LABEL = { HIGH: "높음", MEDIUM: "보통", LOW: "낮음" };
@@ -31,7 +32,7 @@ const MemberProfileCard = forwardRef(function MemberProfileCard(
 ) {
   const view = { ...base, ...(profile ?? {}) };
   const online = view.online || isMe;
-  const isOwner = view.role === "OWNER";
+  const roleTone = view.role === "OWNER" ? "owner" : view.role === "ADMIN" ? "admin" : "";
 
   return (
     <div
@@ -51,7 +52,7 @@ const MemberProfileCard = forwardRef(function MemberProfileCard(
             {view.name}
             {isMe && <em>나</em>}
           </strong>
-          <span className={`memberCard__role ${isOwner ? "owner" : ""}`}>{isOwner ? "소유자" : "멤버"}</span>
+          <span className={`memberCard__role ${roleTone}`}>{roleLabel(view.role)}</span>
         </div>
       </div>
 

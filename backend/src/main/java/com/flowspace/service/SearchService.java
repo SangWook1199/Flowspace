@@ -126,7 +126,7 @@ public class SearchService {
 
         List<Number> ids = em.createNativeQuery("select b.block_id from blocks b join pages p on p.page_id = b.page_id "
             + "where p.workspace_id = :ws and p.is_deleted = 0 "
-            + "and lower(cast(b.content as char)) like :kw order by b.block_id desc limit 100")
+            + "and lower(cast(b.content as char)) like :kw escape '!' order by b.block_id desc limit 100")
             .setParameter("ws", workspace.getWorkspaceId()).setParameter("kw", "%" + escapeLike(lower) + "%")
             .getResultList();
 

@@ -7,6 +7,7 @@ import { getErrorMessage } from "../utils/apiError";
 import { getSavedWorkspaceId, saveWorkspaceId } from "../utils/workspaceStorage";
 
 import { useSprintData } from "./useSprintData";
+import useDialog from "./useDialog";
 
 // 사이드바 메뉴 목록은 아직 목데이터예요(대시보드 연결 M4에서 정리해요).
 import { NAVIGATION } from "../utils/navigation";
@@ -70,6 +71,7 @@ export function WorkspaceProvider({ children }) {
   // 로그인한 사람이 바뀌면(로그인·로그아웃·계정 전환) 워크스페이스·페이지 상태를 전부 비우고
   // 새로 불러와요. AuthProvider 안쪽에 마운트되지만, 혹시 밖에서 쓰여도 죽지 않게 옵셔널 체이닝으로 받아요.
   const auth = useAuth();
+  const { notify } = useDialog();
   const userId = auth?.user?.id ?? null;
   const creatorName = auth?.user?.nickname || DEFAULT_CREATOR;
 
@@ -113,6 +115,12 @@ export function WorkspaceProvider({ children }) {
   // 화면의 pages는 서버 목록에 "서버에 만드는 중인 임시 페이지"를 더한 값이에요(블록은 페이지 상세에서 따로 받아요).
   const [pages, setPages] = useState([]);
   const [members, setMembers] = useState([]);
+  // 팀원 목록을 못 받았을 때의 안내 문구(받으면 null). 이전 목록은 그대로 두고 문구만 알려요.
+  const [membersError, setMembersError] = useState(null);
+  // 팀원 목록 오류 토스트를 실패 한 번에 한 번만 띄우려고, 이미 알렸는지 기억해요(소켓 재연결 등으로 다시 받다 실패해도 반복하지 않아요).
+  const membersErrorNotified = useRef(false);
+  // loadMembers가 notify 모양이 바뀔 때마다 다시 만들어져 팀원을 재요청하지 않게 ref로 최신 값을 들고 써요.
+  const notifyRef = useRef(notify);
   // 어느 워크스페이스의 페이지까지 불러왔는지. 현재 워크스페이스와 다르면 "불러오는 중"이에요.
   const [pagesLoadedFor, setPagesLoadedFor] = useState(null);
   const [pagesError, setPagesError] = useState(null);
@@ -124,6 +132,7 @@ export function WorkspaceProvider({ children }) {
 
   useEffect(() => {
     pagesRef.current = pages;
+    notifyRef.current = notify;
   });
 
   // silent: 화면을 "불러오는 중"으로 바꾸지 않고 조용히 서버 상태와 맞춰요(삭제·복원 뒤 등).
@@ -163,10 +172,20 @@ export function WorkspaceProvider({ children }) {
       try {
         const list = await workspaceApi.getMembers(workspaceId, userId);
         // 그 사이 워크스페이스를 바꿨으면(더 새 요청이 있으면) 버려요.
-        if (id === membersRequestId.current) setMembers(list);
-      } catch {
-        // 팀원 목록을 못 불러와도 화면은 계속 써요(헤더의 팀원 표시만 비어요).
-        if (id === membersRequestId.current) setMembers([]);
+        if (id !== membersRequestId.current) return;
+        setMembers(list);
+        setMembersError(null);
+        membersErrorNotified.current = false;
+      } catch (err) {
+        if (id !== membersRequestId.current) return;
+        // 팀원 목록을 못 불러와도 화면은 계속 써요. 이전 목록은 그대로 두고(비우면 담당자·멘션 목록이 갑자기 사라져요),
+        // 오류 문구를 같이 내보내요. 토스트는 실패가 이어지는 동안 한 번만 띄워요.
+        const message = getErrorMessage(err, "팀원 목록을 불러오지 못했어요.");
+        setMembersError(message);
+        if (!membersErrorNotified.current) {
+          membersErrorNotified.current = true;
+          notifyRef.current(message);
+        }
       }
     },
     [userId],
@@ -197,6 +216,7 @@ export function WorkspaceProvider({ children }) {
     saveTimers.current.clear();
     pendingCreates.current.clear();
     pageIdMapRef.current = {};
+    membersErrorNotified.current = false;
 
     /* eslint-disable react-hooks/set-state-in-effect */
     setPageIdMap({});
@@ -205,6 +225,7 @@ export function WorkspaceProvider({ children }) {
     setWorkspaceError(null);
     setPages([]);
     setMembers([]);
+    setMembersError(null);
     setPagesLoadedFor(null);
     setPagesError(null);
     /* eslint-enable react-hooks/set-state-in-effect */
@@ -234,8 +255,8 @@ export function WorkspaceProvider({ children }) {
     loadPages(currentWorkspaceId);
   };
 
-  // 서버 호출이 실패했을 때 사용자에게 알려요(토스트 UI가 생기기 전까지 alert).
-  const notifyError = (err, fallback) => window.alert(getErrorMessage(err, fallback));
+  // 서버 호출이 실패했을 때 앱 토스트로 알려요.
+  const notifyError = (err, fallback) => notify(getErrorMessage(err, fallback));
 
   /* ---------- 스프린트 · 작업 · 칸반 상태 (서버 연결) ---------- */
 
@@ -520,8 +541,10 @@ export function WorkspaceProvider({ children }) {
   const enterWorkspace = (workspaceId) => {
     pagesRequestId.current++;
     membersRequestId.current++;
+    membersErrorNotified.current = false;
     setPages([]);
     setMembers([]);
+    setMembersError(null);
     setPagesLoadedFor(null);
     setPagesError(null);
     setCurrentWorkspaceId(workspaceId);
@@ -536,8 +559,8 @@ export function WorkspaceProvider({ children }) {
     return true;
   };
 
-  // 워크스페이스를 만들고 → 첫 페이지(빈 "제목 없음")를 하나 만들고 → 초대를 보내고 → 현재
-  // 워크스페이스로 전환해요. 첫 페이지가 있어야 만들자마자 보여줄 화면이 생겨요.
+  // 워크스페이스를 만들고 → 초대를 보내고 → 현재 워크스페이스로 전환해요.
+  // 빈 "제목 없음" 페이지는 따로 만들지 않아요(페이지는 사이드바에서 필요할 때 만들어요). 만든 뒤 보여줄 화면은 대시보드예요.
   // 이름이 비어 있으면 null, 만들기에 실패하면 예외를 던져요(호출한 화면이 안내 문구를 보여줘요).
   // 초대는 이메일마다 따로 보내고, 실패한 이메일은 failedInvites로 돌려줘요(워크스페이스는 이미 만들어진 뒤라서요).
   const createWorkspace = async ({ name, initials, color, icon, invitedMembers = [] }) => {
@@ -551,13 +574,6 @@ export function WorkspaceProvider({ children }) {
       icon,
     });
 
-    let page = null;
-    try {
-      page = await pageApi.createPage(workspace.id);
-    } catch {
-      // 첫 페이지를 못 만들어도 워크스페이스는 쓸 수 있어요(사이드바에서 새로 만들면 돼요).
-    }
-
     const failedInvites = [];
     for (const member of invitedMembers) {
       try {
@@ -570,7 +586,7 @@ export function WorkspaceProvider({ children }) {
     setWorkspaces((prev) => [...prev, workspace]);
     enterWorkspace(workspace.id);
 
-    return { workspace, page, failedInvites };
+    return { workspace, failedInvites };
   };
 
   const currentWorkspace = workspaces.find((w) => w.id === currentWorkspaceId) ?? null;
@@ -602,6 +618,12 @@ export function WorkspaceProvider({ children }) {
 
   const removeMemberFromCurrentWorkspace = async (memberId) => {
     await workspaceApi.removeMember(currentWorkspaceId, memberId);
+    await reloadMembers();
+  };
+
+  // 멤버를 관리자로 올리거나 멤버로 내려요(소유자만 — 서버가 확인해요).
+  const changeMemberRoleInCurrentWorkspace = async (memberId, role) => {
+    await workspaceApi.changeMemberRole(currentWorkspaceId, memberId, role);
     await reloadMembers();
   };
 
@@ -643,11 +665,13 @@ export function WorkspaceProvider({ children }) {
     updateCurrentWorkspace,
     inviteToCurrentWorkspace,
     removeMemberFromCurrentWorkspace,
+    changeMemberRoleInCurrentWorkspace,
     transferCurrentOwnership,
     leaveCurrentWorkspace,
     deleteCurrentWorkspace,
     reloadMembers,
     setMemberPresence,
+    membersError,
     // 페이지
     pages,
     setPages,
@@ -676,6 +700,7 @@ export function WorkspaceProvider({ children }) {
     sprintDataError: sprintData.error,
     reloadSprintData: sprintData.reload,
     createSprint: sprintData.createSprint,
+    updateSprint: sprintData.updateSprint,
     changeSprintStatus: sprintData.changeSprintStatus,
     deleteSprint: sprintData.deleteSprint,
     createTask: sprintData.createTask,
@@ -685,6 +710,9 @@ export function WorkspaceProvider({ children }) {
     toggleSubtask: sprintData.toggleSubtask,
     addSubtasks: sprintData.addSubtasks,
     deleteSubtask: sprintData.deleteSubtask,
+    renameSubtask: sprintData.renameSubtask,
+    setSubtaskAssignee: sprintData.setSubtaskAssignee,
+    moveSubtask: sprintData.moveSubtask,
     createStatus: sprintData.createStatus,
     saveStatus: sprintData.saveStatus,
     deleteStatus: sprintData.deleteStatus,

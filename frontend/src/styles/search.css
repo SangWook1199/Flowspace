@@ -134,3 +134,8 @@
   border-radius: 2px;
   padding: 0 1px;
 }
+
+/* 작업 검색 결과의 제목은 굵게 하지 않아요 */
+.headerSearch__title--task {
+  font-weight: 400;
+}

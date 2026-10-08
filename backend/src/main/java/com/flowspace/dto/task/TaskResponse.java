@@ -17,6 +17,7 @@ import java.util.List;
 public record TaskResponse(
 
     Long taskId,
+    Integer taskNumber,
     Long workspaceId,
     Long sprintId,
 
@@ -51,6 +52,7 @@ public record TaskResponse(
     ) {
         return new TaskResponse(
             task.getTaskId(),
+            task.getTaskNumber(),
             task.getWorkspace().getWorkspaceId(),
             task.getSprint() == null ? null : task.getSprint().getSprintId(),
             task.getStatus().getStatusId(),

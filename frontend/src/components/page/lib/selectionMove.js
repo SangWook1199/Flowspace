@@ -147,7 +147,7 @@ export function computeHorizontalTarget(sel, editorEl, back) {
   r.selectNodeContents(rich);
   if (back) r.setEnd(sel.focusNode, sel.focusOffset);
   else r.setStart(sel.focusNode, sel.focusOffset);
-  const atEdge = r.toString().replace(/​/g, "") === "";
+  const atEdge = r.toString().replace(/\u200b/g, "") === "";
   if (!atEdge) return { crossed: false };
   const all = Array.from(editorEl.querySelectorAll(RICH));
   const neighbor = all[all.indexOf(rich) + (back ? -1 : 1)];

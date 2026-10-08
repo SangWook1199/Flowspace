@@ -1,19 +1,36 @@
 import {
   ChevronDown,
   ChevronRight,
+  Flag,
   Plus,
+  Trash2,
   Upload,
+  User,
 } from "lucide-react";
 import { useState } from "react";
+
 
 import { formatDateDots, percentOf } from "../../utils/date";
 import { useMemberProfile } from "../../context/MemberProfileContext";
 
 // tasks는 공용 작업 모델(assignees 객체 배열, startDate/dueDate, subtasks {text, checked})에
 // 상태 카테고리 status("TODO" | "IN_PROGRESS" | "DONE")를 얹은 모양이에요.
-export default function SprintTaskTable({ tasks = [], onAdd }) {
-  // 처음엔 첫 번째 작업을 펼쳐둬요(작업 id를 코드에 박아두지 않고 목록에서 꺼내요).
-  const [openTask, setOpenTask] = useState(() => tasks[0]?.id ?? null);
+// onImport가 있을 때만 "가져오기" 버튼을 보여줘요(백로그·완료된 스프린트에서는 안 넘겨요).
+export default function SprintTaskTable({ tasks = [], onAdd, onImport, onDeleteTasks, onOpenTask }) {
+  // 하위 작업은 처음엔 모두 접어 두고, 화살표를 눌러야 펼쳐져요.
+  const [openTask, setOpenTask] = useState(null);
+  // 체크박스로 고른 작업이에요(onDeleteTasks가 있을 때만 보여줘요). 지워져서 사라진 작업은 선택에서 빠져요.
+  const [checkedIds, setCheckedIds] = useState([]);
+  const taskIds = tasks.map((task) => task.id);
+  const checked = checkedIds.filter((id) => taskIds.includes(id));
+  const allChecked = tasks.length > 0 && checked.length === tasks.length;
+  const toggleChecked = (id) =>
+    setCheckedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
+  const toggleAll = () => setCheckedIds(allChecked ? [] : taskIds);
+  const deleteChecked = async () => {
+    const done = await onDeleteTasks(checked);
+    if (done) setCheckedIds([]);
+  };
 
   return (
     <section className="detailTasks">
@@ -24,42 +41,66 @@ export default function SprintTaskTable({ tasks = [], onAdd }) {
         </div>
 
         <div>
-          <button type="button">
-            <Upload size={16} />
-            가져오기
-          </button>
-
-          <button type="button" onClick={onAdd}>
-            <Plus size={18} />
-            작업 추가
-          </button>
+          {onDeleteTasks && checked.length > 0 && (
+            <button type="button" className="deleteTasksBtn" onClick={deleteChecked}>
+              <Trash2 size={16} />
+              선택 삭제 ({checked.length})
+            </button>
+          )}
+          {onImport && (
+            <button type="button" onClick={onImport}>
+              <Upload size={16} />
+              가져오기
+            </button>
+          )}
+          {onAdd && (
+            <button type="button" onClick={onAdd}>
+              <Plus size={18} />
+              작업 추가
+            </button>
+          )}
         </div>
       </header>
 
-      <div className="taskHead">
-        <span>작업</span>
-        <span>담당자</span>
-        <span>우선순위</span>
-        <span>시작일</span>
-        <span>종료일</span>
-        <span>하위 작업</span>
-        <span>상태</span>
-        <span>작업</span>
-      </div>
+      {/* 작업이 몇 개든 목록 높이는 고정이에요. 넘치면 이 안에서 스크롤되고, 열 제목은 위에 붙어 있어요. */}
+      <div className="taskListBody">
+        <div className="taskHead">
+          <span />
+          <span className="taskCheckCell">
+            {onDeleteTasks && (
+              <input type="checkbox" checked={allChecked} aria-label="전체 선택" onChange={toggleAll} />
+            )}
+          </span>
+          <span>번호</span>
+          <span>제목</span>
+          <span>담당자</span>
+          <span>우선순위</span>
+          <span>시작일</span>
+          <span>마감일</span>
+          <span>하위 작업</span>
+          <span>상태</span>
+        </div>
 
-      {tasks.map((task) => (
-        <TaskGroup
-          key={task.id}
-          task={task}
-          open={task.id === openTask}
-          onToggle={() => setOpenTask(openTask === task.id ? null : task.id)}
-        />
-      ))}
+        {tasks.length === 0 && <p className="taskListEmpty">아직 작업이 없어요.</p>}
+
+        {tasks.map((task) => (
+          <TaskGroup
+            key={task.id}
+            task={task}
+            open={task.id === openTask}
+            onToggle={() => setOpenTask(openTask === task.id ? null : task.id)}
+            onOpen={onOpenTask ? () => onOpenTask(task) : undefined}
+            selectable={Boolean(onDeleteTasks)}
+            checked={checked.includes(task.id)}
+            onCheck={() => toggleChecked(task.id)}
+          />
+        ))}
+      </div>
     </section>
   );
 }
 
-function TaskGroup({ task, open, onToggle }) {
+function TaskGroup({ task, open, onToggle, onOpen, selectable = false, checked = false, onCheck }) {
   const openMemberProfile = useMemberProfile();
   const assignees = task.assignees ?? [];
   const subtasks = task.subtasks ?? [];
@@ -90,8 +131,16 @@ function TaskGroup({ task, open, onToggle }) {
 
   return (
     <div className="taskGroup">
-      <div className="taskRow">
-        <div className="taskName">
+      {/* 작업 줄(버튼·체크박스·담당자 아이콘이 아닌 곳)을 누르면 작업 페이지에서 이 작업이 열려요. */}
+      <div
+        className={`taskRow${onOpen ? " taskRowLink" : ""}`}
+        onClick={(e) => {
+          if (!onOpen || e.target.closest("button, input, [role='button']")) return;
+          onOpen();
+        }}
+      >
+        {/* 하위 작업 펼침 화살표는 맨 왼쪽 칸에 둬요. */}
+        <span className="taskToggleCell">
           <button
             type="button"
             onClick={onToggle}
@@ -100,13 +149,27 @@ function TaskGroup({ task, open, onToggle }) {
           >
             {open ? <ChevronDown size={17} /> : <ChevronRight size={17} />}
           </button>
+        </span>
 
-          <i className={`taskDot ${task.tone ?? "gray"}`} />
+        {/* 토글 다음 칸: 삭제할 작업을 고르는 체크박스예요. */}
+        <span className="taskCheckCell">
+          {selectable && (
+            <input type="checkbox" checked={checked} aria-label={`${task.title} 선택`} onChange={onCheck} />
+          )}
+        </span>
 
-          <b>{task.title}</b>
+        <span className="taskCode">{task.code ?? task.id}</span>
+
+        <div className="taskName">
+          <b title={task.title}>{task.title}</b>
         </div>
 
         <div className="assigneeStack">
+          {assignees.length === 0 && (
+            <span className="assigneeAvatar assigneeEmpty" title="담당자 없음">
+              <User size={14} />
+            </span>
+          )}
           {assignees.map((assignee, index) => {
             const name = typeof assignee === "string" ? assignee : assignee?.name;
             const assigneeId = typeof assignee === "string" ? null : (assignee?.id ?? null);
@@ -136,7 +199,10 @@ function TaskGroup({ task, open, onToggle }) {
           })}
         </div>
 
-        <em className={priorityClass}>{priorityLabel}</em>
+        <em className={priorityClass}>
+          <Flag size={14} />
+          {priorityLabel}
+        </em>
 
         <time>{formatDateDots(task.startDate)}</time>
         <time>{formatDateDots(task.dueDate)}</time>
@@ -153,6 +219,13 @@ function TaskGroup({ task, open, onToggle }) {
         {/* 편집·더보기 버튼은 기능이 없어서 뺐어요. */}
       </div>
 
+      {/* 하위 작업이 없는 작업을 펼쳤을 때 아무것도 안 나오면 고장 난 것처럼 보여서 안내해요. */}
+      {open && subtasks.length === 0 && (
+        <div className="subtask">
+          <p className="subtaskEmpty">아직 하위 작업이 없어요.</p>
+        </div>
+      )}
+
       {open &&
         subtasks.map((subtask, index) => {
           // 하위 작업은 문자열(옛 데이터)이거나 { id, text, checked } 객체예요. 완료 여부를 알 수 있을
@@ -160,20 +233,30 @@ function TaskGroup({ task, open, onToggle }) {
           const text = typeof subtask === "string" ? subtask : subtask?.text;
           const known = typeof subtask === "object" && typeof subtask?.checked === "boolean";
           const done = known && subtask.checked;
+          const owner = typeof subtask === "object" ? assignees.find((a) => typeof a === "object" && a?.id === subtask?.assigneeId) : null;
 
           return (
             <div className="subtask" key={`${subtask?.id ?? text}-${index}`}>
+              <span />
+              <span />
+              <span />
+
               <span className="subtaskName">
                 <i
                   aria-hidden="true"
                   style={known && !done ? { borderColor: "#cbd5e1", color: "transparent" } : undefined}
-                >
-                  ✓
-                </i>
+                />
                 {text}
               </span>
 
-              <span />
+              {/* 하위 작업 담당자 — 작업에 배치된 담당자 중 한 명이에요. */}
+              <div className="assigneeStack">
+                {owner && (
+                  <span className="assigneeAvatar" title={owner.name}>
+                    {owner.initial ?? owner.name?.[0]}
+                  </span>
+                )}
+              </div>
               <span />
 
               <time>{formatDateDots(task.startDate)}</time>
@@ -182,8 +265,6 @@ function TaskGroup({ task, open, onToggle }) {
               <span />
 
               <mark>{known ? (done ? "완료" : "미완료") : ""}</mark>
-
-              <span />
             </div>
           );
         })}

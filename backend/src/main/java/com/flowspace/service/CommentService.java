@@ -86,6 +86,8 @@ public class CommentService {
         workspaceMemberRepository.findByWorkspaceAndUser(block.getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
+        PageGuard.requireActive(block.getPage());
+
         Comment parent = resolveParent(request.parentCommentId(), null, block);
 
         Comment comment = Comment.builder().block(block).parentComment(parent).user(user).content(request.content())
@@ -152,6 +154,11 @@ public class CommentService {
 
         // 수정하면서 새로 멘션된 사람에게만 알려요(원래 멘션돼 있던 사람에게 또 보내지 않아요).
         Set<Long> alreadyMentioned = MentionParser.extractUserIds(comment.getContent());
+
+        // 휴지통에 있는 페이지의 블록 댓글은 고칠 수 없어요.
+        if (comment.getBlock() != null) {
+            PageGuard.requireActive(comment.getBlock().getPage());
+        }
 
         comment.update(request.content());
 

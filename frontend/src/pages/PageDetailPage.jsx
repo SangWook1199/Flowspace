@@ -242,12 +242,51 @@ export default function PageDetailPage() {
 
   return (
     <div className="page-detail-page">
-      {/* 커버는 노션처럼 일반 흐름(in-flow) 요소예요 — 있으면 그만큼
-          아래 내용이 실제로 밀려요. 상위 페이지 경로/삭제 같은 상단
-          바는 노션엔 없는 이 앱만의 기능이라, 문서 흐름을 차지하지
-          않게 커버(또는 커버가 없으면 페이지 맨 위) 위에 떠 있는
-          오버레이로 뒀어요 — 그래야 아이콘이 항상 "커버 바로 아래"에서
-          시작해서 커버에 겹칠 수 있어요. */}
+      {/* 노션처럼 화면 왼쪽 위에 놓이는 페이지 헤더 줄이에요 — 문서 흐름 안에 있어서
+          커버는 이 줄 "아래"에 붙고, 왼쪽에는 상위 페이지 경로와 지금 페이지 이름,
+          오른쪽에는 커버가 없을 때만 "커버 추가"가 있어요. 커버가 있을 때는 커버 사진에
+          hover하면 변경/삭제가 나와요(노션 방식). 삭제 버튼은 일단 빼뒀어요. */}
+      <div className="page-detail__topbar-zone">
+        <div className="page-detail__topbar">
+          <div className="page-detail__breadcrumb">
+            {ancestors.map((a) => (
+              <span key={a.id} className="page-detail__breadcrumb-seg">
+                <button type="button" onClick={() => navigate(`/pages/${a.id}`)}>
+                  <span>{a.icon}</span>
+                  <span>{a.title || "제목 없음"}</span>
+                </button>
+                <ChevronRight size={12} />
+              </span>
+            ))}
+            <span className="page-detail__breadcrumb-current" aria-current="page">
+              {page.icon && <span>{page.icon}</span>}
+              <span>{page.title || "제목 없음"}</span>
+            </span>
+          </div>
+
+          {!page.cover && (
+            <div className="page-detail__topbar-actions">
+              <div className="page-detail__cover-btn-wrap">
+                <button
+                  type="button"
+                  className="page-detail__cover-btn"
+                  onClick={(e) => {
+                    setCoverAnchor(e.currentTarget);
+                    setCoverPickerOpen((v) => !v);
+                  }}
+                >
+                  <ImagePlus size={13} />
+                  커버 추가
+                </button>
+
+                {coverPickerPanel}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 커버는 노션처럼 일반 흐름(in-flow) 요소예요 — 헤더 줄 아래에 붙고, 있으면 그만큼 아래 내용이 밀려요. */}
       {page.cover && (
         <div className="page-detail__cover-zone">
           <img src={page.cover} alt="" />
@@ -275,49 +314,6 @@ export default function PageDetailPage() {
           </div>
         </div>
       )}
-
-      <div className="page-detail__topbar-zone">
-        <div className="page-detail__container page-detail__topbar">
-          {ancestors.length > 0 ? (
-            <div className="page-detail__breadcrumb page-detail__topbar-surface">
-              {ancestors.map((a) => (
-                <span key={a.id} className="page-detail__breadcrumb-seg">
-                  <button type="button" onClick={() => navigate(`/pages/${a.id}`)}>
-                    <span>{a.icon}</span>
-                    <span>{a.title || "제목 없음"}</span>
-                  </button>
-                  <ChevronRight size={12} />
-                </span>
-              ))}
-            </div>
-          ) : (
-            <span />
-          )}
-
-          {/* 삭제 버튼은 일단 빼뒀어요. 커버가 없을 때만 여기(상단
-              바)에 "커버 추가"가 남아요 — 커버가 있을 때는 커버 사진
-              자체에 hover하면 변경/삭제가 나와요(노션 방식). */}
-          {!page.cover && (
-            <div className="page-detail__topbar-actions page-detail__topbar-surface">
-              <div className="page-detail__cover-btn-wrap">
-                <button
-                  type="button"
-                  className="page-detail__cover-btn"
-                  onClick={(e) => {
-                    setCoverAnchor(e.currentTarget);
-                    setCoverPickerOpen((v) => !v);
-                  }}
-                >
-                  <ImagePlus size={13} />
-                  커버 추가
-                </button>
-
-                {coverPickerPanel}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
 
       <input
         ref={coverInputRef}

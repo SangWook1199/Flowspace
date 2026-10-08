@@ -1,10 +1,10 @@
 .taskHead,
 .taskRow,
 .subtask {
-  grid-template-columns: minmax(
-      270px,
-      2.25fr
-    ) 120px 105px 126px 126px 155px 105px 90px;
+  grid-template-columns:
+    44px 32px 76px minmax(150px, 1.25fr)
+    minmax(120px, 1fr) minmax(104px, 0.8fr) minmax(104px, 0.8fr) minmax(104px, 0.8fr)
+    minmax(140px, 1.1fr) minmax(90px, 0.8fr);
 }
 .detailTasks,
 .taskRow,
@@ -15,33 +15,40 @@
   min-height: 46px;
   padding: 0 22px;
 }
+/* 제목은 가운데 정렬이고, 글씨는 굵지 않게 보통으로 해요. */
 .taskName {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
   min-width: 0;
+  min-height: 28px;
+  padding: 0 8px;
 }
-.taskName > button {
-  width: 21px;
+.taskName > b {
+  font-size: 13px;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 하위 작업 펼침 화살표(맨 왼쪽 칸) */
+.taskToggleCell {
+  display: grid;
+  place-items: center;
+}
+.taskToggleCell > button {
+  width: 28px;
   height: 28px;
-  flex: 0 0 auto;
   border: 0;
+  border-radius: 6px;
   background: transparent;
   display: grid;
   place-items: center;
   padding: 0;
+  cursor: pointer;
 }
-.taskName .taskDot {
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  flex: 0 0 auto;
-}
-.taskName > b {
-  font-size: 13px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.taskToggleCell > button:hover {
+  background: #f1f4f8;
 }
 .taskRow > .taskDot,
 .taskRow > b {
@@ -76,7 +83,8 @@
   display: flex;
   align-items: center;
   gap: 11px;
-  padding-left: 38px;
+  justify-content: center;
+  padding: 0 8px;
   font-size: 13px;
 }
 .subtaskName i {
@@ -97,6 +105,18 @@
 .subtask mark {
   justify-self: center;
 }
+.subtask .assigneeStack {
+  justify-self: center; /* 작업 줄의 담당자와 같은 가운데 정렬 */
+}
+/* 체크 표시는 글자(✓) 대신 CSS로 그려서 동그라미 정중앙에 와요. */
+.subtaskName i::after {
+  content: "";
+  width: 4px;
+  height: 8px;
+  border: solid currentColor;
+  border-width: 0 2px 2px 0;
+  transform: translate(0, -1px) rotate(45deg);
+}
 .taskRow .assignee,
 .taskRow em,
 .taskRow time,
@@ -107,17 +127,40 @@
 .taskHead {
   background: #fbfcfe;
 }
-.taskHead span:first-child {
-  text-align: left;
-}
-.taskHead span:last-child {
-  text-align: right;
-  padding-right: 10px;
+.taskHead span {
+  text-align: center;
 }
 @media (max-width: 1100px) {
   .taskHead,
   .taskRow,
   .subtask {
-    min-width: 1120px;
+    min-width: 1160px;
   }
+}
+
+/* 토글 다음의 선택 체크박스 칸 */
+.taskCheckCell {
+  display: grid;
+  place-items: center;
+}
+.taskCheckCell input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+}
+
+/* 선택한 작업 삭제 버튼(헤더 오른쪽) */
+.detailTasks header button.deleteTasksBtn {
+  border-color: #f1c4c7;
+  background: #fff4f5;
+  color: #e64f58;
+}
+
+/* 눌러서 작업 페이지로 갈 수 있는 작업 줄 */
+.taskRowLink {
+  cursor: pointer;
+}
+.taskRowLink:hover {
+  background: #f8faff;
 }

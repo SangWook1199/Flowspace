@@ -1,0 +1,144 @@
+/* 앱 공용 확인창(confirm)과 안내 토스트예요. */
+.appConfirmOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000; /* 가져오기 같은 다른 모달(9999) 위에 떠요 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.45);
+}
+.appConfirm {
+  width: 400px;
+  max-width: 100%;
+  padding: 24px 24px 20px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 30px 60px rgba(15, 23, 42, 0.22);
+}
+.appConfirm h2 {
+  margin: 0 0 10px;
+  font-size: 17px;
+  color: #16233d;
+}
+.appConfirm p {
+  margin: 0;
+  color: #44536b;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-line; /* 문구의 줄바꿈(\n)을 그대로 보여줘요 */
+  word-break: keep-all;
+}
+.appConfirmActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 22px;
+}
+.appConfirmActions button {
+  min-width: 76px;
+  height: 38px;
+  padding: 0 16px;
+  border: 1px solid #dfe6ef;
+  border-radius: 9px;
+  background: #fff;
+  color: #33425c;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.appConfirmActions button:hover {
+  background: #f6f8fd;
+}
+.appConfirmActions button.primary {
+  border-color: #4f5cf6;
+  background: #4f5cf6;
+  color: #fff;
+}
+.appConfirmActions button.primary:hover {
+  background: #4350e0;
+}
+.appConfirmActions button.danger {
+  border-color: #e5484d;
+  background: #e5484d;
+  color: #fff;
+}
+.appConfirmActions button.danger:hover {
+  background: #cf3a3f;
+}
+.appConfirmActions button:focus-visible {
+  outline: 2px solid #4f5cf6;
+  outline-offset: 2px;
+}
+
+.toastStack {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  z-index: 10001;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transform: translateX(-50%);
+  width: min(460px, calc(100vw - 32px));
+  pointer-events: none;
+}
+.appToast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 12px 12px 14px;
+  border: 1px solid #dfe6ef;
+  border-left-width: 4px;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.16);
+  pointer-events: auto;
+}
+.appToast svg {
+  flex: none;
+  margin-top: 1px;
+}
+.appToast p {
+  flex: 1;
+  margin: 0;
+  color: #23314a;
+  font-size: 13.5px;
+  line-height: 1.5;
+  white-space: pre-line;
+  word-break: keep-all;
+}
+.appToast button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #7a899f;
+  cursor: pointer;
+}
+.appToast button:hover {
+  background: #f0f3f8;
+}
+.appToast.error {
+  border-left-color: #e5484d;
+}
+.appToast.error svg {
+  color: #e5484d;
+}
+.appToast.success {
+  border-left-color: #28ba74;
+}
+.appToast.success svg {
+  color: #28ba74;
+}
+.appToast.info {
+  border-left-color: #4f5cf6;
+}
+.appToast.info svg {
+  color: #4f5cf6;
+}

@@ -4,11 +4,6 @@ export default function SprintHero({ summary, onCreate }) {
     <>
       <section className="sprintListHeading">
         <div>
-          <div className="breadcrumb">
-            <span>스프린트</span>
-            <b>›</b>
-            <strong>스프린트 목록</strong>
-          </div>
           <h1>스프린트 목록</h1>
           <p>모든 스프린트를 한눈에 보고 관리하세요.</p>
         </div>

@@ -1,5 +1,6 @@
 /* ===========================
    Calendar
+   왼쪽 레일(미니 달력·스프린트·표시 토글) + 달력 + 날짜 옆 상세 패널 구조예요.
 =========================== */
 
 .calendarPage {
@@ -8,204 +9,500 @@
   width: 100%;
   max-width: 1800px;
   margin: 0 auto;
-  padding: 28px;
+  padding: 24px 28px;
   background: #f8fafc;
   min-height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
   box-sizing: border-box;
 }
 
-/* ---------- Header ---------- */
+.calendarApp {
+  display: grid;
+  grid-template-columns: 252px minmax(0, 1fr);
+  min-height: 760px;
+  background: #fff;
+  border: 1px solid #e6e8ec;
+  border-radius: 16px;
+  overflow: hidden;
+}
 
-.calendarHeader {
+.calendarApp.railClosed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.calendarMain {
+  position: relative;
+  min-width: 0;
   display: flex;
-  justify-content: space-between;
-  align-items: end;
+  flex-direction: column;
 }
 
-.calendarHeader h1 {
+.emptyText {
   margin: 0;
-  font-size: 30px;
-  font-weight: 700;
-  color: #111827;
+  color: #94a3b8;
+  font-size: 13px;
 }
 
-.calendarHeader p {
-  margin-top: 6px;
-  color: #64748b;
-  font-size: 14px;
+.calendarError {
+  padding: 10px 20px 0;
+  color: #ef4444;
 }
 
-.primaryBtn {
-  height: 42px;
-  padding: 0 18px;
+/* 공용 작은 버튼 */
+
+.iconBtn {
+  width: 30px;
+  height: 30px;
+  border: 1px solid #e6e8ec;
+  background: #fff;
+  border-radius: 8px;
+  color: #57606a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.iconBtn:hover {
+  background: #f6f7f9;
+}
+
+.toolbarBtn {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid #e6e8ec;
+  background: #fff;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.toolbarBtn:hover {
+  background: #f6f7f9;
+}
+
+/* ---------- Left Rail ---------- */
+
+.calendarRail {
+  background: #fbfbfa;
+  border-right: 1px solid #e6e8ec;
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.calendarRail h1 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+  color: #1f2328;
+}
+
+.railAddBtn {
+  height: 34px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 9px;
   background: #4f46e5;
   color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.railAddBtn:hover {
+  background: #4338ca;
+}
+
+/* 미니 달력 */
+
+.miniMonth header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 12.5px;
+}
+
+.miniMonth header span {
+  display: flex;
+  gap: 2px;
+}
+
+.miniMonth header button {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #8c959f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.miniMonth header button:hover {
+  background: #eef0f2;
+}
+
+.miniGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  row-gap: 2px;
+  text-align: center;
+}
+
+.miniWeekday {
+  height: 18px;
+  font-size: 10px;
+  color: #8c959f;
+}
+
+.miniDay {
+  position: relative;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  font-size: 11.5px;
+  color: #1f2328;
+  cursor: pointer;
+}
+
+.miniDay b {
+  position: relative;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+}
+
+.miniDay.dim {
+  color: #b6bec8;
+}
+
+.miniDay.inRange {
+  background: #f3edff;
+}
+
+.miniDay.rangeStart {
+  border-radius: 13px 0 0 13px;
+}
+
+.miniDay.rangeEnd {
+  border-radius: 0 13px 13px 0;
+}
+
+.miniDay.today b {
+  background: #4f46e5;
+  color: #fff;
+  font-weight: 700;
+}
+
+.miniDay.selected:not(.today) b {
+  box-shadow: inset 0 0 0 1.5px #4f46e5;
+  color: #4f46e5;
+  font-weight: 700;
+}
+
+.miniDay i {
+  position: absolute;
+  bottom: 1px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: #f59e0b;
+  z-index: 2;
+}
+
+/* 스프린트 / 표시 */
+
+.railSection h6 {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #8c959f;
+}
+
+.railSprintList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.railEmpty {
+  margin: 0;
+  padding: 4px 2px;
+  color: #8c959f;
+  font-size: 12.5px;
+}
+
+.railSprintGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.railSprintGroupHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 3px 8px;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #57606a;
+  text-align: left;
+}
+
+.railSprintGroupHead i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.railSprintGroupHead span {
+  flex: none;
+}
+
+.railSprintGroupHead b {
+  padding: 0 6px;
+  border-radius: 99px;
+  background: #eef0f2;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+.railSprintGroupHead.toggle {
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.railSprintGroupHead.toggle:hover:not(:disabled) {
+  background: #f1f2f0;
+}
+
+.railSprintGroupHead.toggle:disabled {
+  cursor: default;
+}
+
+.railSprintGroupHead svg {
+  margin-left: auto;
+  transform: rotate(-90deg);
+  transition: transform 0.15s;
+}
+
+.railSprintGroupHead svg.open {
+  transform: none;
+}
+
+.railSprint.completed .railSprintName {
+  color: #6b7280;
+}
+
+.railSprint {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.railSprint:hover {
+  background: #f1f2f0;
+}
+
+.railSprint.active {
+  background: #fff;
+  box-shadow: 0 0 0 1px #e6e8ec, 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.railSprintCheck {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.railSprintName {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
   font-weight: 600;
+  color: #1f2328;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.railSprintName small {
+  display: block;
+  margin-top: 1px;
+  font-size: 10.5px;
+  font-weight: 400;
+  color: #8c959f;
+}
+
+.railSprint em {
+  font-style: normal;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #8c959f;
+}
+
+.railToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 2px;
+  font-size: 12.5px;
+  color: #1f2328;
+}
+
+.switchBtn {
+  position: relative;
+  width: 28px;
+  height: 16px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 99px;
+  background: #d0d5dc;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.switchBtn::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: left 0.15s;
+}
+
+.switchBtn.on {
+  background: #4f46e5;
+}
+
+.switchBtn.on::after {
+  left: 14px;
+}
+
+.railHint {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #f3f4f2;
+  color: #57606a;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.railHint button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #4f46e5;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 700;
   cursor: pointer;
 }
 
 /* ---------- Toolbar ---------- */
 
 .calendarToolbar {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  padding: 14px 18px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.toolbarLeft,
-.toolbarRight {
   display: flex;
   align-items: center;
   gap: 10px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #eff1f4;
 }
 
-.toolbarLeft h2 {
-  margin: 0 0 0 8px;
-  font-size: 18px;
-}
-
-.toolbarBtn,
-.iconBtn {
-  height: 36px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.toolbarBtn {
-  padding: 0 14px;
-}
-
-.iconBtn {
-  width: 36px;
-}
-
-.sprintSelectWrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid #e5e7eb;
-  padding: 0 12px;
-  border-radius: 8px;
-  height: 38px;
-}
-
-.sprintSelect {
-  border: 0;
-  outline: 0;
-  background: transparent;
-  font-size: 13px;
-}
-
-/* ---------- Sprint Banner ---------- */
-
-.calendarSprintBanner {
-  background: #fff;
-  border-radius: 16px;
-  border: 1px solid #e5e7eb;
-  padding: 18px 22px;
-  display: flex;
-  justify-content: space-between;
-  position: relative;
-  overflow: hidden;
-}
-
-.bannerAccent {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 6px;
-  height: 100%;
-}
-
-.bannerLeft {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-}
-
-.bannerIcon {
-  width: 58px;
-  height: 58px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.bannerLeft h2 {
-  margin: 0;
+.calendarToolbar h2 {
+  margin: 0 6px 0 4px;
   font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: #1f2328;
 }
 
-.bannerLeft p {
-  margin: 4px 0 8px;
-  color: #64748b;
-}
-
-.bannerDate {
-  display: flex;
+.sprintTag {
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  color: #64748b;
-  font-size: 13px;
-}
-
-.bannerRight {
-  width: 210px;
-  display: flex;
-  flex-direction: column;
-  align-items: end;
-  justify-content: center;
-  gap: 6px;
-}
-
-.bannerRight strong {
-  font-size: 22px;
-}
-
-.dDay {
-  font-size: 13px;
+  gap: 7px;
+  margin-left: 4px;
+  padding: 4px 11px 4px 9px;
+  border-radius: 99px;
+  background: #f3f4f6;
+  color: #1f2328;
+  font-size: 11.5px;
   font-weight: 700;
 }
 
-.bannerProgress {
-  width: 100%;
+.sprintTag i {
+  width: 8px;
   height: 8px;
+  border-radius: 50%;
+}
+
+/* 스프린트 상태 뱃지: 진행 중=초록, 계획됨=파랑, 완료됨=회색이에요. */
+.sprintState {
+  padding: 1px 7px;
+  border-radius: 99px;
+  font-size: 10.5px;
+  font-weight: 700;
   background: #e5e7eb;
-  border-radius: 999px;
-  overflow: hidden;
+  color: #57606a;
 }
 
-.bannerProgress i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
+.sprintState.active {
+  background: #dcfce7;
+  color: #15803d;
 }
 
-.bannerRight small {
-  color: #64748b;
+.sprintState.planning {
+  background: #dbeafe;
+  color: #1d4ed8;
 }
 
-/* ---------- Layout ---------- */
-
-.calendarContent {
-  display: grid;
-  grid-template-columns: 1fr 280px;
-  gap: 20px;
+.sprintState.completed {
+  background: #eceff1;
+  color: #6b7280;
 }
 
 /* ===========================
@@ -213,489 +510,863 @@
 =========================== */
 
 .calendarGrid {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .weekHeader {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  background: #f8fafc;
-  border-bottom: 1px solid #e5e7eb;
 }
 
 .weekHeader div {
-  padding: 12px;
-  text-align: center;
-  font-size: 13px;
+  padding: 8px 10px 6px;
+  font-size: 11px;
   font-weight: 600;
-  color: #64748b;
+  color: #8c959f;
 }
 
-/* ===========================
-        Week
-=========================== */
+.weekHeader .sun {
+  color: #e5484d;
+}
 
+.weekHeader .sat {
+  color: #2f6fed;
+}
+
+/* 한 주의 높이는 고정이에요: 날짜 줄 28px + 작업/일정 6줄(22px씩) + 작업·일정 사이 간격 8px + 아래 여백 4px. 내용이 늘어도 커지지 않고 "+N"으로 접혀요. */
 .calendarWeek {
   position: relative;
+  height: 172px;
+  border-top: 1px solid #eff1f4;
+}
+
+.weekCells {
+  position: absolute;
+  inset: 0;
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  min-height: 190px;
-  border-bottom: 1px solid #eef2f7;
 }
-
-.calendarWeek:last-child {
-  border-bottom: none;
-}
-
-/* ===========================
-         Cell
-=========================== */
 
 .calendarCell {
-  position: relative;
-  border-right: 1px solid #eef2f7;
-  padding: 8px;
-  overflow: visible;
-
+  min-width: 0;
+  padding: 5px 3px 0;
+  border-right: 1px solid #eff1f4;
   display: flex;
   flex-direction: column;
   cursor: pointer;
-
-  /* 날짜 번호 때문에 항상 확보 */
-  padding-top: 30px;
-}
-
-.calendarCell.otherMonth:hover {
-  background: #fafbfc;
 }
 
 .calendarCell:last-child {
-  border-right: none;
+  border-right: 0;
+}
+
+.calendarCell.weekend {
+  background: #fcfcfb;
+}
+
+.calendarCell:hover {
+  background: #f8f9fb;
 }
 
 .calendarCell.selected {
-  background: #eef2ff;
+  background: #f3f4ff;
 }
 
-/* 날짜 */
+.calendarCell:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: -2px;
+}
 
+.dayRow {
+  height: 24px;
+  padding: 0 3px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+/* 오늘은 채운 원, 선택한 날은 테두리 원이라 둘이 겹쳐도 구분돼요. */
 .dayNumber {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  font-size: 13px;
-  font-weight: 700;
-  color: #111827;
-  z-index: 30;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 3px;
+  box-sizing: border-box;
+  border-radius: 99px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1f2328;
 }
 
-.dayNumber.dim {
-  color: #cbd5e1;
+.dayNumber.sun {
+  color: #e5484d;
+}
+
+.dayNumber.sat {
+  color: #2f6fed;
+}
+
+.dayNumber.dim,
+.dayNumber.dim.sun,
+.dayNumber.dim.sat {
+  color: #b6bec8;
   font-weight: 500;
 }
 
-/* ===========================
-      Task Layer
-=========================== */
-
-.taskLayer {
-  position: absolute;
-  top: 30px; /* 40px → 30px, calendarCell의 padding-top과 동일하게 */
-  left: 0;
-  width: 100%;
-  bottom: 0;
-  pointer-events: none;
-  z-index: 20;
-}
-
-.taskSpacer {
-  width: 100%;
-  flex-shrink: 0;
-}
-
-.taskBar {
-  position: absolute;
-  height: 18px;
-  border-radius: 5px;
-  padding: 0 8px;
-  display: flex;
-  align-items: center;
+.dayNumber.isToday {
+  background: #4f46e5;
   color: #fff;
-  font-size: 11px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-weight: 700;
 }
 
-/* Task 2줄 공간 */
-
-.taskMoreWrap {
-  position: relative;
-  display: inline-flex;
-  align-self: flex-start;
-  margin-top: 2px;
-  margin-bottom: 6px;
-  z-index: 60;
+.calendarCell.selected .dayNumber:not(.isToday) {
+  box-shadow: inset 0 0 0 1.5px #4f46e5;
 }
 
 .taskMore {
-  margin-left: 2px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #64748b;
-  cursor: pointer;
+  margin-top: 3px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #8c959f;
+  cursor: default;
 }
-/* Hover Tooltip */
 
-.taskTooltip {
-  display: none;
+/* 작업 막대: 날짜 줄 아래에 7칸 격자로 깔고, 칸 위에 겹쳐서 보여줘요. */
+.taskLayer {
   position: absolute;
-  top: 18px;
   left: 0;
-  min-width: 170px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 8px;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
-  z-index: 200;
+  right: 0;
+  top: 28px;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: 22px;
+  padding: 0 3px;
+  pointer-events: none;
+  z-index: 2;
 }
 
-.taskMoreWrap:hover .taskTooltip {
-  display: block;
-}
-
-.tooltipTask {
+.taskChip {
+  position: relative;
+  height: 20px;
+  margin: 1px 0;
+  padding: 0 7px 0 10px;
+  min-width: 0;
+  overflow: hidden;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px 0;
-  font-size: 11px;
-  color: #374151;
+  gap: 5px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #1f2328;
+  pointer-events: auto;
+  cursor: pointer;
 }
 
-.tooltipDot {
-  width: 8px;
-  height: 8px;
+/* 왼쪽 색 띠: 상태 색(--chip-color)이에요. */
+.taskChip::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--chip-color);
+}
+
+.taskChip:hover {
+  filter: brightness(0.97);
+}
+
+.taskChip span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.taskChip.done {
+  color: #6b7480;
+}
+
+.taskChip.done span {
+  text-decoration: line-through;
+}
+
+/* 이전 주에서 이어지는/다음 주로 이어지는 쪽은 모서리를 평평하게 해서 "이어지는 막대"로 보이게 해요. */
+.taskChip.fromPrev {
+  margin-left: -3px;
+  padding-left: 13px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.taskChip.fromPrev::before {
+  display: none;
+}
+
+.taskChip.toNext {
+  margin-right: -3px;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* 일정 */
+
+/* 일정 층: 작업 막대 층과 같은 7칸 격자예요. 작업 막대가 있는 주는 작업과 일정 사이를 8px 띄워요. */
+.eventLayer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 28px;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: repeat(6, 22px);
+  padding: 0 3px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.eventLayer.withTasks {
+  top: 36px;
+}
+
+.eventPill {
+  height: 20px;
+  min-width: 0;
+  margin: 1px 0;
+  padding: 0 7px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #1f2328;
+  white-space: nowrap;
+  overflow: hidden;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.eventLayer .eventPill:hover {
+  filter: brightness(0.97);
+}
+
+.eventLayer .eventPill:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: -2px;
+}
+
+/* 이전/다음 주로 이어지는 일정은 작업 막대처럼 모서리를 평평하게 해요. */
+.eventPill.fromPrev {
+  margin-left: -3px;
+  padding-left: 10px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.eventPill.toNext {
+  margin-right: -3px;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.eventPill i {
+  width: 6px;
+  height: 6px;
+  flex: none;
   border-radius: 50%;
 }
 
-/* ===========================
-        Divider
-=========================== */
-
-.cellDivider {
-  width: 100%;
-  height: 1px;
-  background: #e5e7eb;
-  margin: 4px 0 6px;
-  flex-shrink: 0;
+.eventPill time {
+  flex: none;
+  font-size: 10.5px;
+  font-weight: 500;
+  opacity: 0.7;
 }
 
-/* ===========================
-        Event
-=========================== */
-
-.cellEventArea {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1;
-  position: relative;
-  z-index: 5;
-}
-
-.eventBar {
-  height: 18px;
-  border-radius: 5px;
-  padding: 0 8px;
-  display: flex;
-  align-items: center;
-  font-size: 11px;
-  font-weight: 600;
-  white-space: nowrap;
+.eventPill span {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.eventMoreWrap {
-  position: relative;
-  display: inline-flex;
-  align-self: flex-start;
-}
-
-.eventMoreText {
-  margin-left: 6px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #64748b;
-  cursor: pointer;
-}
-
-.eventTooltip {
-  display: none;
-  position: absolute;
-  top: 18px;
-  left: 0;
-  min-width: 170px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 8px;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
-  z-index: 100;
-}
-
-.eventMoreWrap:hover .eventTooltip {
-  display: block;
-}
-
-.tooltipEvent {
+.eventMore {
+  height: 20px;
+  margin: 1px 0;
+  padding-left: 7px;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px 0;
   font-size: 11px;
-  color: #374151;
+  font-weight: 700;
+  color: #57606a;
+  cursor: default;
 }
 
 /* ===========================
-        Sidebar
+     Day Popover (날짜 옆 상세)
 =========================== */
 
-.daySidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.sidebarSection {
-  background: #fff;
-  border-radius: 14px;
-  border: 1px solid #e5e7eb;
+.dayPopover {
+  position: absolute;
+  width: 330px;
+  max-width: calc(100% - 16px);
+  max-height: calc(100% - 16px);
+  overflow-y: auto;
   padding: 16px;
+  box-sizing: border-box;
+  background: #fff;
+  border: 1px solid #e6e8ec;
+  border-radius: 14px;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.18);
+  z-index: 20;
 }
 
-.sidebarSection h2 {
-  margin: 6px 0 0;
-  font-size: 22px;
-}
-
-.sidebarSection small {
-  color: #64748b;
-}
-
-.sectionTitle {
+.dayPopover > header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  justify-content: space-between;
+  margin-bottom: 4px;
 }
 
-.sectionTitle h3 {
+.dayPopover h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: 16px;
+  letter-spacing: -0.02em;
+  color: #1f2328;
 }
 
-.sectionTitle b {
-  background: #eef2ff;
-  color: #4338ca;
-  border-radius: 999px;
-  padding: 3px 8px;
+.dayPopover h3 small {
+  margin-left: 6px;
   font-size: 12px;
+  font-weight: 500;
+  color: #8c959f;
 }
 
-.emptyText {
-  color: #94a3b8;
-  font-size: 13px;
-}
-
-/* Sprint Info */
-
-.sprintInfoCard {
-  background: linear-gradient(180deg, #ffffff, #fafbff);
-}
-
-.sprintInfoTop {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #4f46e5;
-  font-weight: 600;
-}
-
-.sprintInfoCard strong {
-  display: block;
-  margin: 10px 0;
-}
-
-.sprintInfoBottom {
+.popSection h4 {
+  margin: 14px 0 6px;
   display: flex;
   justify-content: space-between;
-  color: #64748b;
-  font-size: 12px;
-}
-
-/* Task Sidebar */
-
-.sidebarTask {
-  border-left: 3px solid #e5e7eb;
-  padding-left: 10px;
-  margin-bottom: 14px;
-}
-
-.taskHeader {
-  display: flex;
-  align-items: center;
-  gap: 6px;
   font-size: 11px;
-  color: #64748b;
+  letter-spacing: 0.04em;
+  color: #8c959f;
 }
 
-.statusDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.popEmpty {
+  margin: 0;
+  padding: 2px 0 4px;
+  font-size: 12.5px;
+  color: #8c959f;
 }
 
-.sidebarTask h4 {
-  margin: 6px 0;
-  font-size: 14px;
-}
-
-.taskMeta {
+.popTask {
   display: flex;
-  justify-content: space-between;
-  margin-bottom: 6px;
+  align-items: center;
+  gap: 9px;
+  width: calc(100% + 16px);
+  box-sizing: border-box;
+  margin: 0 -8px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
 }
 
-.taskMeta em {
+.popTask:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: -2px;
+}
+
+.popTaskBar {
+  width: 3px;
+  align-self: stretch;
+  flex: none;
+  border-radius: 3px;
+}
+
+.popTaskMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 6px;
+  margin-top: 2px;
+}
+
+.popStatus {
+  padding: 1px 6px;
+  border-radius: 5px;
   font-style: normal;
-  font-size: 11px;
-  border-radius: 999px;
-  padding: 3px 8px;
+  font-size: 10.5px;
   font-weight: 700;
 }
 
-.taskMeta .high {
-  background: #fee2e2;
-  color: #dc2626;
+.popTask:hover {
+  background: #f6f7f8;
 }
 
-.taskMeta .medium {
+.popTaskBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.popTaskBody b {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.popTaskBody small {
+  font-size: 11px;
+  line-height: 1.4;
+  color: #8c959f;
+}
+
+.popPriority {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: #f1f3f5;
+  color: #57606a;
+  font-style: normal;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.popPriority.high {
+  background: #fdecec;
+  color: #c93a3f;
+}
+
+.popPriority.medium {
   background: #fef3c7;
-  color: #d97706;
+  color: #b45309;
 }
 
-.taskMeta .low {
+.popPriority.low {
   background: #dbeafe;
   color: #2563eb;
 }
 
-.taskDate {
+.popAvatars {
+  flex: none;
   display: flex;
   align-items: center;
-  gap: 6px;
-  color: #64748b;
-  font-size: 12px;
 }
 
-/* Event Sidebar */
+/* 아바타 크기는 CSS 모듈 쪽 클래스라 자식 선택자로 줄여요. */
+.popAvatars > span {
+  width: 20px;
+  height: 20px;
+  font-size: 10px;
+  box-shadow: 0 0 0 2px #fff;
+}
 
-.sidebarEvent {
+.popAvatars > span + span {
+  margin-left: -6px;
+}
+
+.popAvatars > small {
+  margin-left: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #57606a;
+}
+
+.popEvent {
   display: flex;
   gap: 10px;
-  margin-bottom: 14px;
+  margin: 0 -8px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  cursor: pointer;
 }
 
-.eventLine {
-  width: 4px;
-  border-radius: 999px;
+.popEvent:hover {
+  background: #f6f7f8;
 }
 
-.eventContent strong {
+.popEvent:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: -2px;
+}
+
+.popEvent > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.popEvent > i {
+  width: 3px;
+  flex: none;
+  border-radius: 3px;
+}
+
+.popEvent b {
   display: block;
-  margin-bottom: 5px;
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
-.eventContent p {
-  margin: 4px 0 6px;
-  color: #64748b;
+.popEvent p {
+  margin: 2px 0;
   font-size: 12px;
   line-height: 1.45;
+  color: #57606a;
+  /* 길면 두 줄까지만 보여주고, 전체는 눌러서 자세히 봐요. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: pre-line;
 }
 
-.eventTime {
+.popEvent small {
+  font-size: 11.5px;
+  color: #8c959f;
+}
+
+.popAddBtn {
+  width: 100%;
+  height: 32px;
+  margin-top: 8px;
+  border: 1px dashed #c9cff7;
+  border-radius: 8px;
+  background: #fafaff;
+  color: #4f46e5;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
   display: flex;
   align-items: center;
-  gap: 5px;
-  color: #64748b;
-  font-size: 12px;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.popAddBtn:hover {
+  background: #f1f1ff;
 }
 
 /* ===========================
-      Schedule Modal
+      Event Modal (새 일정)
 =========================== */
 
-.scheduleModal {
-  width: 460px;
-  background: #fff;
-  border-radius: 18px;
-  overflow: hidden;
-  box-shadow: 0 28px 60px rgba(15, 23, 42, 0.22);
-}
-
-.scheduleModalHeader {
-  padding: 22px;
-  border-bottom: 1px solid #eef2f7;
+.evmOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.45);
 }
 
-.scheduleModalHeader h2 {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-}
-
-.scheduleModalBody {
-  padding: 22px;
+.evmDialog {
+  width: 480px;
+  max-width: 100%;
+  max-height: calc(100vh - 32px);
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 28px 60px rgba(15, 23, 42, 0.24);
 }
 
-.scheduleModalBody input,
-.scheduleModalBody textarea,
-.scheduleModalBody select {
-  width: 100%;
-  border: 1px solid #dbe2ea;
-  border-radius: 10px;
-  padding: 10px 12px;
-  outline: none;
-  font-size: 14px;
-  font-family: inherit;
+.evmStripe {
+  height: 6px;
+  flex: none;
+  transition: background 0.15s;
 }
 
-.scheduleModalBody textarea {
-  min-height: 90px;
-  resize: vertical;
-}
-
-.scheduleModalFooter {
-  padding: 18px 22px;
-  border-top: 1px solid #eef2f7;
+.evmHeader {
   display: flex;
-  justify-content: flex-end;
-  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 0 22px;
 }
 
+.evmHeader h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #8c959f;
+}
+
+.evmClose {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #57606a;
+  cursor: pointer;
+}
+
+.evmClose:hover {
+  background: #f1f2f4;
+}
+
+.evmBody {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 22px 18px;
+  overflow-y: auto;
+}
+
+.evmTitle {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 0 8px;
+  border: 0;
+  border-bottom: 2px solid #e6e8ec;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1f2328;
+}
+
+.evmTitle::placeholder {
+  color: #b4bcc5;
+}
+
+.evmTitle:focus {
+  border-bottom-color: #4f46e5;
+}
+
+.evmColors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.evmSwatch {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.evmSwatch.selected {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.evmSwatch:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+}
+
+.evmTime {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f7f8fa;
+}
+
+.evmRow {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) 128px;
+  align-items: center;
+  gap: 8px;
+}
+
+.evmRowLabel {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #57606a;
+}
+
+.evmRow input,
+.evmMemo {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid #dfe3e8;
+  border-radius: 8px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: #1f2328;
+  outline: none;
+}
+
+.evmRow input {
+  height: 34px;
+  padding: 0 10px;
+}
+
+.evmRow input:focus,
+.evmMemo:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+.evmQuick {
+  display: flex;
+  gap: 6px;
+  padding-left: 64px;
+}
+
+.evmQuick button {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid #dfe3e8;
+  border-radius: 99px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: #57606a;
+  cursor: pointer;
+}
+
+.evmQuick button:hover {
+  border-color: #4f46e5;
+  color: #4f46e5;
+}
+
+.evmSummary {
+  margin: 0;
+  padding-left: 64px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #4f46e5;
+}
+
+.evmSummary.bad {
+  color: #dc2626;
+}
+
+.evmMemo {
+  min-height: 76px;
+  padding: 9px 11px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.evmPreview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.evmPreview > span {
+  font-size: 11.5px;
+  color: #8c959f;
+}
+
+.evmPreview .eventPill {
+  width: 190px;
+  max-width: 100%;
+  margin: 0;
+  cursor: default;
+}
+
+.evmError {
+  margin: 0;
+  padding: 8px 11px;
+  border-radius: 8px;
+  background: #fef2f2;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #dc2626;
+}
+
+.evmFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 22px;
+  border-top: 1px solid #eef0f3;
+}
+
+.evmHint {
+  margin-right: auto;
+  font-size: 11.5px;
+  color: #a0a8b1;
+}
+
+.evmCancel,
+.evmSubmit {
+  height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 9px;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.evmCancel {
+  background: #f1f2f4;
+  color: #3b424a;
+}
+
+.evmCancel:hover {
+  background: #e7e9ec;
+}
+
+.evmSubmit {
+  background: #4f46e5;
+  color: #fff;
+}
+
+.evmSubmit:hover:not(:disabled) {
+  background: #4338ca;
+}
+
+.evmSubmit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+@media (max-width: 520px) {
+  .evmRow {
+    grid-template-columns: 48px minmax(0, 1fr) 118px;
+  }
+
+  .evmQuick,
+  .evmSummary {
+    padding-left: 0;
+  }
+
+  .evmHint {
+    display: none;
+  }
+}
+
+/* 칸반의 상태 모달도 같은 이름의 버튼을 써서 남겨둬요. */
 .cancelBtn,
 .saveBtn {
   height: 40px;
@@ -714,70 +1385,152 @@
   color: #fff;
 }
 
-/* Color Picker */
+/* ===========================
+      Event Detail (일정 자세히)
+=========================== */
 
-.colorPicker {
-  display: flex;
-  gap: 8px;
+.evdDialog {
+  width: 440px;
 }
 
-.colorCircle {
-  width: 28px;
-  height: 28px;
+.evdTitle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 2px 0 0;
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #1f2328;
+  word-break: break-word;
+}
+
+.evdTitle i {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  margin-top: 9px;
   border-radius: 50%;
-  border: 3px solid transparent;
+}
+
+.evdRow {
+  display: flex;
+  gap: 12px;
+  color: #57606a;
+}
+
+.evdRow > svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.evdRow p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: #1f2328;
+}
+
+.evdRow small {
+  font-size: 12px;
+  color: #8c959f;
+}
+
+.evdDesc {
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.evdDesc.empty {
+  color: #a0a8b1;
+}
+
+.evdDelete {
+  height: 36px;
+  margin-right: auto;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #dc2626;
   cursor: pointer;
 }
 
-.colorCircle.active {
-  border-color: #111827;
+.evdDelete:hover {
+  background: #fef2f2;
 }
 
-.colorCircle.blue {
-  background: #3b82f6;
+.evdConfirm {
+  margin-right: auto;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #dc2626;
 }
 
-.colorCircle.purple {
-  background: #9333ea;
+.evmSubmit {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
-.colorCircle.green {
-  background: #22c55e;
+.evmSubmit.danger {
+  background: #dc2626;
 }
 
-.colorCircle.red {
-  background: #ef4444;
+.evmSubmit.danger:hover:not(:disabled) {
+  background: #b91c1c;
 }
 
-.colorCircle.orange {
-  background: #f59e0b;
-}
+/* ===========================
+      좁은 화면
+=========================== */
 
-.colorCircle.pink {
-  background: #ec4899;
-}
-
-.colorCircle.gray {
-  background: #64748b;
-}
-
-.colorCircle.white {
-  background: #ffffff;
-  border-color: #cbd5e1;
-}
-
-.colorCircle.white.active {
-  border-color: #111827;
-}
-
-/* Responsive */
-
-@media (max-width: 1200px) {
-  .calendarContent {
-    grid-template-columns: 1fr;
+/* 좁은 화면에서는 날짜 상세가 칸 옆에 뜨는 대신 아래에서 올라오는 시트가 돼요. */
+@media (max-width: 760px) {
+  .dayPopover {
+    position: fixed;
+    left: 0 !important;
+    right: 0;
+    top: auto !important;
+    bottom: 0;
+    width: auto;
+    max-width: none;
+    max-height: 72vh;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -12px 40px rgba(15, 23, 42, 0.25);
+    animation: sheetUp 0.2s ease-out;
+    z-index: 50;
   }
 
-  .daySidebar {
-    order: -1;
+  .calendarPage {
+    padding: 12px;
+  }
+
+  .calendarApp {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .calendarRail {
+    border-right: 0;
+    border-bottom: 1px solid #e6e8ec;
+  }
+}
+
+@keyframes sheetUp {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
   }
 }

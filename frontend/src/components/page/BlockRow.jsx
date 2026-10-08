@@ -34,6 +34,7 @@ import MentionInput from "../common/MentionInput";
 import MentionText from "../common/MentionText";
 import { useMemberProfile } from "../../context/MemberProfileContext";
 import { getAvatarTone } from "../../utils/avatarColor.js";
+import useDialog from "../../context/useDialog";
 
 /* ================= BlockRow ================= */
 
@@ -41,8 +42,6 @@ function BlockRowImpl({
   block,
   indentBase = 0,
   number,
-  isFirst,
-  isLast,
   isFocused,
   remoteEditors = null,
   isDragging = false,
@@ -88,15 +87,12 @@ function BlockRowImpl({
   onAddBelow,
   onDelete,
   onDuplicate,
-  onMoveUp,
-  onMoveDown,
   onToggleMore,
   isBulkMenuAnchor = false,
   bulkMenuMode = "main",
   bulkSelectedCount = 0,
   onBulkOpenColorView,
   onBulkOpenTextColorView,
-  onBulkOpenConvertView,
   onBulkOpenMainView,
   onBulkCloseMenu,
   onBulkSetColor,
@@ -121,6 +117,7 @@ function BlockRowImpl({
   onDragHandleEnd,
   registerRef,
 }) {
+  const { confirm } = useDialog();
   // 요청: "블록 종류가 노션보다 적어요"(콜아웃) — 콜아웃 왼쪽의 이모지
   // 아이콘을 누르면 뜨는 작은 프리셋 피커의 열림 상태예요. 댓글 패널의
   // ⋯ 메뉴처럼 이 블록 하나에만 속한 UI 상태라 BlockRow 로컬에 둬요.
@@ -886,9 +883,10 @@ function BlockRowImpl({
                             <button
                               type="button"
                               className="danger"
-                              onClick={() => {
+                              onClick={async () => {
                                 setOpenCommentMenuId(null);
-                                if (!window.confirm("이 댓글을 삭제할까요? 되돌릴 수 없어요.")) return;
+                                const ok = await confirm({ title: "댓글 삭제", message: "이 댓글을 삭제할까요?\n삭제한 댓글은 되돌릴 수 없어요.", confirmLabel: "삭제", danger: true });
+                                if (!ok) return;
                                 onDeleteComment(c.id);
                               }}
                             >

@@ -3,6 +3,8 @@ package com.flowspace.dto.page;
 import java.util.List;
 
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 // @formatter:off
 
@@ -10,7 +12,8 @@ import jakarta.validation.constraints.NotEmpty;
 public record PageReorderRequest(
 
     @NotEmpty(message = "페이지 목록은 비어 있을 수 없습니다.")
-    List<Long> pageIds
+    @Size(max = 2000, message = "한 번에 2000개까지만 바꿀 수 있습니다.")
+    List<@NotNull Long> pageIds
 
 ) {
 }

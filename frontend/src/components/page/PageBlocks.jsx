@@ -32,6 +32,8 @@ export default function PageBlocks({
     onChange,
     saveState,
     saveError,
+    conflictCount,
+    dismissConflictNotice,
     retry,
     reload,
     toServerBlockId,
@@ -140,6 +142,19 @@ export default function PageBlocks({
               </button>
             </>
           )}
+        </div>
+      )}
+
+      {conflictCount > 0 && (
+        <div className="page-save-status page-save-status--notice" role="status">
+          <span>
+            {conflictCount === 1
+              ? "다른 멤버가 같은 블록을 수정했어요. 내가 고친 내용으로 저장했어요."
+              : `다른 멤버가 같은 블록 ${conflictCount}개를 수정했어요. 내가 고친 내용으로 저장했어요.`}
+          </span>
+          <button type="button" onClick={dismissConflictNotice}>
+            확인
+          </button>
         </div>
       )}
 

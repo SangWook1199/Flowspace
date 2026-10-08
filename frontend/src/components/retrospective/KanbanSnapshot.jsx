@@ -13,6 +13,12 @@ export default function KanbanSnapshot({ columns = [] }) {
         className="retro-kanban"
         style={{ gridTemplateColumns: `repeat(${Math.max(columns.length, 1)}, minmax(0, 1fr))` }}
       >
+        {columns.length === 0 && (
+          <div className="retro-column__empty">
+            <p>저장된 칸반 스냅샷이 없어요.</p>
+          </div>
+        )}
+
         {columns.map((column) => (
           <KanbanColumn key={column.id} title={column.name} color={column.lane} tasks={column.tasks} />
         ))}

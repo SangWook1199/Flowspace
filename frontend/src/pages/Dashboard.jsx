@@ -86,7 +86,7 @@ export default function Dashboard() {
 
   const dayLabel = buildSprintDayLabel(currentSprint, today);
 
-  // 오늘의 작업: 기간(시작일~마감일)에 오늘이 들어가는, 스프린트에 배정된 작업이에요.
+  // 오늘의 작업: 기간(시작일~마감일)에 오늘이 들어가는, 스프린트에 배정된 작업 중 아직 끝나지 않은 것이에요.
   const todayTasks = useMemo(() => {
     const statusById = Object.fromEntries(taskStatuses.map((status) => [status.id, status]));
 
@@ -101,23 +101,24 @@ export default function Dashboard() {
       .map((task) => {
         const status = statusById[task.statusId];
         const state = CATEGORY_STATUS[status?.category] ?? "todo";
-        const done = state === "done";
 
         return {
           id: task.id,
           title: task.title,
-          // 완료된 작업은 우선순위 대신 "완료" 배지로 보여줘요.
-          priority: done ? "done" : (task.priority ?? "").toLowerCase(),
-          priorityLabel: done ? "완료" : (PRIORITY_LABEL[task.priority] ?? ""),
+          priority: (task.priority ?? "").toLowerCase(),
+          priorityLabel: PRIORITY_LABEL[task.priority] ?? "",
           status: state,
           statusName: status?.name ?? task.statusName,
           statusColor: STATUS_HEX[status?.color] ?? STATUS_HEX.GRAY,
           assignees: task.assignees ?? [],
           // 작업에는 시각이 없어서 마감일을 보여줘요.
           time: task.dueDate ? `~ ${formatDateDots(task.dueDate)}` : "-",
-          done,
+          // 마감일 정렬에 쓰는 원래 날짜예요(없으면 빈 문자열).
+          dueDate: task.dueDate || "",
         };
-      });
+      })
+      // 끝난 작업은 "오늘 해야 할 일"이 아니라서 뺐어요.
+      .filter((task) => task.status !== "done");
   }, [sprintTasks, taskStatuses, today]);
 
   // 오늘의 일정: 오늘이 든 달(앞뒤 한 달 포함)의 일정 중 오늘에 걸친 것이에요.
@@ -178,6 +179,12 @@ export default function Dashboard() {
 
       {/* 배너 */}
       {banner && <SprintBanner sprint={banner} />}
+      {/* 스프린트가 하나도 없으면(불러오는 중·실패가 아닐 때) 배너 자리가 비지 않게 안내해요. */}
+      {!banner && !sprintDataLoading && !sprintDataError && (
+        <section className={styles.hero}>
+          <p className={styles.heroEmpty}>아직 스프린트가 없어요. 스프린트를 만들면 진행 상황이 여기에 보여요.</p>
+        </section>
+      )}
 
       {/* KPI */}
       <section className={styles.kpis}>

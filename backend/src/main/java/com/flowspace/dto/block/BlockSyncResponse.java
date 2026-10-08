@@ -7,7 +7,10 @@ import java.util.List;
 // 블록 일괄 동기화 응답 DTO
 public record BlockSyncResponse(
 
-    List<BlockSyncResult> blocks
+    List<BlockSyncResult> blocks,
+
+    // 저장 뒤 페이지 버전 (다음 저장 때 baseVersion으로 보내요)
+    Long version
 
 ) {
 

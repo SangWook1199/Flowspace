@@ -18,6 +18,8 @@ export default function ActivityCard({ activities = [] }) {
       </div>
 
       <div className={styles.activityList}>
+        {activities.length === 0 && <p className={styles.emptyText}>최근 활동이 없어요.</p>}
+
         {activities.map((item) => (
           <div key={item.id} className={styles.activityItem}>
             <div className={`${styles.avatar} ${styles[getAvatarTone(item.userId)]}`}>

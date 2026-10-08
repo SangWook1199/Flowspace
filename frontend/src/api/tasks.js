@@ -49,10 +49,14 @@ export const createSubtask = async (taskId, content) => {
   return toSubtask(data);
 };
 
-export const updateSubtask = async (subtaskId, { content, isCompleted }) => {
-  const { data } = await client.patch(`/subtasks/${subtaskId}`, { content, isCompleted });
+// 서버는 담당자(assigneeId)를 비우면 "담당자 없음"으로 바꿔요 — 그래서 이름·체크만 고칠 때도 지금 담당자를 같이 보내야 해요.
+export const updateSubtask = async (subtaskId, { content, isCompleted, assigneeId = null }) => {
+  const { data } = await client.patch(`/subtasks/${subtaskId}`, { content, isCompleted, assigneeId });
   return toSubtask(data);
 };
+
+// 하위 작업 순서 저장 — items: [{ subtaskId, position }]
+export const reorderSubtasks = (items) => client.patch("/subtasks/reorder", { subtasks: items });
 
 export const deleteSubtask = (subtaskId) => client.delete(`/subtasks/${subtaskId}`);
 
@@ -63,13 +67,13 @@ export const getStatuses = async (workspaceId) => {
   return data.map(toStatus);
 };
 
-export const createStatus = async (workspaceId, { name, category, color }) => {
-  const { data } = await client.post(`/workspaces/${workspaceId}/task-statuses`, { name, category, color });
+export const createStatus = async (workspaceId, { name, category, color, wipLimit = null }) => {
+  const { data } = await client.post(`/workspaces/${workspaceId}/task-statuses`, { name, category, color, wipLimit });
   return toStatus(data);
 };
 
-export const updateStatus = async (workspaceId, statusId, { name, category, color }) => {
-  const { data } = await client.patch(`/task-statuses/${statusId}`, { workspaceId, name, category, color });
+export const updateStatus = async (workspaceId, statusId, { name, category, color, wipLimit = null }) => {
+  const { data } = await client.patch(`/task-statuses/${statusId}`, { workspaceId, name, category, color, wipLimit });
   return toStatus(data);
 };
 

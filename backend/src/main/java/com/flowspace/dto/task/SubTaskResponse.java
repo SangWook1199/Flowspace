@@ -10,6 +10,8 @@ public record SubTaskResponse(
 
     Long taskId,
 
+    Long assigneeId,    // 하위 작업 담당자(작업 담당자 중 한 명, 없으면 null)
+
     String content,
 
     Boolean isCompleted,
@@ -22,6 +24,7 @@ public record SubTaskResponse(
         return new SubTaskResponse(
             subTask.getSubtaskId(),
             subTask.getTask().getTaskId(),
+            subTask.getAssignee() == null ? null : subTask.getAssignee().getUserId(),
             subTask.getContent(),
             subTask.getIsCompleted(),
             subTask.getPosition()

@@ -45,7 +45,7 @@ export function TaskEmbed({ taskId, tasks, onChange, onToggleSubtask }) {
           }}
         >
           <option value="" disabled>
-            연결할 태스크를 선택하세요
+            {tasks?.length ? "연결할 태스크를 선택하세요" : "연결할 태스크가 아직 없어요"}
           </option>
           {tasks?.map((t) => (
             <option key={t.id} value={t.id}>
@@ -144,7 +144,7 @@ export function EventEmbed({ eventId, onChange }) {
           }}
         >
           <option value="" disabled>
-            연결할 이벤트를 선택하세요
+            {list.length ? "연결할 이벤트를 선택하세요" : "연결할 이벤트가 아직 없어요"}
           </option>
           {list.map((ev) => (
             <option key={ev.event_id} value={ev.event_id}>

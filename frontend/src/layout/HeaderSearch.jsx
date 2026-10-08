@@ -200,7 +200,7 @@ export default function HeaderSearch({ workspaceId }) {
                           {item.icon ? item.icon : <Icon size={16} />}
                         </span>
                         <span className="headerSearch__text">
-                          <span className="headerSearch__title">
+                          <span className={`headerSearch__title${key === "tasks" ? " headerSearch__title--task" : ""}`}>
                             <Highlight text={item.title} keyword={keyword} />
                           </span>
                           {item.snippet && (

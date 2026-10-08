@@ -5,6 +5,7 @@ import com.flowspace.entity.Task;
 import com.flowspace.entity.TaskStatus;
 import com.flowspace.entity.Workspace;
 import com.flowspace.entity.enums.TaskStatusCategory;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -15,13 +16,20 @@ import java.util.List;
 
 public interface TaskRepository extends JpaRepository<Task, Long> {
 
+    // 목록 응답에 상태 이름이 필요해서 상태를 함께 읽어요(작업마다 따로 읽지 않게)
+    @EntityGraph(attributePaths = "status")
     List<Task> findBySprintOrderByPositionAsc(Sprint sprint);
 
+    @EntityGraph(attributePaths = "status")
     List<Task> findByWorkspaceAndSprintIsNullOrderByPositionAsc(Workspace workspace);
 
     List<Task> findByWorkspaceAndStatusOrderByPositionAsc(Workspace workspace, TaskStatus status);
 
     List<Task> findByStatusOrderByPositionAsc(TaskStatus status);
+
+    // 워크스페이스에서 지금까지 쓴 가장 큰 작업 번호(작업이 없으면 0)
+    @Query("select coalesce(max(t.taskNumber), 0) from Task t where t.workspace = :workspace")
+    int findMaxTaskNumber(@Param("workspace") Workspace workspace);
 
     long countBySprint(Sprint sprint);
 
@@ -29,15 +37,19 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
 
     long countByWorkspaceAndSprintIsNull(Workspace workspace);
 
+    @EntityGraph(attributePaths = { "status", "sprint" })
     List<Task> findBySprintAndStartDateBetweenOrderByStartDateAscPositionAsc(Sprint sprint, LocalDate start,
         LocalDate end);
 
+    @EntityGraph(attributePaths = { "status", "sprint" })
     List<Task> findByWorkspaceAndSprintIsNullAndStartDateBetweenOrderByStartDateAscPositionAsc(Workspace workspace,
         LocalDate start, LocalDate end);
 
+    @EntityGraph(attributePaths = "status")
     List<Task> findByWorkspaceAndTitleContainingIgnoreCase(Workspace workspace, String keyword);
 
     // 마감일이 date이고 아직 완료 상태가 아닌 작업 (마감 임박 알림용)
+    @EntityGraph(attributePaths = { "workspace", "sprint" })
     List<Task> findByEndDateAndStatus_CategoryNot(LocalDate endDate, TaskStatusCategory category);
 
     // 워크스페이스 삭제 직전에 그 안의 작업을 한 번에 지워요(tasks FK에 CASCADE가 없어서 먼저 지워야 해요).

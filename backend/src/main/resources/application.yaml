@@ -8,7 +8,8 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
-    show-sql: true
+    # SQL 로그는 평소엔 꺼둬요(디버깅할 때만 true로 바꿔서 확인해요).
+    show-sql: false
     properties:
       hibernate:
         format_sql: true
@@ -17,6 +18,12 @@ spring:
 
   jackson:
     time-zone: Asia/Seoul
+
+  # 업로드 크기 제한(파일 하나 20MB, 한 요청 25MB). 넘으면 "파일이 너무 커요"(413)로 답해요.
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 25MB
 
   # 비밀번호 찾기 메일(Gmail SMTP). 계정(username)과 앱 비밀번호(password)는 application-secret.yaml에 넣어요.
   mail:

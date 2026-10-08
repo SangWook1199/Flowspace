@@ -120,7 +120,11 @@ export default function RetrospectiveList() {
 
         {!loading && !error && filteredList.length === 0 && (
           <div className="retro-column__empty">
-            <p>조건에 맞는 회고가 없어요.</p>
+            <p>
+              {retrospectiveList.length === 0
+                ? "아직 회고가 없어요. 스프린트를 완료하면 회고가 만들어져요."
+                : "조건에 맞는 회고가 없어요."}
+            </p>
           </div>
         )}
 

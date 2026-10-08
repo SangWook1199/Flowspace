@@ -6,6 +6,7 @@ import WorkspaceIcon from "../../common/WorkspaceIcon";
 import { WORKSPACE_COLORS, isLightHex } from "../../../utils/color";
 import { getInitial } from "../../../utils/initial";
 import { getErrorMessage } from "../../../utils/apiError";
+import { roleLabel } from "../../../utils/workspaceRole";
 
 // 이니셜은 최대 2글자(이모지는 Array.from으로 한 글자로 세요).
 const limitInitials = (value) => Array.from(value).slice(0, 2).join("").toUpperCase();
@@ -73,8 +74,8 @@ export default function GeneralPanel({ workspace, isOwner, onSave }) {
 
       <div className="wsSettings__row">
         <span className="wsSettings__label">내 역할</span>
-        <span className={`wsSettings__role ${isOwner ? "owner" : ""}`}>
-          {isOwner ? "소유자" : "멤버"}
+        <span className={`wsSettings__role ${isOwner ? "owner" : workspace.role === "ADMIN" ? "admin" : ""}`}>
+          {roleLabel(workspace.role)}
         </span>
       </div>
 

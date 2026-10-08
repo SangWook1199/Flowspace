@@ -14,7 +14,8 @@ public record TaskStatusResponse(
     WorkspaceColor color,
     Integer position,
 
-    Boolean isDefault
+    Boolean isDefault,
+    Integer wipLimit
 
 ) {
 
@@ -25,7 +26,8 @@ public record TaskStatusResponse(
             mapping.getTaskStatus().getCategory(),
             mapping.getTaskStatus().getColor(),
             mapping.getPosition(),
-            mapping.getIsDefault()
+            mapping.getIsDefault(),
+            mapping.getWipLimit()
         );
     }
 

@@ -6,8 +6,10 @@ import WorkspaceSettingsModal from "./WorkspaceSettingsModal";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import ErrorBoundary from "../components/common/ErrorBoundary";
 import { useAuth } from "../context/useAuth";
+import useDialog from "../context/useDialog";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { MemberProfileProvider } from "../context/MemberProfileProvider";
+import { isAdminOrOwner } from "../utils/workspaceRole";
 
 // 워크스페이스 · 페이지 · 스프린트 태스크 상태와 그걸 바꾸는 함수들은 예전엔 여기서
 // 들고 있었는데, MainLayout이 다시 마운트될 때마다(예: /workspace/create 같은
@@ -20,6 +22,7 @@ import { MemberProfileProvider } from "../context/MemberProfileProvider";
 const SPRINT_ORDER = { ACTIVE: 0, PLANNING: 1, COMPLETED: 2 };
 
 export default function MainLayout() {
+  const { confirm } = useDialog();
   const {
     navigation,
     members,
@@ -42,6 +45,7 @@ export default function MainLayout() {
     sprintDataError,
     reloadSprintData,
     createSprint,
+    updateSprint,
     changeSprintStatus,
     deleteSprint,
     createTask,
@@ -51,6 +55,9 @@ export default function MainLayout() {
     toggleSubtask,
     addSubtasks,
     deleteSubtask,
+    renameSubtask,
+    setSubtaskAssignee,
+    moveSubtask,
     createStatus,
     saveStatus,
     deleteStatus,
@@ -93,7 +100,9 @@ export default function MainLayout() {
               <button type="button" onClick={() => navigate("/workspace/create")}>
                 워크스페이스 만들기
               </button>
-              <button type="button" onClick={() => window.confirm("로그아웃할까요?") && logout()}>
+              <button type="button" onClick={async () => {
+                  if (await confirm({ title: "로그아웃", message: "로그아웃할까요?", confirmLabel: "로그아웃" })) logout();
+                }}>
                 로그아웃
               </button>
             </div>
@@ -118,6 +127,8 @@ export default function MainLayout() {
         workspaces={workspaces}
         currentWorkspace={currentWorkspace}
         sprints={sidebarSprints}
+        pagesReady={!pagesLoading && !pagesError}
+        sprintsReady={!sprintDataLoading && !sprintDataError}
         onSwitchWorkspace={switchWorkspace}
         onCreatePage={createPage}
         onDeletePage={deletePage}
@@ -133,7 +144,10 @@ export default function MainLayout() {
         <Outlet
           context={{
             workspaceId: currentWorkspace.id,
+            // 관리자 이상만 스프린트·칸반 상태 삭제 같은 되돌리기 어려운 관리 작업을 할 수 있어요.
+            canManageWorkspace: isAdminOrOwner(currentWorkspace.role),
             pages,
+            pagesInWorkspace,
             setPages,
             pagesLoading,
             pagesError,
@@ -156,6 +170,7 @@ export default function MainLayout() {
             sprintDataError,
             reloadSprintData,
             createSprint,
+            updateSprint,
             changeSprintStatus,
             deleteSprint,
             createTask,
@@ -165,6 +180,9 @@ export default function MainLayout() {
             toggleSubtask,
             addSubtasks,
             deleteSubtask,
+            renameSubtask,
+            setSubtaskAssignee,
+            moveSubtask,
             createStatus,
             saveStatus,
             deleteStatus,

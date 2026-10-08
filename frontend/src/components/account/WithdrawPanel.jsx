@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import * as authApi from "../../api/auth";
 import { useAuth } from "../../context/useAuth";
 import { getErrorMessage } from "../../utils/apiError";
+import useDialog from "../../context/useDialog";
 
 const nameList = (list) => list.map((w) => `'${w.name}'`).join(", ");
 
@@ -11,6 +12,7 @@ const nameList = (list) => list.map((w) => `'${w.name}'`).join(", ");
 // 구글·마이크로소프트 계정은 이메일 입력)을 한 뒤에 탈퇴해요.
 // 다른 멤버가 있는 워크스페이스의 소유자는 소유권을 넘기거나 멤버를 내보내기 전에는 탈퇴할 수 없어요(서버도 막아요).
 export default function WithdrawPanel() {
+  const { confirm } = useDialog();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const confirmId = useId();
@@ -44,7 +46,8 @@ export default function WithdrawPanel() {
 
   const handleWithdraw = async () => {
     if (!ready) return;
-    if (!window.confirm("정말 탈퇴할까요? 탈퇴하면 되돌릴 수 없어요.")) return;
+    const ok = await confirm({ title: "회원 탈퇴", message: "정말 탈퇴할까요?\n탈퇴하면 되돌릴 수 없어요.", confirmLabel: "탈퇴", danger: true });
+    if (!ok) return;
 
     setBusy(true);
     setError(null);

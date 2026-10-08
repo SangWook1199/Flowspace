@@ -11,7 +11,20 @@ export default function SprintCard({ sprint, onNavigate }) {
   const remaining = sprintRemainingLabel(sprint);
 
   return (
-    <article className={`sprintCard ${sprint.color}`}>
+    // 카드 어디를 눌러도(또는 포커스를 두고 Enter/Space) 상세 화면으로 가요.
+    <article
+      className={`sprintCard ${sprint.color}`}
+      role="link"
+      tabIndex={0}
+      aria-label={`${sprint.name} 상세보기`}
+      onClick={() => onNavigate(sprint.id)}
+      onKeyDown={(e) => {
+        if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          onNavigate(sprint.id);
+        }
+      }}
+    >
       <div className="sprintIdentity">
         <div className="sprintIcon">
           <Icon size={27} />
@@ -22,8 +35,9 @@ export default function SprintCard({ sprint, onNavigate }) {
           </h2>
           <p>{sprint.goal}</p>
           <small>
-            ▣　{formatDateDots(sprint.startDate)} ~ {formatDateDots(sprint.endDate)}
-            {remaining && `　·　${remaining}`}
+            <CalendarDays size={13} />
+            {formatDateDots(sprint.startDate)} ~ {formatDateDots(sprint.endDate)}
+            {remaining && `\u3000·\u3000${remaining}`}
           </small>
         </div>
       </div>
@@ -46,8 +60,15 @@ export default function SprintCard({ sprint, onNavigate }) {
           <b>{sprint.todo ?? 0}</b>
         </span>
       </div>
-      <button type="button" className="sprintDetail" onClick={() => onNavigate(sprint.id)}>
-        상세보기　›
+      <button
+        type="button"
+        className="sprintDetail"
+        onClick={(e) => {
+          e.stopPropagation(); // 카드 클릭과 겹쳐서 두 번 이동하지 않게 해요.
+          onNavigate(sprint.id);
+        }}
+      >
+        상세보기{"\u3000"}›
       </button>
     </article>
   );

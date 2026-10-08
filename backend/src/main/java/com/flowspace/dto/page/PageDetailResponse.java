@@ -15,6 +15,7 @@ public record PageDetailResponse(
     String title,
     String icon,
     String coverUrl,
+    Long version,
     List<BlockItem> blocks,
     List<ChildPageItem> childPages
 
@@ -86,6 +87,7 @@ public record PageDetailResponse(
             page.getTitle(),
             page.getIcon(),
             page.getCoverFile() == null ? null : page.getCoverFile().getFileUrl(),
+            page.getVersion(),
             blockItems,
             childPages.stream().map(ChildPageItem::from).toList()
         );

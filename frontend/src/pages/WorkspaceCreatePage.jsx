@@ -14,6 +14,7 @@ import WorkspaceInviteStep from "../components/workspace/WorkspaceInviteStep";
 import FlowSpaceLogo from "../components/common/FlowSpaceLogo";
 
 import "../styles/workspace-create.css";
+import useDialog from "../context/useDialog";
 
 const DEFAULT_INITIALS = "H";
 
@@ -44,6 +45,7 @@ function deriveInitials(name) {
 }
 
 export default function WorkspaceCreatePage() {
+  const { notify } = useDialog();
   const [step, setStep] = useState(1);
   const [workspace, setWorkspace] = useState(INITIAL_WORKSPACE);
   // 2단계에서 사용자가 이니셜을 직접 고쳤는지. 고쳤다면 1단계로 돌아가 이름을
@@ -131,7 +133,7 @@ export default function WorkspaceCreatePage() {
     setError("");
 
     try {
-      // 워크스페이스 만들기 → 첫 페이지 만들기 → 이메일별 초대 순서로 서버에 보내요.
+      // 워크스페이스 만들기 → 이메일별 초대 순서로 서버에 보내요.
       const created = await createWorkspace({
         name,
         initials: workspace.initials,
@@ -148,15 +150,15 @@ export default function WorkspaceCreatePage() {
 
       // 워크스페이스는 이미 만들어진 뒤라서, 초대가 실패한 이메일만 알려주고 계속 진행해요.
       if (created.failedInvites.length > 0) {
-        window.alert(
-          `워크스페이스는 만들었지만 아래 이메일은 초대하지 못했어요.\n\n${created.failedInvites
+        notify(
+          `워크스페이스는 만들었지만 아래 이메일은 초대하지 못했어요.\n${created.failedInvites
             .map((item) => `· ${item.email} — ${item.message}`)
             .join("\n")}`,
         );
       }
 
-      // 만들어진 워크스페이스의 첫 페이지로 이동해요(첫 페이지를 못 만들었으면 홈으로).
-      navigate(created.page ? `/pages/${created.page.id}` : "/");
+      // 만들어진 워크스페이스의 대시보드(홈)로 이동해요.
+      navigate("/");
     } catch (err) {
       setError(getErrorMessage(err, "워크스페이스를 만들지 못했어요. 다시 시도해주세요."));
       submittingRef.current = false;
