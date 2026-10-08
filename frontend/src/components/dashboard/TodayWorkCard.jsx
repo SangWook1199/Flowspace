@@ -9,20 +9,19 @@ const FILTERS = [
   { key: "all", label: "전체", status: null },
   { key: "todo", label: "해야 할 일", status: "todo" },
   { key: "progress", label: "진행 중", status: "progress" },
-  { key: "done", label: "완료", status: "done" },
 ];
 
 // 한 줄에 보여줄 담당자 아이콘 수예요.
 const MAX_ASSIGNEES = 4;
 
 // 정렬 기준이에요. value(task)가 작을수록 앞이라서, 첫 번째 클릭(오름차순)이 아래 설명하는 순서가 돼요.
-//  - 우선순위: 높음 → 보통 → 낮음 → 완료
-//  - 상태: 진행 중 → 해야 할 일 → 완료
+//  - 우선순위: 높음 → 보통 → 낮음
+//  - 상태: 진행 중 → 해야 할 일
 //  - 담당자: 담당자가 많은 순
 //  - 마감일: 마감이 가까운(D-day가 적게 남은) 순, 마감일이 없으면 맨 아래
 // 같은 열을 한 번 더 누르면 반대 순서가 돼요.
-const PRIORITY_RANK = { high: 0, medium: 1, low: 2, done: 3 };
-const STATUS_RANK = { progress: 0, todo: 1, done: 2 };
+const PRIORITY_RANK = { high: 0, medium: 1, low: 2 };
+const STATUS_RANK = { progress: 0, todo: 1 };
 
 const SORTS = {
   priority: { label: "우선순위", value: (task) => PRIORITY_RANK[task.priority] ?? 9 },

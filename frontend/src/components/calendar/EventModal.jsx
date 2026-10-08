@@ -4,9 +4,10 @@ import { Calendar as CalendarIcon, Check, Clock, X } from "lucide-react";
 import useModalFocus from "../../hooks/useModalFocus";
 import { getErrorMessage } from "../../utils/apiError";
 import { calendarColor } from "../../utils/calendarColors";
-import { isLightHex, swatchStyle, tintStyle } from "../../utils/color";
+import { LIGHT_INK, LIGHT_OUTLINE, isLightHex, swatchStyle, tintStyle } from "../../utils/color";
 
-const EVENT_COLORS = ["PURPLE", "BLUE", "GREEN", "ORANGE", "RED", "PINK", "GRAY", "WHITE"];
+// 흰색은 워크스페이스 아이콘용이라 일정 색 선택지에서는 뺐어요. 이미 흰색인 일정은 그대로 보여요.
+const EVENT_COLORS = ["PURPLE", "BLUE", "GREEN", "ORANGE", "RED", "PINK", "GRAY"];
 
 // 색상 버튼은 색만 있어서 스크린리더가 읽을 이름이 없어요. 그래서 aria-label용 한글 이름을 따로 둬요.
 const COLOR_LABEL = {
@@ -236,12 +237,12 @@ export default function EventModal({ event, initialDate, onClose, onSubmit }) {
                   title={COLOR_LABEL[color]}
                   style={{
                     background: value,
-                    boxShadow: isLightHex(value) ? "inset 0 0 0 1.5px #111827" : undefined,
-                    "--ring": isLightHex(value) ? "#111827" : value,
+                    boxShadow: isLightHex(value) ? `inset 0 0 0 1.5px ${LIGHT_OUTLINE}` : undefined,
+                    "--ring": isLightHex(value) ? LIGHT_OUTLINE : value,
                   }}
                   onClick={() => patch({ color })}
                 >
-                  {selected && <Check size={12} strokeWidth={3.5} color={isLightHex(value) ? "#111827" : "#fff"} />}
+                  {selected && <Check size={12} strokeWidth={3.5} color={isLightHex(value) ? LIGHT_INK : "#fff"} />}
                 </button>
               );
             })}

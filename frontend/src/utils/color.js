@@ -15,16 +15,21 @@ export const WORKSPACE_COLORS = [
 // 흰 배경 위에서는 글자·테두리가 안 보여서, 흰색 계열인지 알려주는 헬퍼예요.
 export const isLightHex = (hex) => String(hex ?? "").toLowerCase() === "#ffffff";
 
-// 색 막대·점·선의 배경 스타일. 흰색이면 얇은 검정 테두리와 진한 글자색을 같이 줘서 흰 바탕에서도 보이게 해요.
+// 흰색 선택지의 테두리·체크 색이에요. 검정은 다른 파스텔 색들 사이에서 너무 튀어서, 배경과는 구분되는 중간 회색을 써요.
+// (CSS에서 흰색 칩·점에 쓰는 테두리 색도 같은 #94a3b8이에요.)
+export const LIGHT_OUTLINE = "#94a3b8";
+export const LIGHT_INK = "#475569";
+
+// 색 막대·점·선의 배경 스타일. 흰색이면 얇은 회색 테두리와 진한 글자색을 같이 줘서 흰 바탕에서도 보이게 해요.
 export const swatchStyle = (hex) =>
   isLightHex(hex)
-    ? { background: "#FFFFFF", color: "#334155", boxShadow: "inset 0 0 0 1px #111827" }
+    ? { background: "#FFFFFF", color: "#334155", boxShadow: `inset 0 0 0 1px ${LIGHT_OUTLINE}` }
     : { background: hex };
 
-// 연한 배경 + 같은 계열 글자색(일정 막대, 배너 아이콘). 흰색은 얇은 검정 테두리의 연한 회색 칩으로 보여줘요.
+// 연한 배경 + 같은 계열 글자색(일정 막대, 배너 아이콘). 흰색은 얇은 회색 테두리의 연한 회색 칩으로 보여줘요.
 export const tintStyle = (hex, alpha = "22") =>
   isLightHex(hex)
-    ? { background: "#F8FAFC", color: "#475569", boxShadow: "inset 0 0 0 1px #111827" }
+    ? { background: "#F8FAFC", color: LIGHT_INK, boxShadow: `inset 0 0 0 1px ${LIGHT_OUTLINE}` }
     : { background: `${hex}${alpha}`, color: hex };
 
 // 글자·진행 숫자처럼 색만 쓰는 곳. 흰색 글자는 안 보이니 진한 회색으로 바꿔요.

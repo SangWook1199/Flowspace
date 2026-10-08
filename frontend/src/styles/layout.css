@@ -891,7 +891,7 @@
 
 /* 흰색 대표 색은 흰 배경과 구분되도록 얇은 테두리를 줘요. */
 .workspace-icon--light {
-  box-shadow: inset 0 0 0 1px #111827;
+  box-shadow: inset 0 0 0 1px #94a3b8;
 }
 
 .workspaceName {

@@ -3,7 +3,8 @@ import { X } from "lucide-react";
 
 import useModalA11y from "./hooks/useModalA11y";
 
-const COLORS = ["WHITE", "GRAY", "BLUE", "PURPLE", "GREEN", "RED", "ORANGE", "PINK"];
+// 흰색은 워크스페이스 아이콘용이라 컬럼 색 선택지에서는 뺐어요. 이미 흰색인 컬럼은 그대로 보여요.
+const COLORS = ["GRAY", "BLUE", "PURPLE", "GREEN", "RED", "ORANGE", "PINK"];
 
 const CATEGORIES = [
   { value: "TODO", label: "할 일 (TODO)" },

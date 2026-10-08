@@ -559,8 +559,8 @@ export function WorkspaceProvider({ children }) {
     return true;
   };
 
-  // 워크스페이스를 만들고 → 첫 페이지(빈 "제목 없음")를 하나 만들고 → 초대를 보내고 → 현재
-  // 워크스페이스로 전환해요. 첫 페이지가 있어야 만들자마자 보여줄 화면이 생겨요.
+  // 워크스페이스를 만들고 → 초대를 보내고 → 현재 워크스페이스로 전환해요.
+  // 빈 "제목 없음" 페이지는 따로 만들지 않아요(페이지는 사이드바에서 필요할 때 만들어요). 만든 뒤 보여줄 화면은 대시보드예요.
   // 이름이 비어 있으면 null, 만들기에 실패하면 예외를 던져요(호출한 화면이 안내 문구를 보여줘요).
   // 초대는 이메일마다 따로 보내고, 실패한 이메일은 failedInvites로 돌려줘요(워크스페이스는 이미 만들어진 뒤라서요).
   const createWorkspace = async ({ name, initials, color, icon, invitedMembers = [] }) => {
@@ -574,14 +574,6 @@ export function WorkspaceProvider({ children }) {
       icon,
     });
 
-    let page = null;
-    try {
-      page = await pageApi.createPage(workspace.id);
-    } catch {
-      // 첫 페이지를 못 만들어도 워크스페이스는 쓸 수 있어요(사이드바에서 새로 만들면 돼요). 대신 토스트로 알려요.
-      notify("워크스페이스는 만들었지만 첫 페이지를 만들지 못했어요. 사이드바에서 새 페이지를 만들어 주세요.");
-    }
-
     const failedInvites = [];
     for (const member of invitedMembers) {
       try {
@@ -594,7 +586,7 @@ export function WorkspaceProvider({ children }) {
     setWorkspaces((prev) => [...prev, workspace]);
     enterWorkspace(workspace.id);
 
-    return { workspace, page, failedInvites };
+    return { workspace, failedInvites };
   };
 
   const currentWorkspace = workspaces.find((w) => w.id === currentWorkspaceId) ?? null;

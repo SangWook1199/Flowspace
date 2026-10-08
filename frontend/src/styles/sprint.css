@@ -197,7 +197,7 @@
 }
 .colorPicker button[style*="rgb(255, 255, 255)"],
 .colorPicker button[style*="#ffffff"] {
-  border: 1px solid #111827;
+  border: 1px solid #94a3b8;
   color: #334155;
 }
 .colorPicker small {

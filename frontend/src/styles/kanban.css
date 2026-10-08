@@ -562,10 +562,10 @@
   background: #ec4899;
 }
 
-/* 흰색 상태는 점이 안 보여서 얇은 검정 테두리를 줘요. */
+/* 흰색 상태는 점이 안 보여서 얇은 회색 테두리를 줘요. */
 .columnDot.white {
   background: #ffffff;
-  box-shadow: inset 0 0 0 1px #111827;
+  box-shadow: inset 0 0 0 1px #94a3b8;
 }
 
 .columnMenuWrap {
@@ -1420,10 +1420,10 @@
   background: #ec4899;
 }
 
-/* 흰색은 배경과 안 보여서 얇은 검정 테두리를 줘요. */
+/* 흰색은 배경과 안 보여서 얇은 회색 테두리를 줘요. */
 .statusColorCircle.white {
   background: #ffffff;
-  box-shadow: inset 0 0 0 1px #111827;
+  box-shadow: inset 0 0 0 1px #94a3b8;
 }
 
 .statusModalFooter {

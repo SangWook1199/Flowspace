@@ -6,7 +6,7 @@ import { calendarColor } from "../../utils/calendarColors";
 import { isEventOnDate } from "../../utils/calendarRange";
 import { getSprintPhase } from "../../utils/sprintRange";
 import { groupSprintsByStatus } from "../../utils/calendarSprint";
-import { isLightHex } from "../../utils/color";
+import { LIGHT_INK, LIGHT_OUTLINE, isLightHex } from "../../utils/color";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -156,8 +156,8 @@ export default function CalendarRail({
                   group.items.map((item) => {
                     const active = item.id === sprint?.id;
                     const color = calendarColor(item.color);
-                    // 흰색 스프린트는 테두리가 안 보여서 진한 색으로 그려요.
-                    const ring = isLightHex(color) ? "#111827" : color;
+                    // 흰색 스프린트는 테두리가 안 보여서 회색으로 그려요.
+                    const ring = isLightHex(color) ? LIGHT_OUTLINE : color;
 
                     return (
                       <button
@@ -172,7 +172,7 @@ export default function CalendarRail({
                           className="railSprintCheck"
                           style={{ background: active ? color : "transparent", boxShadow: `inset 0 0 0 1.5px ${ring}` }}
                         >
-                          {active && <Check size={10} strokeWidth={4} color={isLightHex(color) ? "#111827" : "#fff"} />}
+                          {active && <Check size={10} strokeWidth={4} color={isLightHex(color) ? LIGHT_INK : "#fff"} />}
                         </span>
 
                         <span className="railSprintName">

@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { diffDays } from "../../utils/date";
 import { buildMonthWeeks } from "../../utils/calendarMonth";
 import { calendarColor } from "../../utils/calendarColors";
-import { isLightHex, swatchStyle, tintStyle } from "../../utils/color";
+import { LIGHT_OUTLINE, isLightHex, swatchStyle, tintStyle } from "../../utils/color";
 import { getEventDayRange, isEventOnDate, sortEventsByStart } from "../../utils/calendarRange";
 import { compareDayTasks } from "../../utils/calendarTaskOrder";
 import StatusIcon from "./StatusIcon";
@@ -119,7 +119,7 @@ export default function CalendarGrid({
 
             <div className="taskLayer" onClick={selectByPosition(week)}>
               {layout.bars.map((bar) => {
-                // 작업 막대는 상태 색으로 칠해요(연한 배경 + 왼쪽 색 띠 + 아이콘). 흰색 상태는 진한 색 띠로 보여줘요.
+                // 작업 막대는 상태 색으로 칠해요(연한 배경 + 왼쪽 색 띠 + 아이콘). 흰색 상태는 회색 띠로 보여줘요.
                 const hex = calendarColor(bar.color);
                 const light = isLightHex(hex);
 
@@ -131,7 +131,7 @@ export default function CalendarGrid({
                     style={{
                       gridColumn: `${bar.start + 1} / ${bar.end + 2}`,
                       gridRow: bar.row + 1,
-                      "--chip-color": light ? "#111827" : hex,
+                      "--chip-color": light ? LIGHT_OUTLINE : hex,
                       background: light ? "#F8FAFC" : `${hex}26`,
                     }}
                   >

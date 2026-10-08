@@ -440,7 +440,7 @@
 
 /* 흰색 칩은 배경과 안 보여서 얇은 테두리를 줘요. */
 .color-chip.light {
-  box-shadow: inset 0 0 0 1px #111827;
+  box-shadow: inset 0 0 0 1px #94a3b8;
 }
 
 /* ---------- Members ---------- */

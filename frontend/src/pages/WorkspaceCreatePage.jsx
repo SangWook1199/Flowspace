@@ -133,7 +133,7 @@ export default function WorkspaceCreatePage() {
     setError("");
 
     try {
-      // 워크스페이스 만들기 → 첫 페이지 만들기 → 이메일별 초대 순서로 서버에 보내요.
+      // 워크스페이스 만들기 → 이메일별 초대 순서로 서버에 보내요.
       const created = await createWorkspace({
         name,
         initials: workspace.initials,
@@ -157,8 +157,8 @@ export default function WorkspaceCreatePage() {
         );
       }
 
-      // 만들어진 워크스페이스의 첫 페이지로 이동해요(첫 페이지를 못 만들었으면 홈으로).
-      navigate(created.page ? `/pages/${created.page.id}` : "/");
+      // 만들어진 워크스페이스의 대시보드(홈)로 이동해요.
+      navigate("/");
     } catch (err) {
       setError(getErrorMessage(err, "워크스페이스를 만들지 못했어요. 다시 시도해주세요."));
       submittingRef.current = false;

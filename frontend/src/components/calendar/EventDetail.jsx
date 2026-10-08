@@ -4,7 +4,7 @@ import { AlignLeft, CalendarDays, Pencil, Trash2, X } from "lucide-react";
 import useModalFocus from "../../hooks/useModalFocus";
 import { getErrorMessage } from "../../utils/apiError";
 import { calendarColor } from "../../utils/calendarColors";
-import { isLightHex } from "../../utils/color";
+import { LIGHT_OUTLINE, isLightHex } from "../../utils/color";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -70,7 +70,7 @@ export default function EventDetail({ event, onClose, onEdit, onDelete }) {
       }}
     >
       <div ref={dialogRef} className="evmDialog evdDialog" role="dialog" aria-modal="true" aria-labelledby="evdTitle">
-        <div className="evmStripe" style={{ background: isLightHex(hex) ? "#CBD5E1" : hex }} />
+        <div className="evmStripe" style={{ background: isLightHex(hex) ? LIGHT_OUTLINE : hex }} />
 
         <header className="evmHeader">
           <h2>일정</h2>
@@ -81,7 +81,7 @@ export default function EventDetail({ event, onClose, onEdit, onDelete }) {
 
         <div className="evmBody">
           <h3 id="evdTitle" className="evdTitle">
-            <i style={{ background: hex, boxShadow: isLightHex(hex) ? "inset 0 0 0 1.5px #111827" : undefined }} />
+            <i style={{ background: hex, boxShadow: isLightHex(hex) ? `inset 0 0 0 1.5px ${LIGHT_OUTLINE}` : undefined }} />
             {event.title}
           </h3>
 
