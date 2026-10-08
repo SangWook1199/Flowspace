@@ -23,6 +23,7 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .withUsername(user.getEmail())
                 .password(user.getPassword() == null ? "" : user.getPassword())
                 .authorities("ROLE_USER")
+                .disabled(user.isWithdrawn())
                 .build();
     }
 }

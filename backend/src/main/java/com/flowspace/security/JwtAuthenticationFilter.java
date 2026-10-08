@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -33,22 +34,33 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                         String token = bearerToken.substring(7);
 
-                        if (jwtProvider.validateToken(token)) {
+                        // access token만 인증으로 인정해요(refresh token은 재발급 전용이라 여기선 무시해요).
+                        if (jwtProvider.isAccessToken(token)) {
 
-                                UserDetails userDetails = userDetailsService
-                                                .loadUserByUsername(
-                                                                jwtProvider.getEmail(token));
+                                try {
 
-                                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                                                userDetails,
-                                                null,
-                                                userDetails.getAuthorities());
+                                        UserDetails userDetails = userDetailsService
+                                                        .loadUserByUsername(
+                                                                        jwtProvider.getEmail(token));
 
-                                authentication.setDetails(
-                                                new WebAuthenticationDetailsSource().buildDetails(request));
+                                        // 탈퇴한 계정의 토큰은 만료 전이어도 인증하지 않아요.
+                                        if (userDetails.isEnabled()) {
 
-                                SecurityContextHolder.getContext()
-                                                .setAuthentication(authentication);
+                                                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                                                                userDetails,
+                                                                null,
+                                                                userDetails.getAuthorities());
+
+                                                authentication.setDetails(
+                                                                new WebAuthenticationDetailsSource().buildDetails(request));
+
+                                                SecurityContextHolder.getContext()
+                                                                .setAuthentication(authentication);
+                                        }
+
+                                } catch (UsernameNotFoundException e) {
+                                        // 계정이 없으면 인증 없이 넘겨요(401이 돼요). 필터에서 예외를 던지면 500이 돼요.
+                                }
                         }
                 }
 

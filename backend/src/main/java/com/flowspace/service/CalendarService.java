@@ -5,7 +5,9 @@ import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.flowspace.dto.calendar.CalendarItemResponse;
 import com.flowspace.entity.Event;
@@ -41,6 +43,9 @@ public class CalendarService {
     private final EventRepository eventRepository;
     private final UserRepository userRepository;
 
+    private static final int MIN_YEAR = 2000;
+    private static final int MAX_YEAR = 2100;
+
     // 캘린더 조회
     public List<CalendarItemResponse> getCalendar(Long workspaceId, Integer year, Integer month, Long sprintId,
         String email) {
@@ -52,6 +57,11 @@ public class CalendarService {
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
 
         validateMember(workspace, user);
+
+        // 달·연도가 이상하면 500 대신 400으로 알려요.
+        if (year == null || month == null || month < 1 || month > 12 || year < MIN_YEAR || year > MAX_YEAR) {
+            throw new FlowSpaceException(ErrorCode.INVALID_CALENDAR_RANGE);
+        }
 
         YearMonth yearMonth = YearMonth.of(year, month);
 
@@ -71,12 +81,19 @@ public class CalendarService {
             : taskRepository.findBySprintAndStartDateBetweenOrderByStartDateAscPositionAsc(targetSprint, startDate,
                 endDate);
 
-        tasks.stream().map(task -> {
+        // 담당자는 작업마다 따로 읽지 않고 한 번에 읽어서 나눠 담아요.
+        Map<Long, List<TaskAssignee>> assigneesByTask = new HashMap<>();
 
-            List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task);
+        if (!tasks.isEmpty()) {
+            for (TaskAssignee assignee : taskAssigneeRepository.findByTasks(tasks)) {
+                assigneesByTask.computeIfAbsent(assignee.getTask().getTaskId(), key -> new ArrayList<>())
+                    .add(assignee);
+            }
+        }
 
-            return CalendarItemResponse.from(task, assignees);
-        }).forEach(result::add);
+        tasks.stream()
+            .map(task -> CalendarItemResponse.from(task, assigneesByTask.getOrDefault(task.getTaskId(), List.of())))
+            .forEach(result::add);
 
         List<Event> events = eventRepository.findByWorkspaceAndStartDatetimeBetweenOrderByStartDatetimeAsc(workspace,
             startDateTime, endDateTime);

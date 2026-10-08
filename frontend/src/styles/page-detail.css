@@ -2728,6 +2728,14 @@ span.block-number {
   border-right: none;
 }
 
+/* 행이 하나도 없을 때 표 안에 보여주는 안내 줄 */
+.db-table td.db-empty-row {
+  padding: 14px 12px;
+  color: #94a3b8;
+  font-size: 13px;
+  text-align: center;
+}
+
 .db-table thead th {
   /* 요청: "표는 제목부분도 같이 배경색이 바뀌어야 해" — .block-body에
      심어둔 --block-bg 변수(위 .db-block-wrap 참고, 상위 요소에서
@@ -3882,6 +3890,14 @@ span.block-number {
 .page-save-status--error {
   border-color: #f2b8b8;
   color: #c0392b;
+}
+
+/* 같은 블록을 다른 멤버도 고쳤을 때 알리는 안내 (저장 상태 표시가 있어도 겹치지 않게 위쪽에 둬요) */
+.page-save-status--notice {
+  bottom: 64px;
+  border-color: #f3d9a4;
+  background: #fffaf0;
+  color: #8a5a00;
 }
 
 .page-save-status button {

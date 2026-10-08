@@ -14,6 +14,7 @@ export default function SprintDetail() {
   // 스프린트·작업·칸반 상태는 서버에서 불러와 MainLayout(WorkspaceProvider)이 내려줘요.
   // 칸반/스프린트 작업 목록과 같은 데이터라 어디서 고치든 여기도 따라와요.
   const {
+    canManageWorkspace = false,
     sprints = [],
     backlog,
     taskStatuses = [],
@@ -240,12 +241,14 @@ export default function SprintDetail() {
           </>
         ) : (
           <>
-            <button type="button" className="dangerAction" onClick={handleDelete} disabled={busy}>
-              <span className="actionLabel">
-                <Trash2 size={17} />
-                스프린트 삭제
-              </span>
-            </button>
+            {canManageWorkspace && (
+              <button type="button" className="dangerAction" onClick={handleDelete} disabled={busy}>
+                <span className="actionLabel">
+                  <Trash2 size={17} />
+                  스프린트 삭제
+                </span>
+              </button>
+            )}
             {sprint.status === "PLANNING" && (
               <button type="button" onClick={handleStart} disabled={busy}>
                 <span className="actionLabel">

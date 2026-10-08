@@ -69,6 +69,11 @@
   color: #4f46e5;
 }
 
+.memberCard__role.admin {
+  background: #dcf5ea;
+  color: #0f7a55;
+}
+
 .memberCard__bio {
   margin: 12px 0 0;
   font-size: 13px;

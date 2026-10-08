@@ -128,9 +128,10 @@ export default function SprintList() {
           </div>
         ))}
 
-        {!visible.length && !showBacklog && (
+        {/* 백로그 카드만 보이고 스프린트는 하나도 없을 때도 안내해요(그때 백로그 카드 때문에 빈 화면으로 보이지 않아요). */}
+        {!visible.length && (
           <p className="emptySprints">
-            {sprints.length === 0 ? "아직 스프린트가 없어요. 새 스프린트를 만들어보세요." : "조건에 맞는 스프린트가 없습니다."}
+            {sprints.length === 0 ? "아직 스프린트가 없어요. 새 스프린트를 만들어보세요." : "조건에 맞는 스프린트가 없어요."}
           </p>
         )}
       </section>

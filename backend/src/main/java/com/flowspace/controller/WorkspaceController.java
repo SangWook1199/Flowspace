@@ -9,6 +9,7 @@ import com.flowspace.dto.workspace.InviteResponse;
 import com.flowspace.dto.workspace.MemberProfileResponse;
 import com.flowspace.dto.workspace.WorkspaceMemberResponse;
 import com.flowspace.dto.workspace.WorkspaceOwnerTransferRequest;
+import com.flowspace.dto.workspace.WorkspaceRoleChangeRequest;
 import com.flowspace.service.WorkspaceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -56,7 +57,7 @@ public class WorkspaceController {
         return workspaceService.updateWorkspace(workspaceId, request, userDetails.getUsername());
     }
 
-    @Operation(summary = "워크스페이스 멤버 초대")
+    @Operation(summary = "워크스페이스 멤버 초대", description = "관리자 이상만 초대할 수 있습니다.")
     @PostMapping("/{workspaceId}/invites")
     public WorkspaceInviteResponse inviteMember(@PathVariable Long workspaceId,
         @Valid @RequestBody WorkspaceInviteRequest request, @AuthenticationPrincipal UserDetails userDetails) {
@@ -108,7 +109,14 @@ public class WorkspaceController {
         workspaceService.deleteWorkspace(workspaceId, userDetails.getUsername());
     }
 
-    @Operation(summary = "워크스페이스 멤버 추방")
+    @Operation(summary = "워크스페이스 멤버 역할 변경", description = "소유자만 멤버를 관리자(ADMIN)로 올리거나 일반 멤버(MEMBER)로 내릴 수 있습니다. 소유자 자리는 소유권 이전으로만 바뀝니다.")
+    @PatchMapping("/{workspaceId}/members/{userId}/role")
+    public WorkspaceMemberResponse changeMemberRole(@PathVariable Long workspaceId, @PathVariable Long userId,
+        @Valid @RequestBody WorkspaceRoleChangeRequest request, @AuthenticationPrincipal UserDetails userDetails) {
+        return workspaceService.changeMemberRole(workspaceId, userId, request, userDetails.getUsername());
+    }
+
+    @Operation(summary = "워크스페이스 멤버 추방", description = "관리자 이상만 가능하며, 관리자는 일반 멤버만 내보낼 수 있습니다.")
     @DeleteMapping("/{workspaceId}/members/{userId}")
     public void removeMember(@PathVariable Long workspaceId, @PathVariable Long userId,
         @AuthenticationPrincipal UserDetails userDetails) {

@@ -52,7 +52,7 @@ CREATE TABLE workspace_members (
     member_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     workspace_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
-    role ENUM('OWNER', 'MEMBER') DEFAULT 'MEMBER',
+    role ENUM('OWNER', 'ADMIN', 'MEMBER') DEFAULT 'MEMBER',
     joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_member_workspace FOREIGN KEY (workspace_id) REFERENCES workspaces(workspace_id) ON DELETE CASCADE,
     CONSTRAINT fk_member_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
@@ -88,6 +88,7 @@ CREATE TABLE pages (
     created_by BIGINT NOT NULL,
     is_deleted BOOLEAN DEFAULT FALSE,
 	deleted_at DATETIME,
+    version BIGINT NOT NULL DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_page_workspace FOREIGN KEY (workspace_id) REFERENCES workspaces(workspace_id) ON DELETE CASCADE,
@@ -422,8 +423,10 @@ CREATE INDEX idx_notifications_user_created
 ON notifications(user_id, created_at DESC);
 CREATE INDEX idx_notifications_user_unread
 ON notifications(user_id, is_read);
-CREATE INDEX idx_pages_workspace
-ON pages(workspace_id);
+CREATE INDEX idx_pages_workspace_parent_position
+ON pages(workspace_id, parent_page_id, position);
+CREATE INDEX idx_pages_deleted
+ON pages(is_deleted, deleted_at);
 CREATE INDEX idx_blocks_page
 ON blocks(page_id, position);
 CREATE INDEX idx_tasks_workspace_status
@@ -438,10 +441,18 @@ CREATE INDEX idx_subtasks_task
 ON subtasks(task_id, position);
 CREATE INDEX idx_events_workspace
 ON events(workspace_id, start_datetime);
-CREATE INDEX idx_comments_block
-ON comments(block_id);
+CREATE INDEX idx_comments_block_created
+ON comments(block_id, created_at);
+CREATE INDEX idx_comments_task_created
+ON comments(task_id, created_at);
+CREATE INDEX idx_comments_parent_created
+ON comments(parent_comment_id, created_at);
 CREATE INDEX idx_activity_workspace
 ON activities(workspace_id, created_at DESC);
+CREATE INDEX idx_activity_workspace_user
+ON activities(workspace_id, user_id, created_at DESC);
+CREATE INDEX idx_activity_workspace_type
+ON activities(workspace_id, type, created_at DESC);
 CREATE INDEX idx_workspace_member_user
 ON workspace_members(user_id);
 CREATE INDEX idx_users_last_workspace
@@ -453,4 +464,25 @@ ON task_snapshot_assignees(snapshot_id);
 CREATE INDEX idx_subtask_snapshots_snapshot
 ON subtask_snapshots(snapshot_id, position);
 
-
+CREATE INDEX idx_tasks_sprint_position
+ON tasks(sprint_id, position);
+CREATE INDEX idx_tasks_workspace_sprint_position
+ON tasks(workspace_id, sprint_id, position);
+CREATE INDEX idx_tasks_sprint_start
+ON tasks(sprint_id, start_date);
+CREATE INDEX idx_tasks_workspace_start
+ON tasks(workspace_id, start_date);
+CREATE INDEX idx_tasks_end_date
+ON tasks(end_date);
+CREATE INDEX idx_refresh_tokens_token
+ON refresh_tokens(token);
+CREATE INDEX idx_refresh_tokens_expired
+ON refresh_tokens(expired_at);
+CREATE INDEX idx_reset_tokens_expires
+ON password_reset_tokens(expires_at);
+CREATE INDEX idx_invites_email_status
+ON workspace_invites(email, status);
+CREATE INDEX idx_invites_status_created
+ON workspace_invites(status, created_at);
+CREATE INDEX idx_notifications_created
+ON notifications(created_at);

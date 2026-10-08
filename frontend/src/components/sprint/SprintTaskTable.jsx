@@ -81,7 +81,7 @@ export default function SprintTaskTable({ tasks = [], onAdd, onImport, onDeleteT
           <span>상태</span>
         </div>
 
-        {tasks.length === 0 && <p className="taskListEmpty">작업이 없어요.</p>}
+        {tasks.length === 0 && <p className="taskListEmpty">아직 작업이 없어요.</p>}
 
         {tasks.map((task) => (
           <TaskGroup
@@ -218,6 +218,13 @@ function TaskGroup({ task, open, onToggle, onOpen, selectable = false, checked =
 
         {/* 편집·더보기 버튼은 기능이 없어서 뺐어요. */}
       </div>
+
+      {/* 하위 작업이 없는 작업을 펼쳤을 때 아무것도 안 나오면 고장 난 것처럼 보여서 안내해요. */}
+      {open && subtasks.length === 0 && (
+        <div className="subtask">
+          <p className="subtaskEmpty">아직 하위 작업이 없어요.</p>
+        </div>
+      )}
 
       {open &&
         subtasks.map((subtask, index) => {

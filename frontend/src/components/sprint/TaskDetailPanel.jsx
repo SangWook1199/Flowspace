@@ -183,6 +183,7 @@ export default function TaskDetailPanel({
             />
           </i>
         </h3>
+        {subtasks.length === 0 && <small className={styles.emptyHint}>아직 하위 작업이 없어요.</small>}
         <SubtaskList
           subtasks={subtasks}
           taskAssignees={task.assignees ?? []}
@@ -519,6 +520,11 @@ function TaskComments({ taskId }) {
       {loading && comments.length === 0 && (
         <small role="status" style={{ display: "block", marginTop: 8 }}>
           댓글을 불러오는 중이에요…
+        </small>
+      )}
+      {!loading && !error && comments.length === 0 && (
+        <small className={styles.emptyHint} style={{ marginTop: 10 }}>
+          아직 댓글이 없어요.
         </small>
       )}
       {comments.map((comment) => {

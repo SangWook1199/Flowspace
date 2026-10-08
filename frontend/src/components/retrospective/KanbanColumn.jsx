@@ -15,7 +15,7 @@ export default function KanbanColumn({ title, color, tasks }) {
       <div className="retro-column__body">
         {tasks.length === 0 ? (
           <div className="retro-column__empty">
-            <p>태스크가 없습니다.</p>
+            <p>태스크가 없어요.</p>
           </div>
         ) : (
           tasks.map((task) => <KanbanTaskCard key={task.id} task={task} />)

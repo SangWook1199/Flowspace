@@ -17,7 +17,11 @@ export default function NotificationBell() {
     loading,
     pendingInviteIds,
     invitesLoaded,
+    error,
+    loadMoreError,
+    invitesError,
     loadMore,
+    refresh,
     loadInvites,
     markAllRead,
     remove,
@@ -115,7 +119,33 @@ export default function NotificationBell() {
           </div>
 
           <div className="notiPanel__list">
-            {visible.length === 0 ? (
+            {/* 목록을 못 받았을 때 — 이전 목록이 있으면 위에 한 줄로, 없으면 빈 화면 자리에 보여줘요. */}
+            {error && notifications.length > 0 && (
+              <p className="notiPanel__notice" role="alert">
+                <span>{error}</span>
+                <button type="button" onClick={refresh} disabled={loading}>
+                  {loading ? "불러오는 중…" : "다시 시도"}
+                </button>
+              </p>
+            )}
+            {!error && invitesError && notifications.some((n) => n.type === "WORKSPACE_INVITE") && (
+              <p className="notiPanel__notice" role="alert">
+                <span>{invitesError}</span>
+                <button type="button" onClick={loadInvites}>
+                  다시 시도
+                </button>
+              </p>
+            )}
+
+            {error && notifications.length === 0 ? (
+              <p className="notiPanel__empty" role="alert">
+                <Inbox size={26} />
+                {error}
+                <button type="button" className="notiPanel__retry" onClick={refresh} disabled={loading}>
+                  {loading ? "불러오는 중…" : "다시 시도"}
+                </button>
+              </p>
+            ) : visible.length === 0 ? (
               <p className="notiPanel__empty">
                 <Inbox size={26} />
                 {tab === "unread" ? "안 읽은 알림이 없어요." : "아직 알림이 없어요."}
@@ -143,7 +173,7 @@ export default function NotificationBell() {
 
             {hasNext && tab === "all" && (
               <button type="button" className="notiPanel__more" onClick={loadMore} disabled={loading}>
-                {loading ? "불러오는 중…" : "더 보기"}
+                {loading ? "불러오는 중…" : loadMoreError ? "더 불러오지 못했어요. 다시 시도" : "더 보기"}
               </button>
             )}
           </div>

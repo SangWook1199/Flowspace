@@ -6,6 +6,7 @@ import { useWorkspace } from "./WorkspaceContext";
 import * as notificationApi from "../api/notifications";
 import * as workspaceApi from "../api/workspaces";
 import { toNotification } from "../api/mappers";
+import { getErrorMessage } from "../utils/apiError";
 import { createNotificationSocket } from "../utils/notificationSocket";
 import NotificationToast from "../layout/NotificationToast";
 
@@ -31,6 +32,12 @@ export function NotificationProvider({ children }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [hasNext, setHasNext] = useState(false);
   const [loading, setLoading] = useState(false);
+  // 불러오기 실패 안내 문구(성공하면 null). 토스트는 띄우지 않아요 — 백그라운드 새로고침(소켓 재연결 등)이
+  // 실패할 때마다 알리면 시끄러워서, 알림창을 열어 둔 사람에게만 창 안에서 보여줘요(NotificationBell).
+  // error: 첫 페이지(새로고침) 실패 / loadMoreError: 더 보기 실패 / invitesError: 받은 초대 확인 실패
+  const [error, setError] = useState(null);
+  const [loadMoreError, setLoadMoreError] = useState(null);
+  const [invitesError, setInvitesError] = useState(null);
   // 아직 수락/거절하지 않은 초대의 inviteId들 — 초대 알림에 수락/거절 버튼을 보일지 정해요.
   const [pendingInviteIds, setPendingInviteIds] = useState([]);
   // 초대 목록을 한 번이라도 받아왔는지 — 받기 전엔 "처리된 초대"로 잘못 보이지 않게 구분해요.
@@ -60,8 +67,10 @@ export function NotificationProvider({ children }) {
       const invites = await workspaceApi.getMyInvites();
       setPendingInviteIds(invites.map((invite) => invite.inviteId));
       setInvitesLoaded(true);
-    } catch {
-      // 초대 목록을 못 받아도 알림 자체는 쓸 수 있어요.
+      setInvitesError(null);
+    } catch (err) {
+      // 초대 목록을 못 받아도 알림 자체는 쓸 수 있어요. 문구만 남겨서 알림창에서 다시 시도할 수 있게 해요.
+      setInvitesError(getErrorMessage(err, "받은 초대를 확인하지 못했어요."));
     }
   }, []);
 
@@ -77,9 +86,12 @@ export function NotificationProvider({ children }) {
       setItems(result.items);
       setUnreadCount(result.unreadCount);
       setHasNext(result.hasNext);
+      setError(null);
+      setLoadMoreError(null);
       nextPage.current = 1;
-    } catch {
-      // 실패하면 이전 목록을 그대로 둬요.
+    } catch (err) {
+      // 실패하면 이전 목록을 그대로 두고 문구만 남겨요.
+      if (id === requestId.current) setError(getErrorMessage(err, "알림을 불러오지 못했어요."));
     } finally {
       if (id === requestId.current) setLoading(false);
     }
@@ -89,6 +101,7 @@ export function NotificationProvider({ children }) {
     if (loading || !hasNext) return;
     const id = requestId.current;
     setLoading(true);
+    setLoadMoreError(null);
 
     try {
       const result = await notificationApi.getNotifications({ page: nextPage.current, size: PAGE_SIZE });
@@ -102,8 +115,9 @@ export function NotificationProvider({ children }) {
       setUnreadCount(result.unreadCount);
       setHasNext(result.hasNext);
       nextPage.current += 1;
-    } catch {
-      // 다음에 다시 눌러보면 돼요.
+    } catch (err) {
+      // 알림창의 "더 보기" 자리에서 다시 시도할 수 있게 문구를 남겨요.
+      if (id === requestId.current) setLoadMoreError(getErrorMessage(err, "알림을 더 불러오지 못했어요."));
     } finally {
       setLoading(false);
     }
@@ -121,6 +135,9 @@ export function NotificationProvider({ children }) {
     setHasNext(false);
     setPendingInviteIds([]);
     setInvitesLoaded(false);
+    setError(null);
+    setLoadMoreError(null);
+    setInvitesError(null);
     setToast(null);
     setPagePresence(null);
     setPageContent(null);
@@ -291,6 +308,9 @@ export function NotificationProvider({ children }) {
     loading,
     pendingInviteIds,
     invitesLoaded,
+    error,
+    loadMoreError,
+    invitesError,
     loadMore,
     refresh,
     loadInvites,

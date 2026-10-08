@@ -2,7 +2,11 @@ package com.flowspace.repository;
 
 import com.flowspace.entity.Page;
 import com.flowspace.entity.Workspace;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -31,5 +35,10 @@ public interface PageRepository extends JpaRepository<Page, Long> {
     List<Page> findByParentPageAndIsDeletedFalse(Page parentPage);
 
     Optional<Page> findByPageIdAndIsDeletedFalse(Long pageId);
+
+    // 블록 저장처럼 같은 페이지를 동시에 고치면 안 되는 작업에서, 페이지 행을 잠그고 읽어요(저장 순서를 한 줄로 세워요).
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Page p where p.pageId = :pageId and p.isDeleted = false")
+    Optional<Page> findActiveForUpdate(@Param("pageId") Long pageId);
 
 }

@@ -123,6 +123,7 @@ export default function CalendarRail({
         <h6>스프린트</h6>
 
         <div className="railSprintList" role="radiogroup" aria-label="스프린트 선택">
+          {groups.length === 0 && <p className="railEmpty">아직 스프린트가 없어요.</p>}
           {groups.map((group) => {
             const collapsible = group.key === "COMPLETED";
             const holdsSelected = group.items.some((item) => item.id === sprint?.id);

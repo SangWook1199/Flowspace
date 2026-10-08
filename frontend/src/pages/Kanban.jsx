@@ -100,6 +100,7 @@ function KanbanBoard({ activeSprint }) {
   // 작업·상태(컬럼)는 스프린트 작업 목록·페이지 TASK 블록과 같은 공용 데이터라 어느 화면에서 바꿔도 같이 바뀌어요.
   // 드래그 중인 위치 표시는 이 화면만의 상태이고, 드롭할 때 한 번만 서버에 저장해요.
   const {
+    canManageWorkspace = false,
     sprintTasks,
     members = [],
     taskStatuses: statuses,
@@ -499,7 +500,7 @@ function KanbanBoard({ activeSprint }) {
               status={status}
               statuses={statuses}
               onStatusSave={saveStatus}
-              onStatusDelete={deleteStatus}
+              onStatusDelete={canManageWorkspace ? deleteStatus : undefined}
               tasks={shownTasks.filter((task) => task.statusId === status.id)}
               totalCount={tasks.filter((task) => task.statusId === status.id).length}
               collapsed={collapsedIds.includes(status.id)}

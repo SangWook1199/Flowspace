@@ -36,6 +36,7 @@ public enum ErrorCode {
     OWNER_CANNOT_REMOVE(HttpStatus.BAD_REQUEST, "OWNER는 추방할 수 없습니다."),
     OWNER_CANNOT_LEAVE(HttpStatus.BAD_REQUEST, "OWNER는 워크스페이스를 나갈 수 없습니다."),
     LAST_WORKSPACE(HttpStatus.BAD_REQUEST, "마지막 남은 워크스페이스는 삭제하거나 나갈 수 없습니다."),
+    INVALID_ROLE_CHANGE(HttpStatus.BAD_REQUEST, "소유자의 역할은 바꿀 수 없어요. 소유권 이전을 이용해 주세요."),
 
     // Notification
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "알림을 찾을 수 없습니다."),
@@ -58,12 +59,14 @@ public enum ErrorCode {
     // Event
     EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "이벤트를 찾을 수 없습니다."),
     INVALID_EVENT_TIME(HttpStatus.BAD_REQUEST, "종료 시간은 시작 시간보다 빠를 수 없습니다."),
+    INVALID_CALENDAR_RANGE(HttpStatus.BAD_REQUEST, "조회할 연도와 월이 올바르지 않습니다."),
 
     // Page
     PAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "페이지를 찾을 수 없습니다."),
     INVALID_PAGE_PARENT(HttpStatus.BAD_REQUEST, "자기 자신을 부모 페이지로 지정할 수 없습니다."),
     INVALID_PAGE_REORDER(HttpStatus.BAD_REQUEST, "같은 상위 페이지에 속한 페이지만 순서를 바꿀 수 있습니다."),
     RETROSPECTIVE_PAGE_PROTECTED(HttpStatus.BAD_REQUEST, "회고 페이지는 영구 삭제할 수 없습니다."),
+    PAGE_VERSION_CONFLICT(HttpStatus.CONFLICT, "다른 사람이 먼저 페이지를 저장했어요. 최신 내용을 합쳐서 다시 저장할게요."),
     BLOCK_NOT_FOUND(HttpStatus.NOT_FOUND, "블록을 찾을 수 없습니다."),
     INVALID_BLOCK_PARENT(HttpStatus.BAD_REQUEST, "자기 자신 또는 하위 블록으로 이동할 수 없습니다."),
     DATABASE_NOT_FOUND(HttpStatus.NOT_FOUND, "데이터베이스를 찾을 수 없습니다."),
@@ -79,6 +82,8 @@ public enum ErrorCode {
     FILE_DELETE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "파일 삭제에 실패했습니다."),
     FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "파일을 찾을 수 없습니다."),
     INVALID_IMAGE_FILE(HttpStatus.BAD_REQUEST, "이미지 파일만 업로드할 수 있습니다."),
+    UNSUPPORTED_FILE_TYPE(HttpStatus.BAD_REQUEST, "올릴 수 없는 파일 형식이에요."),
+    FILE_TOO_LARGE(HttpStatus.valueOf(413), "파일이 너무 커요. 20MB 이하의 파일만 올릴 수 있어요."),
 
     // Retrospective
     RETROSPECTIVE_NOT_FOUND(HttpStatus.NOT_FOUND, "회고를 찾을 수 없습니다."),

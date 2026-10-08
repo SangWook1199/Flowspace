@@ -1,16 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { deleteBlockImage, getPageDetail, syncBlocks, uploadBlockImage } from "../api/blocks";
+import { deleteBlockImage, getPageDetail, isVersionConflict, syncBlocks, uploadBlockImage } from "../api/blocks";
 import { getDatabaseDetail } from "../api/databases";
 import { bindingFromLoaded, createBinding, syncDatabase } from "../api/databaseSync";
 import { collectServerImages, syncKey, toEditorBlocks, toEditorComments, toEditorDatabase, toSyncItems } from "../api/mappers";
 import { commentStateFromServer, syncComments } from "../api/commentSync";
-import { mergeBlocks } from "../components/page/lib/blockMerge.js";
+import { findConflicts, mergeBlocks } from "../components/page/lib/blockMerge.js";
 import { normalizeBlockShape } from "../components/page/lib/blockFactory.js";
 import { normalizeIndents } from "../components/page/lib/blockTree.js";
 import { getErrorMessage } from "../utils/apiError";
 
 // 블록을 고치고 나서 서버에 보내기까지 기다리는 시간(타이핑 중 요청 폭주 방지).
 const BLOCK_SAVE_DELAY_MS = 800;
+
+// 저장하려는 순간 다른 멤버가 먼저 저장해서 서버가 거절하면(409), 최신 내용을 합친 뒤 다시 보내요. 이만큼 해도 안 되면 멈춰요.
+const MAX_CONFLICT_RETRIES = 3;
+// "다른 사람이 수정했어요" 안내를 보여주는 시간
+const CONFLICT_NOTICE_MS = 8000;
 
 const blankBlocks = () => [{ id: 1, type: "TEXT", content: "" }];
 const isLocalUrl = (url) => /^(data:|blob:)/i.test(url ?? "");
@@ -48,6 +53,8 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
   const [saveError, setSaveError] = useState(null);
   // 에디터 블록 id ↔ 서버 블록 id 대응이 바뀔 때마다(저장 직후·다른 멤버 변경을 받은 직후) 올라가요.
   const [idVersion, setIdVersion] = useState(0);
+  // 같은 블록을 다른 멤버도 고쳐서 내 내용으로 덮어쓴 블록 수(없으면 0). 화면이 안내를 보여주고 잠시 뒤 사라져요.
+  const [conflictCount, setConflictCount] = useState(0);
 
   const latest = useRef(null); // 에디터의 가장 최근 블록 배열
   const idMap = useRef(new Map()); // 에디터 블록 id(문자열) → 서버 blockId
@@ -69,6 +76,10 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
   const dirty = useRef(false);
   const loaded = useRef(false);
   const requestId = useRef(0);
+  // 서버가 마지막으로 알려준 페이지 버전 — 저장할 때 보내서 "그 사이 다른 멤버가 저장했는지" 서버가 가려요.
+  const pageVersion = useRef(null);
+  const conflictRetries = useRef(0);
+  const conflictTimer = useRef(null);
 
   const pageIdMapRef = useRef(pageIdMap);
   const getKnownPageIdsRef = useRef(getKnownPageIds);
@@ -93,6 +104,7 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
 
     try {
       const detail = await getPageDetail(pageId);
+      pageVersion.current = detail.version ?? null;
 
       // 데이터베이스 블록은 열·행·셀을 따로 받아와요. 하나라도 못 받으면 저장할 때 그 블록이 지워지니 페이지 전체를 실패로 봐요.
       const databaseIds = detail.blocks.filter((b) => b.type === "DATABASE" && b.databaseId != null).map((b) => b.databaseId);
@@ -280,6 +292,17 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
         return String(block.id) === String(mine.id) && (block.indent || 0) === (mine.indent || 0) && sig(block) === sig(mine);
       });
 
+    // 이 시점의 서버 버전까지 합쳤으니, 다음 저장은 이 버전을 기준으로 보내요.
+    pageVersion.current = detail.version ?? pageVersion.current;
+
+    // 같은 블록을 서로 다르게 고쳤다면 내 것이 이기는데, 상대가 고친 내용이 덮이니 알려줘요.
+    const conflicts = findConflicts({ base: baseBlocks.current, local, remote: remoteBlocks, sig });
+    if (conflicts.length > 0) {
+      setConflictCount(conflicts.length);
+      clearTimeout(conflictTimer.current);
+      conflictTimer.current = setTimeout(() => setConflictCount(0), CONFLICT_NOTICE_MS);
+    }
+
     const previousBase = baseBlocks.current;
     baseBlocks.current = remoteBlocks;
     debugSync("서버 최신 내용 받음", { 서버블록: remoteBlocks.length, 내블록: local.length, 바뀜: !sameAsLocal });
@@ -367,6 +390,7 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
     }
 
     running.current = true;
+    conflictRetries.current = 0;
     try {
       do {
         again.current = false;
@@ -388,7 +412,25 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
         setSaveError(null);
 
         if (key !== lastKey.current) {
-          const results = await syncBlocks(pageId, items);
+          let saved;
+          try {
+            saved = await syncBlocks(pageId, items, pageVersion.current);
+          } catch (err) {
+            // 받아온 뒤 저장하기 전에 다른 멤버가 먼저 저장했어요 — 처음부터(받아와서 합치기) 다시 해요.
+            if (isVersionConflict(err)) {
+              if (conflictRetries.current >= MAX_CONFLICT_RETRIES) {
+                throw new Error("다른 멤버가 계속 수정하고 있어서 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.");
+              }
+              conflictRetries.current += 1;
+              again.current = true;
+              continue;
+            }
+            throw err;
+          }
+
+          const results = saved.results;
+          pageVersion.current = saved.version ?? pageVersion.current;
+          conflictRetries.current = 0;
           // 서버가 돌려준 블록 id로 새로 만들어요(목록에서 빠진 블록은 서버에서 지워졌으니 같이 잊어요).
           idMap.current = new Map(results.map((r) => [r.clientId, r.block.blockId]));
           dbBlockIds.current = new Set(results.filter((r) => r.block.type === "DATABASE").map((r) => r.block.blockId));
@@ -466,6 +508,19 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
     return null;
   }, []);
 
+  // 안내 타이머는 페이지를 떠날 때 정리해요.
+  useEffect(
+    () => () => {
+      clearTimeout(conflictTimer.current);
+    },
+    [],
+  );
+
+  const dismissConflictNotice = useCallback(() => {
+    clearTimeout(conflictTimer.current);
+    setConflictCount(0);
+  }, []);
+
   const onRemoteContentRef = useRef(onRemoteContent);
   useEffect(() => {
     onRemoteContentRef.current = onRemoteContent;
@@ -484,6 +539,8 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
     onChange,
     saveState,
     saveError,
+    conflictCount,
+    dismissConflictNotice,
     retry: flush,
     reload,
   };

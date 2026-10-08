@@ -12,6 +12,9 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+
+import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -40,6 +43,21 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.badRequest()
                 .body(new ErrorResponse(400, "VALIDATION_ERROR", message));
+    }
+
+    // 업로드 크기 제한(spring.servlet.multipart)을 넘었을 때: 서버 오류가 아니라 "파일이 너무 커요"로 알려요.
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleUploadTooLarge(MaxUploadSizeExceededException e) {
+        ErrorCode code = ErrorCode.FILE_TOO_LARGE;
+
+        return ResponseEntity.status(code.getStatus()).body(ErrorResponse.of(code));
+    }
+
+    // 쿼리·경로 값 검증(@Min, @Size 등)에 걸렸을 때: 잘못된 요청이에요.
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException e) {
+        return ResponseEntity.badRequest()
+                .body(new ErrorResponse(400, "VALIDATION_ERROR", "요청 값이 올바르지 않아요."));
     }
 
     // 요청 본문이 JSON이 아니거나 값 형식(날짜·enum 등)이 안 맞을 때, 주소의 숫자 자리에 글자가 올 때: 서버 오류가 아니라 잘못된 요청이에요.

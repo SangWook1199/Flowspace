@@ -71,6 +71,13 @@ export default function TaskTable({
           </tr>
         </thead>
         <tbody>
+          {tasks.length === 0 && (
+            <tr>
+              <td colSpan={9} className={styles.emptyRow}>
+                아직 작업이 없어요. 아래의 &apos;새 작업 추가&apos;로 만들어보세요.
+              </td>
+            </tr>
+          )}
           {tasks.map((task) => (
             <TaskRow
               task={task}

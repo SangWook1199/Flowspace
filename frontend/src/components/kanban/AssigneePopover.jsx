@@ -110,7 +110,9 @@ export default function AssigneePopover({ anchor, members = [], value = [], meId
           </li>
         ))}
 
-        {!showMe && others.length === 0 && <li className="assigneePop__empty">일치하는 멤버가 없어요.</li>}
+        {!showMe && others.length === 0 && (
+          <li className="assigneePop__empty">{members.length === 0 ? "선택할 멤버가 없어요." : "일치하는 멤버가 없어요."}</li>
+        )}
       </ul>
     </div>,
     document.body,

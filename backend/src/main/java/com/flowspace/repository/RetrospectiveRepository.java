@@ -1,5 +1,6 @@
 package com.flowspace.repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,6 +18,10 @@ public interface RetrospectiveRepository extends JpaRepository<Retrospective, Lo
     Optional<Retrospective> findBySprint(Sprint sprint);
 
     boolean existsBySprint(Sprint sprint);
+
+    // 여러 스프린트의 회고를 페이지와 함께 한 번에 읽어요(회고 목록용)
+    @Query("select r from Retrospective r join fetch r.page where r.sprint in :sprints")
+    List<Retrospective> findWithPageBySprintIn(@Param("sprints") Collection<Sprint> sprints);
 
     boolean existsByPage(Page page);
 

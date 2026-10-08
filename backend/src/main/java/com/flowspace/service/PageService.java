@@ -34,6 +34,7 @@ import com.flowspace.entity.BlockDatabaseCell;
 import com.flowspace.entity.BlockDatabaseColumn;
 import com.flowspace.entity.BlockDatabaseColumnOption;
 import com.flowspace.entity.BlockDatabaseRow;
+import com.flowspace.entity.Comment;
 import com.flowspace.entity.File;
 import com.flowspace.entity.Page;
 import com.flowspace.entity.User;
@@ -263,11 +264,11 @@ public class PageService {
         Page page = pageRepository.findByPageIdAndIsDeletedTrue(pageId)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND));
 
-        // 되돌릴 수 없는 작업이라 OWNER만 할 수 있어요. (복원·조회는 멤버 모두 가능)
+        // 되돌릴 수 없는 작업이라 관리자 이상만 할 수 있어요. (휴지통으로 보내기·복원·조회는 멤버 모두 가능)
         WorkspaceMember member = workspaceMemberRepository.findByWorkspaceAndUser(page.getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        if (member.getRole() != WorkspaceRole.OWNER) {
+        if (!member.getRole().isAtLeast(WorkspaceRole.ADMIN)) {
             throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
         }
 
@@ -298,11 +299,11 @@ public class PageService {
         Workspace workspace = workspaceRepository.findById(workspaceId)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.WORKSPACE_NOT_FOUND));
 
-        // 되돌릴 수 없는 작업이라 OWNER만 할 수 있어요.
+        // 되돌릴 수 없는 작업이라 관리자 이상만 할 수 있어요.
         WorkspaceMember member = workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        if (member.getRole() != WorkspaceRole.OWNER) {
+        if (!member.getRole().isAtLeast(WorkspaceRole.ADMIN)) {
             throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
         }
 
@@ -674,19 +675,34 @@ public class PageService {
         workspaceMemberRepository.findByWorkspaceAndUser(page.getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        List<PageDetailResponse.BlockItem> blockItems = blockRepository.findByPageOrderByPositionAsc(page).stream()
-            .map(block -> {
-                List<CommentResponse> comments = commentRepository
-                    .findByBlockAndParentCommentIsNullOrderByCreatedAtAsc(block).stream().map(comment -> {
-                        List<CommentResponse> replies = commentRepository
-                            .findByParentCommentOrderByCreatedAtAsc(comment).stream()
-                            .map(reply -> CommentResponse.from(reply, List.of())).toList();
+        List<Block> blocks = blockRepository.findWithImageAndDatabaseByPageOrderByPositionAsc(page);
 
-                        return CommentResponse.from(comment, replies);
-                    }).toList();
+        // 댓글·대댓글은 블록마다 따로 읽지 않고 한 번에 읽어서 블록 id별로 나눠 담아요.
+        Map<Long, List<CommentResponse>> commentsByBlock = new HashMap<>();
 
-                return PageDetailResponse.BlockItem.from(block, comments);
-            }).toList();
+        if (!blocks.isEmpty()) {
+
+            List<Comment> roots = commentRepository.findByBlockInAndParentCommentIsNullOrderByCreatedAtAsc(blocks);
+
+            Map<Long, List<CommentResponse>> repliesByParent = new HashMap<>();
+
+            if (!roots.isEmpty()) {
+                for (Comment reply : commentRepository.findByParentCommentInOrderByCreatedAtAsc(roots)) {
+                    repliesByParent.computeIfAbsent(reply.getParentComment().getCommentId(), key -> new ArrayList<>())
+                        .add(CommentResponse.from(reply, List.of()));
+                }
+            }
+
+            for (Comment root : roots) {
+                commentsByBlock.computeIfAbsent(root.getBlock().getBlockId(), key -> new ArrayList<>()).add(
+                    CommentResponse.from(root, repliesByParent.getOrDefault(root.getCommentId(), List.of())));
+            }
+        }
+
+        List<PageDetailResponse.BlockItem> blockItems = blocks.stream()
+            .map(block -> PageDetailResponse.BlockItem.from(block,
+                commentsByBlock.getOrDefault(block.getBlockId(), List.of())))
+            .toList();
 
         List<Page> childPages = pageRepository.findByParentPageAndIsDeletedFalse(page);
 
@@ -709,7 +725,7 @@ public class PageService {
             fileService.delete(page.getCoverFile());
         }
 
-        File cover = fileService.upload(file, page.getWorkspace(), email);
+        File cover = fileService.uploadImage(file, page.getWorkspace(), email);
 
         page.updateCover(cover);
 

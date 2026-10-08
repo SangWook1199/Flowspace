@@ -180,6 +180,12 @@ export default function Dashboard() {
 
       {/* 배너 */}
       {banner && <SprintBanner sprint={banner} />}
+      {/* 스프린트가 하나도 없으면(불러오는 중·실패가 아닐 때) 배너 자리가 비지 않게 안내해요. */}
+      {!banner && !sprintDataLoading && !sprintDataError && (
+        <section className={styles.hero}>
+          <p className={styles.heroEmpty}>아직 스프린트가 없어요. 스프린트를 만들면 진행 상황이 여기에 보여요.</p>
+        </section>
+      )}
 
       {/* KPI */}
       <section className={styles.kpis}>

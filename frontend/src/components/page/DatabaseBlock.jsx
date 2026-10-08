@@ -759,6 +759,13 @@ export default function DatabaseBlock({
           </thead>
 
           <tbody>
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={columns.length} className="db-empty-row">
+                  아직 항목이 없어요. 아래의 &apos;행 추가&apos;를 눌러보세요.
+                </td>
+              </tr>
+            )}
             {rows.map((row) => {
               const linkedPage = row.pageId ? pagesById[row.pageId] : null;
 

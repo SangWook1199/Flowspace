@@ -127,7 +127,7 @@ export default function WorkspaceInviteStep({
       {/* 초대 목록 */}
       <div className="workspace-member-list">
         {members.length === 0 ? (
-          <div className="workspace-empty">아직 초대한 팀원이 없습니다.</div>
+          <div className="workspace-empty">아직 초대한 팀원이 없어요.</div>
         ) : (
           members.map((member) => (
             <div className="workspace-member-chip" key={member.id}>

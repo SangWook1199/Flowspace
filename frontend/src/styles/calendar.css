@@ -247,6 +247,13 @@
   gap: 10px;
 }
 
+.railEmpty {
+  margin: 0;
+  padding: 4px 2px;
+  color: #8c959f;
+  font-size: 12.5px;
+}
+
 .railSprintGroup {
   display: flex;
   flex-direction: column;

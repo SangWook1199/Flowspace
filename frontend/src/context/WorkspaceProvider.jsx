@@ -115,6 +115,12 @@ export function WorkspaceProvider({ children }) {
   // 화면의 pages는 서버 목록에 "서버에 만드는 중인 임시 페이지"를 더한 값이에요(블록은 페이지 상세에서 따로 받아요).
   const [pages, setPages] = useState([]);
   const [members, setMembers] = useState([]);
+  // 팀원 목록을 못 받았을 때의 안내 문구(받으면 null). 이전 목록은 그대로 두고 문구만 알려요.
+  const [membersError, setMembersError] = useState(null);
+  // 팀원 목록 오류 토스트를 실패 한 번에 한 번만 띄우려고, 이미 알렸는지 기억해요(소켓 재연결 등으로 다시 받다 실패해도 반복하지 않아요).
+  const membersErrorNotified = useRef(false);
+  // loadMembers가 notify 모양이 바뀔 때마다 다시 만들어져 팀원을 재요청하지 않게 ref로 최신 값을 들고 써요.
+  const notifyRef = useRef(notify);
   // 어느 워크스페이스의 페이지까지 불러왔는지. 현재 워크스페이스와 다르면 "불러오는 중"이에요.
   const [pagesLoadedFor, setPagesLoadedFor] = useState(null);
   const [pagesError, setPagesError] = useState(null);
@@ -126,6 +132,7 @@ export function WorkspaceProvider({ children }) {
 
   useEffect(() => {
     pagesRef.current = pages;
+    notifyRef.current = notify;
   });
 
   // silent: 화면을 "불러오는 중"으로 바꾸지 않고 조용히 서버 상태와 맞춰요(삭제·복원 뒤 등).
@@ -165,10 +172,20 @@ export function WorkspaceProvider({ children }) {
       try {
         const list = await workspaceApi.getMembers(workspaceId, userId);
         // 그 사이 워크스페이스를 바꿨으면(더 새 요청이 있으면) 버려요.
-        if (id === membersRequestId.current) setMembers(list);
-      } catch {
-        // 팀원 목록을 못 불러와도 화면은 계속 써요(헤더의 팀원 표시만 비어요).
-        if (id === membersRequestId.current) setMembers([]);
+        if (id !== membersRequestId.current) return;
+        setMembers(list);
+        setMembersError(null);
+        membersErrorNotified.current = false;
+      } catch (err) {
+        if (id !== membersRequestId.current) return;
+        // 팀원 목록을 못 불러와도 화면은 계속 써요. 이전 목록은 그대로 두고(비우면 담당자·멘션 목록이 갑자기 사라져요),
+        // 오류 문구를 같이 내보내요. 토스트는 실패가 이어지는 동안 한 번만 띄워요.
+        const message = getErrorMessage(err, "팀원 목록을 불러오지 못했어요.");
+        setMembersError(message);
+        if (!membersErrorNotified.current) {
+          membersErrorNotified.current = true;
+          notifyRef.current(message);
+        }
       }
     },
     [userId],
@@ -199,6 +216,7 @@ export function WorkspaceProvider({ children }) {
     saveTimers.current.clear();
     pendingCreates.current.clear();
     pageIdMapRef.current = {};
+    membersErrorNotified.current = false;
 
     /* eslint-disable react-hooks/set-state-in-effect */
     setPageIdMap({});
@@ -207,6 +225,7 @@ export function WorkspaceProvider({ children }) {
     setWorkspaceError(null);
     setPages([]);
     setMembers([]);
+    setMembersError(null);
     setPagesLoadedFor(null);
     setPagesError(null);
     /* eslint-enable react-hooks/set-state-in-effect */
@@ -522,8 +541,10 @@ export function WorkspaceProvider({ children }) {
   const enterWorkspace = (workspaceId) => {
     pagesRequestId.current++;
     membersRequestId.current++;
+    membersErrorNotified.current = false;
     setPages([]);
     setMembers([]);
+    setMembersError(null);
     setPagesLoadedFor(null);
     setPagesError(null);
     setCurrentWorkspaceId(workspaceId);
@@ -557,7 +578,8 @@ export function WorkspaceProvider({ children }) {
     try {
       page = await pageApi.createPage(workspace.id);
     } catch {
-      // 첫 페이지를 못 만들어도 워크스페이스는 쓸 수 있어요(사이드바에서 새로 만들면 돼요).
+      // 첫 페이지를 못 만들어도 워크스페이스는 쓸 수 있어요(사이드바에서 새로 만들면 돼요). 대신 토스트로 알려요.
+      notify("워크스페이스는 만들었지만 첫 페이지를 만들지 못했어요. 사이드바에서 새 페이지를 만들어 주세요.");
     }
 
     const failedInvites = [];
@@ -607,6 +629,12 @@ export function WorkspaceProvider({ children }) {
     await reloadMembers();
   };
 
+  // 멤버를 관리자로 올리거나 멤버로 내려요(소유자만 — 서버가 확인해요).
+  const changeMemberRoleInCurrentWorkspace = async (memberId, role) => {
+    await workspaceApi.changeMemberRole(currentWorkspaceId, memberId, role);
+    await reloadMembers();
+  };
+
   // 소유권을 넘기면 내 역할과 멤버들의 역할이 바뀌니까 워크스페이스 목록(내 역할)과 멤버를 다시 받아요.
   const transferCurrentOwnership = async (memberId) => {
     await workspaceApi.transferOwnership(currentWorkspaceId, memberId);
@@ -645,11 +673,13 @@ export function WorkspaceProvider({ children }) {
     updateCurrentWorkspace,
     inviteToCurrentWorkspace,
     removeMemberFromCurrentWorkspace,
+    changeMemberRoleInCurrentWorkspace,
     transferCurrentOwnership,
     leaveCurrentWorkspace,
     deleteCurrentWorkspace,
     reloadMembers,
     setMemberPresence,
+    membersError,
     // 페이지
     pages,
     setPages,

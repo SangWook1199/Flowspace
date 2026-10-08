@@ -240,7 +240,7 @@ export default function KanbanColumn({
                   열 접기
                 </button>
 
-                {statuses.length > 1 && (
+                {statuses.length > 1 && onStatusDelete && (
                   <button
                     type="button"
                     className="danger"

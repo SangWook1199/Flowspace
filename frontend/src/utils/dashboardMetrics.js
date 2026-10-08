@@ -71,7 +71,7 @@ export const buildKpis = (kpiMeta, { banner, tasks, schedule, members }) => {
   const values = {
     completion: banner
       ? { value: `${banner.progress}%`, note: `${banner.completed} / ${banner.total} 작업 완료` }
-      : { value: "-", note: "진행 중인 스프린트 없음" },
+      : { value: "-", note: "진행 중인 스프린트가 없어요" },
     todayTasks: { value: `${openTasks}건`, note: `전체 ${tasks.length}건 중` },
     todaySchedule: { value: `${schedule.length}건`, note: "오늘 예정된 일정" },
     online: {

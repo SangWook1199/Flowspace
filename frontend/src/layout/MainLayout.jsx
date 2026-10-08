@@ -9,6 +9,7 @@ import { useAuth } from "../context/useAuth";
 import useDialog from "../context/useDialog";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { MemberProfileProvider } from "../context/MemberProfileProvider";
+import { isAdminOrOwner } from "../utils/workspaceRole";
 
 // 워크스페이스 · 페이지 · 스프린트 태스크 상태와 그걸 바꾸는 함수들은 예전엔 여기서
 // 들고 있었는데, MainLayout이 다시 마운트될 때마다(예: /workspace/create 같은
@@ -126,6 +127,8 @@ export default function MainLayout() {
         workspaces={workspaces}
         currentWorkspace={currentWorkspace}
         sprints={sidebarSprints}
+        pagesReady={!pagesLoading && !pagesError}
+        sprintsReady={!sprintDataLoading && !sprintDataError}
         onSwitchWorkspace={switchWorkspace}
         onCreatePage={createPage}
         onDeletePage={deletePage}
@@ -141,6 +144,8 @@ export default function MainLayout() {
         <Outlet
           context={{
             workspaceId: currentWorkspace.id,
+            // 관리자 이상만 스프린트·칸반 상태 삭제 같은 되돌리기 어려운 관리 작업을 할 수 있어요.
+            canManageWorkspace: isAdminOrOwner(currentWorkspace.role),
             pages,
             pagesInWorkspace,
             setPages,

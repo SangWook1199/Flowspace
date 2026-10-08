@@ -279,6 +279,8 @@ public class BlockDatabaseService {
         workspaceMemberRepository.findByWorkspaceAndUser(database.getBlock().getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
+        PageGuard.requireActive(database.getBlock().getPage());
+
         return DatabaseResponse.from(database);
     }
 
@@ -293,6 +295,8 @@ public class BlockDatabaseService {
 
         workspaceMemberRepository.findByWorkspaceAndUser(database.getBlock().getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        PageGuard.requireActive(database.getBlock().getPage());
 
         String title = request.title().isBlank() ? "제목 없음" : request.title();
 
@@ -313,6 +317,8 @@ public class BlockDatabaseService {
         workspaceMemberRepository.findByWorkspaceAndUser(database.getBlock().getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
+        PageGuard.requireActive(database.getBlock().getPage());
+
         blockDatabaseRepository.delete(database);
     }
 
@@ -328,6 +334,8 @@ public class BlockDatabaseService {
 
         workspaceMemberRepository.findByWorkspaceAndUser(database.getBlock().getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        PageGuard.requireActive(database.getBlock().getPage());
 
         int position = columnRepository.findByDatabaseOrderByPositionAsc(database).size();
 
@@ -364,6 +372,8 @@ public class BlockDatabaseService {
         workspaceMemberRepository.findByWorkspaceAndUser(column.getDatabase().getBlock().getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
+        PageGuard.requireActive(column.getDatabase().getBlock().getPage());
+
         column.update(request.name(), request.type());
 
         // 프론트엔드 retypeColumn()과 동일하게, 타입이 SELECT/MULTI_SELECT/
@@ -386,6 +396,8 @@ public class BlockDatabaseService {
         workspaceMemberRepository.findByWorkspaceAndUser(column.getDatabase().getBlock().getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
+        PageGuard.requireActive(column.getDatabase().getBlock().getPage());
+
         column.updateWidth(request.width());
 
         return toColumnResponse(column);
@@ -402,6 +414,8 @@ public class BlockDatabaseService {
 
         workspaceMemberRepository.findByWorkspaceAndUser(database.getBlock().getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        PageGuard.requireActive(database.getBlock().getPage());
 
         for (BlockDatabaseColumnOrderItem item : request.columns()) {
 
@@ -428,6 +442,8 @@ public class BlockDatabaseService {
         workspaceMemberRepository.findByWorkspaceAndUser(column.getDatabase().getBlock().getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
+        PageGuard.requireActive(column.getDatabase().getBlock().getPage());
+
         columnRepository.delete(column);
     }
 
@@ -443,6 +459,8 @@ public class BlockDatabaseService {
 
         workspaceMemberRepository.findByWorkspaceAndUser(column.getDatabase().getBlock().getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        PageGuard.requireActive(column.getDatabase().getBlock().getPage());
 
         int position = optionRepository.findByColumnOrderByPositionAsc(column).size();
 
@@ -469,6 +487,8 @@ public class BlockDatabaseService {
             .findByWorkspaceAndUser(option.getColumn().getDatabase().getBlock().getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
+        PageGuard.requireActive(option.getColumn().getDatabase().getBlock().getPage());
+
         option.update(request.value(), request.color() == null ? WorkspaceColor.GRAY : request.color(),
             request.statusGroup());
 
@@ -486,6 +506,8 @@ public class BlockDatabaseService {
 
         workspaceMemberRepository.findByWorkspaceAndUser(column.getDatabase().getBlock().getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        PageGuard.requireActive(column.getDatabase().getBlock().getPage());
 
         for (BlockDatabaseColumnOptionOrderItem item : request.options()) {
 
@@ -513,6 +535,8 @@ public class BlockDatabaseService {
             .findByWorkspaceAndUser(option.getColumn().getDatabase().getBlock().getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
+        PageGuard.requireActive(option.getColumn().getDatabase().getBlock().getPage());
+
         optionRepository.delete(option);
     }
 
@@ -527,6 +551,8 @@ public class BlockDatabaseService {
 
         workspaceMemberRepository.findByWorkspaceAndUser(database.getBlock().getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        PageGuard.requireActive(database.getBlock().getPage());
 
         int position = rowRepository.findByDatabaseOrderByPositionAsc(database).size();
 
@@ -565,6 +591,8 @@ public class BlockDatabaseService {
         workspaceMemberRepository.findByWorkspaceAndUser(database.getBlock().getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
+        PageGuard.requireActive(database.getBlock().getPage());
+
         for (BlockDatabaseRowOrderItem item : request.rows()) {
 
             BlockDatabaseRow row = rowRepository.findById(item.rowId())
@@ -590,6 +618,8 @@ public class BlockDatabaseService {
         workspaceMemberRepository.findByWorkspaceAndUser(row.getDatabase().getBlock().getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
+        PageGuard.requireActive(row.getDatabase().getBlock().getPage());
+
         // 행 = 페이지라서, 행을 지우면 연결된 페이지(안의 내용까지)도 같이
         // 소프트 삭제해요 — 페이지 쪽 삭제만 하고 행을 남겨두면 "삭제된
         // 페이지를 가리키는 고아 행"이 생겨서요.
@@ -611,6 +641,8 @@ public class BlockDatabaseService {
 
         workspaceMemberRepository.findByWorkspaceAndUser(database.getBlock().getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        PageGuard.requireActive(database.getBlock().getPage());
 
         BlockDatabaseRow row = rowRepository.findById(request.rowId())
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.DATABASE_ROW_NOT_FOUND));
@@ -644,6 +676,8 @@ public class BlockDatabaseService {
         workspaceMemberRepository.findByWorkspaceAndUser(database.getBlock().getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
+        PageGuard.requireActive(database.getBlock().getPage());
+
         List<BlockDatabaseColumnResponse> columns = columnRepository.findByDatabaseOrderByPositionAsc(database).stream()
             .map(this::toColumnResponse).toList();
 
@@ -670,6 +704,8 @@ public class BlockDatabaseService {
 
         workspaceMemberRepository.findByWorkspaceAndUser(database.getBlock().getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        PageGuard.requireActive(database.getBlock().getPage());
 
         database.updateViewType(request.viewType());
 

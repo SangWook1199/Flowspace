@@ -228,6 +228,13 @@
   margin-top: 8px;
   margin-bottom: 6px;
 }
+/* 페이지·스프린트 목록이 비었을 때 보여주는 짧은 안내 */
+.pageArea > p.sidebarEmpty,
+.sidebarSprints > p.sidebarEmpty {
+  margin: 0 11px 10px;
+  color: #94a3b8;
+  font-size: 12px;
+}
 .pageSectionHead button {
   display: inline-flex;
   align-items: center;

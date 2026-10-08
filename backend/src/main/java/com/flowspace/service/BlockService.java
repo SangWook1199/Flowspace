@@ -98,6 +98,8 @@ public class BlockService {
 
         blockRepository.save(block);
 
+        page.bumpVersion();
+
         return BlockResponse.from(block);
     }
 
@@ -129,9 +131,13 @@ public class BlockService {
         workspaceMemberRepository.findByWorkspaceAndUser(block.getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
+        PageGuard.requireActive(block.getPage());
+
         validateContent(request.content());
 
         block.update(request.type() == null ? BlockType.TEXT : request.type(), request.content(), user);
+
+        block.getPage().bumpVersion();
 
         return BlockResponse.from(block);
     }
@@ -148,9 +154,13 @@ public class BlockService {
         workspaceMemberRepository.findByWorkspaceAndUser(block.getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
+        PageGuard.requireActive(block.getPage());
+
         if (block.getImageFile() != null) {
             fileService.delete(block.getImageFile());
         }
+
+        block.getPage().bumpVersion();
 
         blockRepository.delete(block);
     }
@@ -178,6 +188,8 @@ public class BlockService {
 
             block.updatePosition(BigDecimal.valueOf(item.position()));
         }
+
+        page.bumpVersion();
     }
 
     // 블록 이동
@@ -191,6 +203,8 @@ public class BlockService {
 
         workspaceMemberRepository.findByWorkspaceAndUser(block.getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        PageGuard.requireActive(block.getPage());
 
         Block parent = null;
 
@@ -207,6 +221,8 @@ public class BlockService {
 
         block.updateParent(parent);
         block.updatePosition(BigDecimal.valueOf(request.position()));
+
+        block.getPage().bumpVersion();
 
         return BlockResponse.from(block);
     }
@@ -232,11 +248,18 @@ public class BlockService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        Page page = pageRepository.findByPageIdAndIsDeletedFalse(pageId)
+        // 페이지 행을 잠그고 읽어서, 같은 페이지의 저장이 한 줄로 차례대로 처리되게 해요.
+        Page page = pageRepository.findActiveForUpdate(pageId)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND));
 
         workspaceMemberRepository.findByWorkspaceAndUser(page.getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        // 내가 받아온 버전이 최신이 아니면(그 사이 다른 사람이 저장했으면) 덮어쓰지 않고 409로 돌려보내요.
+        // 화면이 최신 내용을 합친 뒤 다시 저장해요.
+        if (request.baseVersion() != null && !request.baseVersion().equals(page.getVersion())) {
+            throw new FlowSpaceException(ErrorCode.PAGE_VERSION_CONFLICT);
+        }
 
         List<BlockSyncItem> items = request.blocks();
 
@@ -334,7 +357,9 @@ public class BlockService {
             results.add(new BlockSyncResult(item.clientId(), BlockResponse.from(byClientId.get(item.clientId()))));
         }
 
-        return new BlockSyncResponse(results);
+        page.bumpVersion();
+
+        return new BlockSyncResponse(results, page.getVersion());
     }
 
     // 동기화 요청 검증 (clientId 중복, 부모는 자식보다 앞에 위치)
@@ -452,18 +477,17 @@ public class BlockService {
         workspaceMemberRepository.findByWorkspaceAndUser(block.getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        // 이미지 블록은 이미지 파일만 허용하고, 파일 블록(FILE)은 종류와 상관없이 올릴 수 있어요.
-        if (block.getType() != BlockType.FILE
-            && (multipartFile.getContentType() == null || !multipartFile.getContentType().startsWith("image/"))) {
-            throw new FlowSpaceException(ErrorCode.INVALID_IMAGE_FILE);
-        }
+        PageGuard.requireActive(block.getPage());
 
-        // 기존 이미지 삭제
+        // 이미지 블록은 이미지 파일만 허용하고(확장자·형식까지 확인), 파일 블록(FILE)은 위험한 확장자만 아니면 올릴 수 있어요.
+        // 새 파일을 먼저 저장해서 성공한 뒤에 기존 파일을 지워요(실패해도 기존 이미지가 남아요).
+        File image = block.getType() == BlockType.FILE
+            ? fileService.upload(multipartFile, block.getPage().getWorkspace(), email)
+            : fileService.uploadImage(multipartFile, block.getPage().getWorkspace(), email);
+
         if (block.getImageFile() != null) {
             fileService.delete(block.getImageFile());
         }
-
-        File image = fileService.upload(multipartFile, block.getPage().getWorkspace(), email);
 
         block.updateImage(image);
 
@@ -481,6 +505,8 @@ public class BlockService {
 
         workspaceMemberRepository.findByWorkspaceAndUser(block.getPage().getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        PageGuard.requireActive(block.getPage());
 
         if (block.getImageFile() != null) {
             fileService.delete(block.getImageFile());

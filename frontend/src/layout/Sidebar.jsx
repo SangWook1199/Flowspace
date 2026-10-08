@@ -9,6 +9,7 @@ import TrashPopover from "./TrashPopover";
 import WorkspaceIcon from "../components/common/WorkspaceIcon";
 import useDialog from "../context/useDialog";
 import usePinnedPages from "../hooks/usePinnedPages";
+import { isAdminOrOwner } from "../utils/workspaceRole";
 
 // 페이지 줄을 드래그할 때 dataTransfer에 심는 커스텀 MIME이에요. Firefox는
 // dragstart에서 setData를 한 번도 안 부르면 드래그 자체를 시작하지 않아요.
@@ -44,6 +45,9 @@ export default function Sidebar({
   workspaces,
   currentWorkspace,
   sprints = [],
+  // 목록을 아직 불러오는 중이거나 실패했을 땐 "없어요" 안내를 숨겨요(없는 게 아니라 못 받은 거라서요).
+  pagesReady = true,
+  sprintsReady = true,
   onSwitchWorkspace,
   onCreatePage,
   onDeletePage,
@@ -443,6 +447,10 @@ export default function Sidebar({
 
         {pagesOpen && (
           <>
+            {pagesReady && regularPages.length === 0 && pinnedPages.length === 0 && (
+              <p className="sidebarEmpty">아직 페이지가 없어요.</p>
+            )}
+
             {visibleRegular.map((page) => (
               <Fragment key={page.id}>
                 {pageDropTarget?.beforePageId === page.id && (
@@ -504,6 +512,8 @@ export default function Sidebar({
 
           <p>현재 스프린트</p>
 
+          {sprintsReady && sprints.length === 0 && <p className="sidebarEmpty">아직 스프린트가 없어요.</p>}
+
           {sprints.slice(0, 3).map((sprint) => (
             <button
               key={sprint.id}
@@ -562,12 +572,15 @@ export default function Sidebar({
           {currentWorkspace?.role === "MEMBER" && (
             <em className="workspaceSettingsBtn__badge">멤버</em>
           )}
+          {currentWorkspace?.role === "ADMIN" && (
+            <em className="workspaceSettingsBtn__badge">관리자</em>
+          )}
         </button>
 
         <TrashPopover
           pages={trashedPages}
           allPages={pages}
-          canManage={currentWorkspace?.role === "OWNER"}
+          canManage={isAdminOrOwner(currentWorkspace?.role)}
           onRestore={handleRestorePage}
           onPermanentlyDelete={handlePermanentlyDeletePage}
           onEmpty={handleEmptyTrash}

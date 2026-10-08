@@ -2,11 +2,14 @@ package com.flowspace.service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -145,6 +148,14 @@ public class NotificationService {
         LocalDateTime startOfToday = today.atStartOfDay();
         int sent = 0;
 
+        // 오늘 이미 보낸 (받는 사람, 작업) 쌍을 한 번에 읽어서 중복 전송을 막아요.
+        Set<String> alreadySent = new HashSet<>();
+
+        for (Object[] pair : notificationRepository.findRecipientRefPairs(NotificationType.TASK_DUE_SOON,
+            startOfToday)) {
+            alreadySent.add(pair[0] + ":" + pair[1]);
+        }
+
         for (int plusDays = 0; plusDays <= 1; plusDays++) {
 
             String when = plusDays == 0 ? "오늘" : "내일";
@@ -152,14 +163,25 @@ public class NotificationService {
             List<Task> tasks = taskRepository.findByEndDateAndStatus_CategoryNot(today.plusDays(plusDays),
                 TaskStatusCategory.DONE);
 
+            if (tasks.isEmpty()) {
+                continue;
+            }
+
+            // 담당자도 작업마다 따로 읽지 않고 한 번에 읽어요.
+            Map<Long, List<TaskAssignee>> assigneesByTask = new LinkedHashMap<>();
+
+            for (TaskAssignee assignee : taskAssigneeRepository.findByTasks(tasks)) {
+                assigneesByTask.computeIfAbsent(assignee.getTask().getTaskId(), key -> new ArrayList<>())
+                    .add(assignee);
+            }
+
             for (Task task : tasks) {
 
-                for (TaskAssignee assignee : taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task)) {
+                for (TaskAssignee assignee : assigneesByTask.getOrDefault(task.getTaskId(), List.of())) {
 
                     User user = assignee.getUser();
 
-                    if (notificationRepository.existsByUserAndTypeAndRefIdAndCreatedAtAfter(user,
-                        NotificationType.TASK_DUE_SOON, task.getTaskId(), startOfToday)) {
+                    if (!alreadySent.add(user.getUserId() + ":" + task.getTaskId())) {
                         continue;
                     }
 

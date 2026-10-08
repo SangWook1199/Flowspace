@@ -1,5 +1,6 @@
 package com.flowspace.repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,6 +19,11 @@ import com.flowspace.entity.enums.TaskStatusCategory;
 public interface TaskAssigneeRepository extends JpaRepository<TaskAssignee, Long> {
 
     List<TaskAssignee> findByTaskOrderByTaskAssigneeIdAsc(Task task);
+
+    // 여러 작업의 담당자를 한 번에 읽어요(사용자·프로필 이미지까지 함께)
+    @Query("select ta from TaskAssignee ta join fetch ta.user u left join fetch u.profileFile "
+        + "where ta.task in :tasks order by ta.taskAssigneeId asc")
+    List<TaskAssignee> findByTasks(@Param("tasks") Collection<Task> tasks);
 
     Optional<TaskAssignee> findByTaskAndUser(Task task, User user);
 

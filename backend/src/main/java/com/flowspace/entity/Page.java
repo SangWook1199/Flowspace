@@ -51,6 +51,11 @@ public class Page extends BaseEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    // 블록을 저장할 때마다 1씩 올라가는 번호예요. 오래된 화면이 최신 내용을 덮어쓰는 걸 막는 데 써요.
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
+
     public void update(String title, String icon, File coverFile, Page parentPage) {
         this.title = title;
         this.icon = icon;
@@ -66,6 +71,11 @@ public class Page extends BaseEntity {
     public void delete(LocalDateTime deletedAt) {
         this.isDeleted = true;
         this.deletedAt = deletedAt;
+    }
+
+    // 블록 내용이 바뀔 때마다 부르는 버전 올리기
+    public void bumpVersion() {
+        this.version = (this.version == null ? 0L : this.version) + 1;
     }
 
     public void restore() {

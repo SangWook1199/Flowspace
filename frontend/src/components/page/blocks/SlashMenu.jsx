@@ -37,7 +37,7 @@ export default function SlashMenu({ query, options, activeIndex, onHoverIndex, o
   if (filtered.length === 0) {
     return (
       <div className={cls} ref={menuRef}>
-        <p className="block-slash-empty">일치하는 블록이 없습니다.</p>
+        <p className="block-slash-empty">일치하는 블록이 없어요.</p>
       </div>
     );
   }

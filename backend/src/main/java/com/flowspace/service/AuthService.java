@@ -126,7 +126,8 @@ public class AuthService {
 
         String token = request.refreshToken();
 
-        if (!jwtProvider.validateToken(token)) {
+        // 서명이 맞는 refresh token만 받아요(access token을 넣어도 재발급되지 않아요).
+        if (!jwtProvider.isRefreshToken(token)) {
             throw new FlowSpaceException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
 
@@ -138,6 +139,11 @@ public class AuthService {
         }
 
         User user = saved.getUser();
+
+        // 탈퇴한 계정은 재발급하지 않아요.
+        if (user.isWithdrawn()) {
+            throw new FlowSpaceException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
 
         // 동시에 여러 탭이 재발급을 요청해도 서로 끊기지 않도록 refresh token은 그대로 돌려줘요.
         String accessToken = jwtProvider.createAccessToken(user);
@@ -180,7 +186,7 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        File file = fileService.upload(image, profileWorkspace(user), email);
+        File file = fileService.uploadImage(image, profileWorkspace(user), email);
 
         user.updateProfileImage(file);
 
@@ -196,7 +202,7 @@ public class AuthService {
         File profileFile = user.getProfileFile();
 
         if (image != null && !image.isEmpty()) {
-            profileFile = fileService.upload(image, profileWorkspace(user), email);
+            profileFile = fileService.uploadImage(image, profileWorkspace(user), email);
         }
 
         // 한 줄 소개는 앞뒤 공백을 지우고, 비어 있으면 소개를 지운 것으로 봐요.

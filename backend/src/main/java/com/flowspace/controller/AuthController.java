@@ -103,7 +103,7 @@ public class AuthController {
 
     @Operation(summary = "회원 탈퇴", description = "개인정보를 지우고 '탈퇴한 사용자'로 익명 처리합니다. 이메일 계정은 비밀번호, 소셜 계정은 이메일 입력으로 확인합니다.")
     @PostMapping("/me/withdraw")
-    public void withdraw(@RequestBody WithdrawRequest request, @AuthenticationPrincipal UserDetails userDetails) {
+    public void withdraw(@Valid @RequestBody WithdrawRequest request, @AuthenticationPrincipal UserDetails userDetails) {
 
         accountService.withdraw(request, userDetails.getUsername());
     }

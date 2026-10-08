@@ -26,6 +26,10 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     boolean existsByUserAndTypeAndRefIdAndCreatedAtAfter(User user, NotificationType type, Long refId,
         LocalDateTime after);
 
+    // 오늘 이미 보낸 (받는 사람, 대상) 쌍을 한 번에 읽어요: [userId, refId]
+    @Query("select n.user.userId, n.refId from Notification n where n.type = :type and n.createdAt > :after")
+    List<Object[]> findRecipientRefPairs(@Param("type") NotificationType type, @Param("after") LocalDateTime after);
+
     @Modifying
     @Query("update Notification n set n.isRead = true where n.user = :user and n.isRead = false")
     int markAllRead(@Param("user") User user);

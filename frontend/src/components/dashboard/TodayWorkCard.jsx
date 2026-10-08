@@ -149,7 +149,7 @@ export default function TodayWorkCard({ tasks = [] }) {
                 colSpan={6}
                 style={{ textAlign: "center", color: "#94a3b8", padding: "24px 0" }}
               >
-                {tasks.length === 0 ? "오늘 할 작업이 없어요." : "해당하는 작업이 없어요."}
+                {tasks.length === 0 ? "오늘 할 작업이 없어요." : "조건에 맞는 작업이 없어요."}
               </td>
             </tr>
           )}

@@ -1,7 +1,10 @@
 package com.flowspace.service;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -23,6 +26,7 @@ import com.flowspace.dto.task.SubTaskCreateRequest;
 import com.flowspace.dto.task.SubTaskReorderRequest;
 import com.flowspace.dto.task.SubTaskResponse;
 import com.flowspace.dto.task.SubTaskUpdateRequest;
+import com.flowspace.entity.Comment;
 import com.flowspace.entity.Sprint;
 import com.flowspace.entity.SubTask;
 import com.flowspace.entity.Task;
@@ -30,11 +34,13 @@ import com.flowspace.entity.TaskAssignee;
 import com.flowspace.entity.TaskStatus;
 import com.flowspace.entity.User;
 import com.flowspace.entity.Workspace;
+import com.flowspace.entity.WorkspaceMember;
 import com.flowspace.entity.WorkspaceTaskStatus;
 import com.flowspace.entity.enums.ActivityTargetType;
 import com.flowspace.entity.enums.ActivityType;
 import com.flowspace.entity.enums.NotificationType;
 import com.flowspace.entity.enums.TaskStatusCategory;
+import com.flowspace.entity.enums.WorkspaceRole;
 import com.flowspace.entity.id.WorkspaceTaskStatusId;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
@@ -192,8 +198,13 @@ public class TaskService {
             .findById(new WorkspaceTaskStatusId(request.workspaceId(), statusId))
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.TASK_STATUS_NOT_FOUND));
 
-        workspaceMemberRepository.findByWorkspaceAndUser(mapping.getWorkspace(), user)
+        WorkspaceMember member = workspaceMemberRepository.findByWorkspaceAndUser(mapping.getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        // 상태 삭제는 모든 작업의 상태를 바꾸는 일이라 관리자 이상만 할 수 있어요.
+        if (!member.getRole().isAtLeast(WorkspaceRole.ADMIN)) {
+            throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
+        }
 
         // 마지막 남은 상태는 삭제할 수 없고, 작업을 옮길 대상이 삭제하는 상태 자신일 수도 없다
         if (workspaceTaskStatusRepository.countByWorkspace(mapping.getWorkspace()) <= 1) {
@@ -305,13 +316,7 @@ public class TaskService {
         workspaceMemberRepository.findByWorkspaceAndUser(sprint.getWorkspace(), user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        return taskRepository.findBySprintOrderByPositionAsc(sprint).stream().map(task -> {
-            List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
-            List<CommentResponse> comments = getTaskCommentResponses(task);
-            List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task);
-
-            return TaskResponse.from(task, assignees, subtasks, comments);
-        }).toList();
+        return toTaskResponses(taskRepository.findBySprintOrderByPositionAsc(sprint));
     }
 
     // Task 단건 조회
@@ -433,13 +438,7 @@ public class TaskService {
         workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
 
-        return taskRepository.findByWorkspaceAndSprintIsNullOrderByPositionAsc(workspace).stream().map(task -> {
-            List<SubTask> subtasks = subTaskRepository.findByTaskOrderByPositionAsc(task);
-            List<CommentResponse> comments = getTaskCommentResponses(task);
-            List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task);
-
-            return TaskResponse.from(task, assignees, subtasks, comments);
-        }).toList();
+        return toTaskResponses(taskRepository.findByWorkspaceAndSprintIsNullOrderByPositionAsc(workspace));
     }
 
     // Task 상태 변경
@@ -748,11 +747,79 @@ public class TaskService {
 
         String search = keyword == null ? "" : keyword;
 
-        return taskRepository.findByWorkspaceAndTitleContainingIgnoreCase(workspace, search).stream().map(task -> {
-            List<TaskAssignee> assignees = taskAssigneeRepository.findByTaskOrderByTaskAssigneeIdAsc(task);
+        List<Task> tasks = taskRepository.findByWorkspaceAndTitleContainingIgnoreCase(workspace, search);
 
-            return TaskSearchResponse.from(task, assignees);
-        }).toList();
+        Map<Long, List<TaskAssignee>> assigneesByTask = groupAssignees(tasks);
+
+        return tasks.stream()
+            .map(task -> TaskSearchResponse.from(task, assigneesByTask.getOrDefault(task.getTaskId(), List.of())))
+            .toList();
+    }
+
+    // 작업 목록을 응답으로 바꿔요. 하위 작업·담당자·댓글을 작업마다 따로 읽지 않고 한 번에 읽어서 나눠 담아요.
+    private List<TaskResponse> toTaskResponses(List<Task> tasks) {
+
+        if (tasks.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, List<SubTask>> subtasksByTask = new HashMap<>();
+
+        for (SubTask subTask : subTaskRepository.findByTaskInOrderByPositionAsc(tasks)) {
+            subtasksByTask.computeIfAbsent(subTask.getTask().getTaskId(), key -> new ArrayList<>()).add(subTask);
+        }
+
+        Map<Long, List<TaskAssignee>> assigneesByTask = groupAssignees(tasks);
+
+        Map<Long, List<CommentResponse>> commentsByTask = getTaskCommentResponses(tasks);
+
+        return tasks.stream()
+            .map(task -> TaskResponse.from(task, assigneesByTask.getOrDefault(task.getTaskId(), List.of()),
+                subtasksByTask.getOrDefault(task.getTaskId(), List.of()),
+                commentsByTask.getOrDefault(task.getTaskId(), List.of())))
+            .toList();
+    }
+
+    // 여러 작업의 담당자를 한 번에 읽어서 작업 id별로 나눠 담아요.
+    private Map<Long, List<TaskAssignee>> groupAssignees(List<Task> tasks) {
+
+        Map<Long, List<TaskAssignee>> result = new HashMap<>();
+
+        if (tasks.isEmpty()) {
+            return result;
+        }
+
+        for (TaskAssignee assignee : taskAssigneeRepository.findByTasks(tasks)) {
+            result.computeIfAbsent(assignee.getTask().getTaskId(), key -> new ArrayList<>()).add(assignee);
+        }
+
+        return result;
+    }
+
+    // 여러 작업의 댓글(대댓글 포함)을 한 번에 읽어서 작업 id별로 나눠 담아요.
+    private Map<Long, List<CommentResponse>> getTaskCommentResponses(List<Task> tasks) {
+
+        Map<Long, List<CommentResponse>> result = new HashMap<>();
+
+        List<Comment> roots = commentRepository.findByTaskInAndParentCommentIsNullOrderByCreatedAtAsc(tasks);
+
+        if (roots.isEmpty()) {
+            return result;
+        }
+
+        Map<Long, List<CommentResponse>> repliesByParent = new HashMap<>();
+
+        for (Comment reply : commentRepository.findByParentCommentInOrderByCreatedAtAsc(roots)) {
+            repliesByParent.computeIfAbsent(reply.getParentComment().getCommentId(), key -> new ArrayList<>())
+                .add(CommentResponse.from(reply, List.of()));
+        }
+
+        for (Comment root : roots) {
+            result.computeIfAbsent(root.getTask().getTaskId(), key -> new ArrayList<>()).add(
+                CommentResponse.from(root, repliesByParent.getOrDefault(root.getCommentId(), List.of())));
+        }
+
+        return result;
     }
 
     // Task 댓글 조회

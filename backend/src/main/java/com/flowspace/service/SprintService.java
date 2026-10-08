@@ -26,6 +26,7 @@ import com.flowspace.entity.TaskSnapshot;
 import com.flowspace.entity.TaskSnapshotAssignee;
 import com.flowspace.entity.User;
 import com.flowspace.entity.Workspace;
+import com.flowspace.entity.WorkspaceMember;
 import com.flowspace.entity.WorkspaceTaskStatus;
 import com.flowspace.entity.enums.ActivityTargetType;
 import com.flowspace.entity.enums.ActivityType;
@@ -35,6 +36,7 @@ import com.flowspace.entity.enums.DatabaseViewType;
 import com.flowspace.entity.enums.NotificationType;
 import com.flowspace.entity.enums.SprintStatus;
 import com.flowspace.entity.enums.TaskStatusCategory;
+import com.flowspace.entity.enums.WorkspaceRole;
 import com.flowspace.entity.BlockDatabaseRow;
 import com.flowspace.entity.BlockDatabaseCell;
 import com.flowspace.exception.ErrorCode;
@@ -246,7 +248,8 @@ public class SprintService {
         Sprint sprint = sprintRepository.findById(sprintId)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.SPRINT_NOT_FOUND));
 
-        validateMember(sprint.getWorkspace(), user);
+        // 스프린트 삭제는 관리자 이상만 할 수 있어요.
+        validateAdmin(sprint.getWorkspace(), user);
 
         moveTasksToBacklog(sprint);
 
@@ -257,6 +260,16 @@ public class SprintService {
     private void validateMember(Workspace workspace, User user) {
         workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+    }
+
+    // 워크스페이스 관리자 이상 확인
+    private void validateAdmin(Workspace workspace, User user) {
+        WorkspaceMember member = workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
+            .orElseThrow(() -> new FlowSpaceException(ErrorCode.ACCESS_DENIED));
+
+        if (!member.getRole().isAtLeast(WorkspaceRole.ADMIN)) {
+            throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
+        }
     }
 
     // 스프린트 날짜 검증

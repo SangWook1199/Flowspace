@@ -145,6 +145,14 @@
   font-size: 13px;
   text-align: center;
 }
+/* 작업이 하나도 없을 때 표 안에 보여주는 안내 줄 */
+.tableWrap td.emptyRow {
+  padding: 40px 12px;
+  color: #94a3b8;
+  font-size: 13px;
+  text-align: center;
+  cursor: default;
+}
 .tableWrap tbody tr {
   transition: background 0.12s;
 }
@@ -771,6 +779,13 @@
 }
 .comments p small {
   color: #8a97a9;
+}
+/* 하위 작업·댓글이 아직 없을 때 보여주는 짧은 안내 */
+.emptyHint {
+  display: block;
+  margin: 2px 0 10px;
+  color: #94a3b8;
+  font-size: 12px;
 }
 .emptyDetail {
   color: #75849a;

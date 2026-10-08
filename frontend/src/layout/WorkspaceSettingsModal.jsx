@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 
 import { useWorkspace } from "../context/WorkspaceContext";
 import { useAuth } from "../context/useAuth";
+import { isAdminOrOwner } from "../utils/workspaceRole";
 import GeneralPanel from "../components/workspace/settings/GeneralPanel";
 import MembersPanel from "../components/workspace/settings/MembersPanel";
 import DangerPanel from "../components/workspace/settings/DangerPanel";
@@ -24,7 +25,7 @@ const buildTabs = (isOwner) => [
 // 위에 뜨는 모달이 더 자연스럽다고 하셔서 바꿨어요. 배경을 클릭하거나
 // Esc를 누르면 닫혀요 — WorkspaceSwitcher 드롭다운에 썼던 것과 같은
 // 바깥 클릭 패턴이에요. 왼쪽 탭(일반 · 멤버 · 위험 구역)으로 패널을 바꿔요.
-// 수정·추방·소유권 이전·삭제는 소유자만 할 수 있어요(서버도 같은 규칙으로 막아요).
+// 워크스페이스 수정·역할 변경·소유권 이전·삭제는 소유자만, 초대·추방은 관리자 이상만 할 수 있어요(서버도 같은 규칙으로 막아요).
 export default function WorkspaceSettingsModal({ onClose }) {
   const {
     currentWorkspace,
@@ -33,6 +34,7 @@ export default function WorkspaceSettingsModal({ onClose }) {
     updateCurrentWorkspace,
     inviteToCurrentWorkspace,
     removeMemberFromCurrentWorkspace,
+    changeMemberRoleInCurrentWorkspace,
     transferCurrentOwnership,
     leaveCurrentWorkspace,
     deleteCurrentWorkspace,
@@ -43,6 +45,7 @@ export default function WorkspaceSettingsModal({ onClose }) {
 
   const [tab, setTab] = useState("general");
   const isOwner = currentWorkspace?.role === "OWNER";
+  const canManageMembers = isAdminOrOwner(currentWorkspace?.role);
 
   // 나가기·삭제가 끝나면 다른 워크스페이스로 옮겨가니까, 모달을 닫고 홈으로 보내요.
   const finishLeaving = async (action) => {
@@ -173,8 +176,10 @@ export default function WorkspaceSettingsModal({ onClose }) {
               members={members}
               currentUserId={currentUserId}
               isOwner={isOwner}
+              canManage={canManageMembers}
               onInvite={inviteToCurrentWorkspace}
               onRemove={removeMemberFromCurrentWorkspace}
+              onChangeRole={changeMemberRoleInCurrentWorkspace}
               onTransfer={transferCurrentOwnership}
             />
           )}
