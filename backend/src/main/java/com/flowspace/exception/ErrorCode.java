@@ -89,7 +89,18 @@ public enum ErrorCode {
     RETROSPECTIVE_NOT_FOUND(HttpStatus.NOT_FOUND, "회고를 찾을 수 없습니다."),
 
     // Comment
-    COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다."),;
+    COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다."),
+
+    // AI
+    AI_DRAFT_INVALID(HttpStatus.BAD_REQUEST, "AI 초안의 내용이 올바르지 않아요."),
+    AI_PERIOD_TOO_LONG(HttpStatus.BAD_REQUEST, "기간이 너무 길어요. 스프린트 길이를 늘리거나 기간을 줄여 주세요."),
+    AI_DISABLED(HttpStatus.SERVICE_UNAVAILABLE, "AI 기능을 쓸 수 없어요."),
+    AI_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AI 모델에 연결할 수 없어요. 잠시 뒤에 다시 시도해 주세요."),
+    AI_BUSY(HttpStatus.SERVICE_UNAVAILABLE, "지금 AI가 다른 요청을 처리하고 있어요. 잠시 뒤에 다시 시도해 주세요."),
+    AI_JOB_NOT_FOUND(HttpStatus.NOT_FOUND, "AI 초안을 찾을 수 없어요. 시간이 지나 지워졌을 수 있어요."),
+    AI_JOB_IN_PROGRESS(HttpStatus.CONFLICT, "이 워크스페이스에서 이미 AI 초안을 만들고 있어요."),
+    AI_JOB_NOT_READY(HttpStatus.CONFLICT, "AI 초안이 아직 완성되지 않았어요."),
+    AI_JOB_ALREADY_APPLIED(HttpStatus.CONFLICT, "이 AI 초안은 이미 반영했어요."),;
 
     private final HttpStatus status;
     private final String message;

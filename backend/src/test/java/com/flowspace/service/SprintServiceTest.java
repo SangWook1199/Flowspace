@@ -114,7 +114,7 @@ class SprintServiceTest {
     void setUp() {
         user = User.builder().userId(1L).email("a@a.com").nickname("a").build();
         workspace = Workspace.builder().workspaceId(5L).name("w").initials("W").build();
-        sprint = Sprint.builder().sprintId(10L).workspace(workspace).name("스프린트 1").startDate(LocalDate.now())
+        sprint = Sprint.builder().sprintId(10L).workspace(workspace).createdBy(user).name("스프린트 1").startDate(LocalDate.now())
             .endDate(LocalDate.now().plusDays(7)).status(SprintStatus.ACTIVE).build();
 
         when(userRepository.findByEmail("a@a.com")).thenReturn(Optional.of(user));
