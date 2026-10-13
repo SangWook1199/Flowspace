@@ -3,7 +3,8 @@
 ========================================================= */
 
 .kanbanPage {
-  padding: 28px;
+  /* 좌우 여백은 100px(예전 28px)이에요. */
+  padding: 28px 100px;
   background: #f8fafc;
   min-height: 100%;
   display: flex;

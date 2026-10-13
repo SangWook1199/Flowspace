@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowspace.config.AiProperties;
 import com.flowspace.dto.ai.AiDraft;
 import com.flowspace.dto.ai.AiDraftContext;
+import com.flowspace.dto.ai.AiProgressInfo;
 import com.flowspace.dto.ai.AiProjectRequest;
 import com.flowspace.dto.ai.AiRawDraft;
 
@@ -36,6 +37,10 @@ public class AiDraftGenerator {
 
         default void onAttempt(int attempt, int maxAttempts) {
         }
+
+        // 모델이 글을 쓰는 동안(퍼센트·지금 만든 작업)과 다 받은 뒤 검사하는 동안 불러요.
+        default void onProgress(AiProgressInfo progress) {
+        }
     }
 
     private final AiModelClient client;
@@ -57,8 +62,23 @@ public class AiDraftGenerator {
 
             listener.onAttempt(attempt, maxAttempts);
 
+            // 모델이 글을 쓰는 동안 받은 만큼 읽어서 진행 상황을 알려요. 취소됐으면 받기를 멈춰서 모델도 그만 쓰게 해요.
+            int[] range = AiPromptBuilder.taskRange(context.sprintCount(), request.members().size());
+            AiProgressTracker tracker = new AiProgressTracker(context.sprintCount(), (range[0] + range[1]) / 2);
+
             String content = client.chat(promptBuilder.build(request, nicknames, context, problem),
-                promptBuilder.schema(context, nicknames.keySet()));
+                promptBuilder.schema(context, nicknames.keySet()), partial -> {
+
+                    if (listener.isCancelled()) {
+                        throw new AiJobCancelledException();
+                    }
+
+                    if (tracker.accept(partial)) {
+                        listener.onProgress(tracker.snapshot());
+                    }
+                });
+
+            listener.onProgress(tracker.checking());
 
             try {
                 return validator.toDraft(parse(content), context, attempt < maxAttempts, requestText(request));

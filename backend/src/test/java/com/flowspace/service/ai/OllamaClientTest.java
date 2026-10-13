@@ -81,7 +81,7 @@ class OllamaClientTest {
             JsonNode body = MAPPER.readTree(lastBody.get());
 
             assertEquals("qwen3.6:27b", body.path("model").asText());
-            assertFalse(body.path("stream").asBoolean(true));
+            assertTrue(body.path("stream").asBoolean(false)); // 진행 상황을 보여주려고 조각조각 받아요
             assertFalse(body.path("think").asBoolean(true));
             assertEquals("object", body.path("format").path("type").asText());
             assertEquals(8192, body.path("options").path("num_ctx").asInt());
@@ -89,6 +89,59 @@ class OllamaClientTest {
             assertEquals(0.3, body.path("options").path("temperature").asDouble(), 0.0001);
             assertEquals("system", body.path("messages").get(0).path("role").asText());
             assertEquals("질문 한글", body.path("messages").get(1).path("content").asText());
+        } finally {
+            stop();
+        }
+    }
+
+    @Test
+    @DisplayName("여러 조각으로 오는 답을 이어 붙이고, 조각이 올 때마다 지금까지 받은 글을 알려 준다")
+    void streamsPartialContent() throws Exception {
+        String lines = "{\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"a\\\":\"},\"done\":false}\n"
+            + "{\"message\":{\"role\":\"assistant\",\"content\":\"1\"},\"done\":false}\n"
+            + "{\"message\":{\"role\":\"assistant\",\"content\":\"}\"},\"done\":false}\n"
+            + "{\"message\":{\"role\":\"assistant\",\"content\":\"\"},\"done\":true,\"eval_count\":3}\n";
+
+        try {
+            OllamaClient client = start(200, lines);
+            List<String> partials = new java.util.ArrayList<>();
+
+            String content = client.chat(MESSAGES, Map.of("type", "object"), partials::add);
+
+            assertEquals("{\"a\":1}", content);
+            assertEquals(List.of("{\"a\":", "{\"a\":1", "{\"a\":1}"), partials);
+        } finally {
+            stop();
+        }
+    }
+
+    @Test
+    @DisplayName("받는 도중 onPartial이 예외를 던지면(취소) 그 예외가 그대로 나온다")
+    void partialCallbackCanAbort() throws Exception {
+        String lines = "{\"message\":{\"content\":\"{\"},\"done\":false}\n{\"message\":{\"content\":\"}\"},\"done\":true}\n";
+
+        try {
+            OllamaClient client = start(200, lines);
+
+            assertThrows(AiJobCancelledException.class, () -> client.chat(MESSAGES, Map.of(), partial -> {
+                throw new AiJobCancelledException();
+            }));
+        } finally {
+            stop();
+        }
+    }
+
+    @Test
+    @DisplayName("스트림 중간에 error 줄이 오면 오류로 알린다")
+    void errorLineInStream() throws Exception {
+        String lines = "{\"message\":{\"content\":\"{\"},\"done\":false}\n{\"error\":\"out of memory\"}\n";
+
+        try {
+            OllamaClient client = start(200, lines);
+
+            AiModelException e = assertThrows(AiModelException.class, () -> client.chat(MESSAGES, Map.of()));
+
+            assertTrue(e.getMessage().contains("오류"));
         } finally {
             stop();
         }

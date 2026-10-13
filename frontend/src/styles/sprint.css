@@ -255,7 +255,8 @@
   border-top: 1px solid #e6ebf2;
   background: #fff;
   position: fixed;
-  left: 278px;
+  left: var(--sidebar-w, 278px);
+  transition: left 0.22s ease;
   right: 0;
   bottom: 0;
   z-index: 3;

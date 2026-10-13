@@ -126,9 +126,9 @@ CREATE TABLE task_statuses (
 
 INSERT INTO task_statuses (name, category, color)
 VALUES
-('TODO', 'TODO', 'GRAY'),
-('IN_PROGRESS', 'IN_PROGRESS', 'BLUE'),
-('DONE', 'DONE', 'GREEN');
+('할 일', 'TODO', 'PURPLE'),
+('진행 중', 'IN_PROGRESS', 'BLUE'),
+('완료', 'DONE', 'GREEN');
 
 CREATE TABLE workspace_task_statuses (
     workspace_id BIGINT NOT NULL,

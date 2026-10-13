@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import styles from "../styles/classes.js";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
@@ -20,6 +20,16 @@ import { isAdminOrOwner } from "../utils/workspaceRole";
 //
 // useWorkspace는 Provider가 없으면 어디를 놓쳤는지 알려주는 에러를 던져요.
 const SPRINT_ORDER = { ACTIVE: 0, PLANNING: 1, COMPLETED: 2 };
+
+// 사이드바를 접었는지는 이 브라우저에 기억해요(저장소를 못 쓰면 매번 펼친 채로 시작해요).
+const SIDEBAR_COLLAPSED_KEY = "flowspace.sidebar.collapsed";
+const loadSidebarCollapsed = () => {
+  try {
+    return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
 
 export default function MainLayout() {
   const { confirm } = useDialog();
@@ -80,6 +90,35 @@ export default function MainLayout() {
   // 서로 형제 관계라 여기(공통 부모)에서 들고 내려줘요. 화면 안에서만 쓰는
   // UI 상태라 Provider로 올리지 않았어요.
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // 사이드바 접기. 접으면 본문(.main)과 화면 아래에 붙는 버튼 줄이 사이드바 자리를 쓰도록 <html>에
+  // data-sidebar를 달고, 그 폭(--sidebar-w)은 CSS가 정해요(layout.css). 본문 폭은 그대로라서 가운데로 와요.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(loadSidebarCollapsed);
+
+  useEffect(() => {
+    const root = document.documentElement;
+
+    if (sidebarCollapsed) {
+      root.dataset.sidebar = "collapsed";
+    } else {
+      delete root.dataset.sidebar;
+    }
+
+    // 이 레이아웃을 벗어나면(로그인 화면 등) 접힘 표시를 지워요.
+    return () => {
+      delete root.dataset.sidebar;
+    };
+  }, [sidebarCollapsed]);
+
+  const changeSidebarCollapsed = (collapsed) => {
+    setSidebarCollapsed(collapsed);
+
+    try {
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? "1" : "0");
+    } catch {
+      // 저장소를 못 써도 접기·펼치기는 동작해요(다음에 열면 펼친 채로 시작할 뿐이에요).
+    }
+  };
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { logout } = useAuth();
@@ -137,9 +176,16 @@ export default function MainLayout() {
         onEmptyTrash={emptyTrash}
         onReorderTopLevelPages={reorderTopLevelPages}
         onOpenSettings={() => setSettingsOpen(true)}
+        collapsed={sidebarCollapsed}
+        onCollapse={() => changeSidebarCollapsed(true)}
       />
       <main className={styles.main}>
-        <Header members={members} workspaceId={currentWorkspace.id} />
+        <Header
+          members={members}
+          workspaceId={currentWorkspace.id}
+          sidebarCollapsed={sidebarCollapsed}
+          onOpenSidebar={() => changeSidebarCollapsed(false)}
+        />
         <ErrorBoundary resetKey={pathname}>
         <Outlet
           context={{

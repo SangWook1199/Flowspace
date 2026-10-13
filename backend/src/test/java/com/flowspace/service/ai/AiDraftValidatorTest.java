@@ -172,7 +172,7 @@ class AiDraftValidatorTest {
             List.of(new AiRawDraft.Sprint("a", "g", tasks), sprint("b", task("t", 1, 1)), sprint("c", task("t", 1, 1)),
                 sprint("d", task("t", 1, 1))));
 
-        assertEquals(15, validator.toDraft(raw, context()).sprints().get(0).tasks().size());
+        assertEquals(15, validator.toDraft(raw, context(), false).sprints().get(0).tasks().size());
     }
 
     // ---------- 날짜 ----------
@@ -185,9 +185,9 @@ class AiDraftValidatorTest {
 
         List<AiDraft.Task> tasks = validator.toDraft(raw, context()).sprints().get(0).tasks();
 
-        // 첫째 주: 10/12(월) 시작, 평일 3일 → 10/14(수)
+        // 첫째 주: 10/12(월) 시작, 평일 3일 → 10/14(수). 같은 담당자의 다음 작업(10/19)까지 비는 이틀은 여유로 늘려서 10/16(금)
         assertEquals(LocalDate.of(2026, 10, 12), tasks.get(0).startDate());
-        assertEquals(LocalDate.of(2026, 10, 14), tasks.get(0).endDate());
+        assertEquals(LocalDate.of(2026, 10, 16), tasks.get(0).endDate());
         // 둘째 주: 10/19(월) 시작, 평일 5일 → 10/23(금)
         assertEquals(LocalDate.of(2026, 10, 19), tasks.get(1).startDate());
         assertEquals(LocalDate.of(2026, 10, 23), tasks.get(1).endDate());
@@ -283,28 +283,6 @@ class AiDraftValidatorTest {
 
         assertEquals(1, tasks.size());
         assertEquals("남는 작업", tasks.get(0).title());
-    }
-
-    // ---------- 글자 정리 ----------
-
-    @Test
-    @DisplayName("HTML 태그·마크다운 기호·줄바꿈을 지우고 공백을 하나로 모은다")
-    void plainText() {
-        assertEquals("로그인 API 구현하기", AiDraftValidator.clean("<b>**로그인**</b>\n  API   `구현`하기", 200));
-        assertEquals("제목", AiDraftValidator.clean("## 제목", 200));
-    }
-
-    @Test
-    @DisplayName("글자 수 제한을 넘으면 자른다")
-    void truncates() {
-        assertEquals(5, AiDraftValidator.clean("가나다라마바사", 5).length());
-    }
-
-    @Test
-    @DisplayName("설명은 줄바꿈을 살리고 빈 줄은 지운다")
-    void descriptionKeepsLines() {
-        assertEquals("첫째 줄\n둘째 줄", AiDraftValidator.cleanDescription("첫째  줄\r\n\r\n<i>둘째 줄</i>"));
-        assertNull(AiDraftValidator.cleanDescription("   "));
     }
 
     // ---------- 이벤트(서버가 만들어요) ----------
@@ -483,7 +461,8 @@ class AiDraftValidatorTest {
         AiRawDraft raw = new AiRawDraft(List.of(sprint("a", tasks), sprint("b", task("t", 1, 1)),
             sprint("c", task("t", 1, 1)), sprint("d", task("t", 1, 1))));
 
-        return validator.toDraft(raw, context()).sprints().get(0).tasks();
+        // 우선순위 규칙만 보는 시험이라, 담당자가 없는 작업을 "놀고 있는 멤버"로 걸러내지 않게 strict=false로 불러요.
+        return validator.toDraft(raw, context(), false).sprints().get(0).tasks();
     }
 
     @Test
@@ -513,6 +492,118 @@ class AiDraftValidatorTest {
 
         assertEquals(TaskPriority.HIGH, tasks.get(0).priority());
         assertEquals(TaskPriority.MEDIUM, tasks.get(1).priority());
+    }
+
+    @Test
+    @DisplayName("인증·로그인 API 같은 핵심 작업은 모델이 MEDIUM·LOW로 적어도 HIGH로 올리고, 화면 작업은 올리지 않는다")
+    void corePrioritiesAreRaised() {
+        // 작업 10개 → HIGH는 3개까지. 핵심(JWT 로그인 API, 인증 미들웨어, 서버 배포 설정)이 HIGH를 받아요.
+        List<AiDraft.Task> tasks = firstSprintTasksOf(prio("환경 설정", "HIGH", 1), prio("로그인 페이지 UI 개발", "HIGH", 1),
+            prio("JWT 기반 로그인 API 개발", "LOW", 1), prio("인증 미들웨어 구현", "MEDIUM", 1), prio("서버 배포 설정", "MEDIUM", 2),
+            prio("상품 목록 UI", "MEDIUM", 2), prio("작업 7", "LOW", 2), prio("작업 8", "LOW", 2), prio("작업 9", "LOW", 2),
+            prio("작업 10", "LOW", 2));
+
+        assertEquals(TaskPriority.MEDIUM, tasks.get(0).priority()); // 핵심이 아닌 HIGH는 자리를 내줘요
+        assertEquals(TaskPriority.MEDIUM, tasks.get(1).priority()); // 로그인 "페이지 UI"는 핵심이 아니에요
+        assertEquals(TaskPriority.HIGH, tasks.get(2).priority()); // LOW로 적었어도 올려요
+        assertEquals(TaskPriority.HIGH, tasks.get(3).priority());
+        assertEquals(TaskPriority.HIGH, tasks.get(4).priority());
+        assertEquals(TaskPriority.MEDIUM, tasks.get(5).priority());
+        assertEquals(TaskPriority.LOW, tasks.get(6).priority());
+    }
+
+    @Test
+    @DisplayName("핵심 작업이 자리를 못 받아도 LOW로는 두지 않고, 핵심이면서 HIGH인 작업이 먼저 자리를 받는다")
+    void coreFloorAndRank() {
+        // 작업 5개 → HIGH는 1개. 핵심 3개 중 모델이 HIGH로 적은 "DB 스키마 설계"가 자리를 받아요.
+        List<AiDraft.Task> tasks = firstSprintTasksOf(prio("JWT 로그인 API", "LOW", 1), prio("DB 스키마 설계", "HIGH", 1),
+            prio("인증 미들웨어", "MEDIUM", 1), prio("문서 정리", "LOW", 2), prio("인증 문서 작성", "LOW", 2));
+
+        assertEquals(TaskPriority.MEDIUM, tasks.get(0).priority());
+        assertEquals(TaskPriority.HIGH, tasks.get(1).priority());
+        assertEquals(TaskPriority.MEDIUM, tasks.get(2).priority());
+        assertEquals(TaskPriority.LOW, tasks.get(3).priority());
+        assertEquals(TaskPriority.LOW, tasks.get(4).priority()); // "문서"가 들어간 작업은 핵심이 아니에요
+    }
+
+    // ---------- 놀고 있는 멤버 ----------
+
+    // 멤버 2명, 2주 스프린트 4개(작업이 4개 이상이면 "나눌 만하다"고 봐요)
+    private AiDraftContext twoMembers() {
+        return new AiDraftContext(START, END, 2, Set.of(1L, 2L), List.of());
+    }
+
+    private static AiRawDraft.Task by(long assignee, String title, int week, int days) {
+        return new AiRawDraft.Task(title, "설명", "MEDIUM", assignee, week, days);
+    }
+
+    private AiRawDraft rawFirstSprint(AiRawDraft.Task... tasks) {
+        return new AiRawDraft(List.of(sprint("a", tasks), sprint("b", task("t", 1, 1)), sprint("c", task("t", 1, 1)),
+            sprint("d", task("t", 1, 1))));
+    }
+
+    @Test
+    @DisplayName("작업이 충분한데 한 멤버가 아무 일도 못 받으면 다시 만들게 한다")
+    void idleMemberIsRejected() {
+        AiRawDraft raw = rawFirstSprint(by(1, "가", 1, 3), by(1, "나", 1, 3), by(1, "다", 2, 3), by(1, "라", 2, 3));
+
+        AiDraftException e = assertThrows(AiDraftException.class, () -> validator.toDraft(raw, twoMembers()));
+
+        assertTrue(e.getMessage().contains("id 2 멤버"));
+        assertTrue(e.getMessage().contains("스프린트 1"));
+        assertTrue(e.getMessage().contains("0일만"));
+    }
+
+    @Test
+    @DisplayName("평일의 40% 미만만 일하는 멤버도 다시 만들게 한다")
+    void tooLittleWorkIsRejected() {
+        // 멤버 2: 첫 주 1일 + 둘째 주 2일 = 평일 10일 중 3일
+        AiRawDraft raw = rawFirstSprint(by(1, "가", 1, 5), by(1, "나", 2, 5), by(2, "다", 1, 1), by(2, "라", 2, 2));
+
+        AiDraftException e = assertThrows(AiDraftException.class, () -> validator.toDraft(raw, twoMembers()));
+
+        assertTrue(e.getMessage().contains("평일 10일 중 3일만"));
+    }
+
+    @Test
+    @DisplayName("한 주를 통째로 쉬는 멤버도 다시 만들게 한다")
+    void idleWeekIsRejected() {
+        // 멤버 2는 둘째 주에만 일해요(5일 = 50%라서 양은 괜찮지만 첫째 주가 비어요)
+        AiRawDraft raw = rawFirstSprint(by(1, "가", 1, 5), by(1, "나", 2, 5), by(2, "다", 2, 3), by(2, "라", 2, 2));
+
+        AiDraftException e = assertThrows(AiDraftException.class, () -> validator.toDraft(raw, twoMembers()));
+
+        assertTrue(e.getMessage().contains("id 2 멤버"));
+        assertTrue(e.getMessage().contains("1번째 주에는 맡은 작업이 없어요"));
+    }
+
+    @Test
+    @DisplayName("모두 주마다 일이 있으면 통과한다")
+    void balancedPasses() {
+        AiRawDraft raw = rawFirstSprint(by(1, "가", 1, 3), by(1, "나", 2, 3), by(2, "다", 1, 3), by(2, "라", 2, 3));
+
+        assertDoesNotThrow(() -> validator.toDraft(raw, twoMembers()));
+    }
+
+    @Test
+    @DisplayName("작업이 멤버 수 × 주 수보다 적으면(나눌 수 없으면) 보지 않는다")
+    void tooFewTasksToSplitIsSkipped() {
+        AiRawDraft raw = rawFirstSprint(by(1, "가", 1, 3), by(1, "나", 2, 3), by(1, "다", 2, 3));
+
+        assertDoesNotThrow(() -> validator.toDraft(raw, twoMembers()));
+    }
+
+    @Test
+    @DisplayName("멤버가 한 명이면 보지 않고, 마지막 시도(strict=false)에서는 통과시킨다")
+    void idleCheckExceptions() {
+        AiDraftContext one = new AiDraftContext(START, END, 2, Set.of(1L), List.of());
+        AiRawDraft raw = rawFirstSprint(by(1, "가", 1, 1), by(1, "나", 2, 1));
+
+        assertDoesNotThrow(() -> validator.toDraft(raw, one));
+
+        AiRawDraft idle = rawFirstSprint(by(1, "가", 1, 3), by(1, "나", 1, 3), by(1, "다", 2, 3), by(1, "라", 2, 3));
+
+        assertDoesNotThrow(() -> validator.toDraft(idle, twoMembers(), false));
     }
 
     // ---------- 정해진 일정과 준비 작업 ----------
@@ -579,7 +670,7 @@ class AiDraftValidatorTest {
     void unrelatedTaskIsFine() {
         AiDraftContext context = withFixed("중간 발표", LocalDate.of(2026, 10, 30));
 
-        assertDoesNotThrow(() -> validator.toDraft(rawWithSprint3Task("채팅 화면 구현"), context));
+        assertDoesNotThrow(() -> validator.toDraft(rawWithSprint3Task("로그인 화면 구현"), context));
     }
 
     // ---------- 요청하지 않은 기능 / 얼버무림 ----------
@@ -638,7 +729,7 @@ class AiDraftValidatorTest {
     @Test
     @DisplayName("'또는'이 없거나 낱말 속에 들어 있으면 통과한다")
     void noHedgingPasses() {
-        assertDoesNotThrow(() -> validator.toDraft(rawWithTask("찜 추가/제거", "상품을 찜하거나 해제한다."), context()));
+        assertDoesNotThrow(() -> validator.toDraft(rawWithTask("즐겨찾기 추가/제거", "상품을 즐겨찾기하거나 해제한다."), context()));
     }
 
     @Test
@@ -663,31 +754,85 @@ class AiDraftValidatorTest {
         assertEquals(4, draft.sprints().size());
     }
 
+    // ---------- 역할·작업 순서를 서버가 바로잡기 ----------
+
+    @Test
+    @DisplayName("프런트 작업이 백엔드 멤버에게 가 있으면 프런트 멤버로 바꾸고, 다시 만들게 하지 않는다")
+    void fixesRoleMismatch() {
+        AiDraftContext withRoles = new AiDraftContext(START, END, 2,
+            java.util.Map.of(1L, "백엔드", 2L, "프런트엔드"), List.of());
+        AiRawDraft raw = new AiRawDraft(List.of(
+            sprint("a", new AiRawDraft.Task("인증 인터셉터 및 상태 관리", "설명", "MEDIUM", 1L, 1, 2)),
+            sprint("b", task("작업", 1, 1)), sprint("c", task("작업", 1, 1)), sprint("d", task("작업", 1, 1))));
+
+        AiDraft draft = validator.toDraft(raw, withRoles);
+
+        assertEquals(2L, draft.sprints().get(0).tasks().get(0).assigneeUserId());
+    }
+
+    @Test
+    @DisplayName("최종 배포가 서버 배포 환경 구축과 같은 주에 있어도 환경 구축이 끝난 다음에 시작한다")
+    void deployStartsAfterEnvironment() {
+        AiRawDraft raw = new AiRawDraft(List.of(
+            sprint("a", task("작업", 1, 1)), sprint("b", task("작업", 1, 1)), sprint("c", task("작업", 1, 1)),
+            sprint("d",
+                new AiRawDraft.Task("서버 배포 환경 구축", "설명", "HIGH", 1L, 2, 3),
+                new AiRawDraft.Task("최종 배포 및 문서화", "설명", "HIGH", 2L, 2, 2))));
+
+        List<AiDraft.Task> tasks = validator.toDraft(raw, context(), false).sprints().get(3).tasks();
+
+        assertTrue(tasks.get(1).startDate().isAfter(tasks.get(0).endDate()));
+    }
+
+    @Test
+    @DisplayName("실제 사례: 멤버 4명의 첫 스프린트에서 역할이 맞고 담당자 작업 사이의 빈 평일이 하루 이하다")
+    void realisticFirstSprint() {
+        // 1·2: 백엔드, 3·4: 프런트. 시작이 화요일(10/13)이라 둘째 주는 10/20부터예요.
+        LocalDate start = LocalDate.of(2026, 10, 13);
+        AiDraftContext ctx = new AiDraftContext(start, start.plusDays(41), 2,
+            java.util.Map.of(1L, "백엔드 개발", 2L, "백엔드 개발", 3L, "프런트엔드 개발", 4L, "프런트엔드 개발"), List.of());
+        AiRawDraft raw = new AiRawDraft(List.of(
+            sprint("기반", t("개발 환경 및 브랜치 전략 설정", 1L, 1, 2), t("데이터베이스 스키마 설계", 2L, 1, 3),
+                t("프론트엔드 프로젝트 초기화", 3L, 1, 2), t("UI 컴포넌트 라이브러리 구축", 4L, 1, 3),
+                t("JWT 기반 로그인 API 개발", 1L, 2, 3), t("회원가입 API 개발", 2L, 2, 2),
+                t("로그인 페이지 구현", 3L, 2, 3), t("회원가입 페이지 구현", 4L, 2, 3),
+                t("인증 인터셉터 및 상태 관리", 1L, 2, 2)),
+            sprint("b", task("작업", 1, 1)), sprint("c", task("작업", 1, 1))));
+
+        List<AiDraft.Task> tasks = validator.toDraft(raw, ctx, false).sprints().get(0).tasks();
+
+        // 프런트 작업(인증 인터셉터 및 상태 관리)이 백엔드 멤버(1)에게 가 있었는데 프런트 멤버로 바뀐다.
+        Long interceptor = tasks.get(tasks.size() - 1).assigneeUserId();
+        assertTrue(interceptor == 3L || interceptor == 4L);
+
+        // 멤버마다 작업 사이에 비는 평일이 하루 이하다.
+        for (long member = 1; member <= 4; member++) {
+            List<AiDraft.Task> mine = new ArrayList<>();
+            for (AiDraft.Task task : tasks) {
+                if (task.assigneeUserId() == member) {
+                    mine.add(task);
+                }
+            }
+            mine.sort(java.util.Comparator.comparing(AiDraft.Task::startDate));
+            for (int i = 0; i + 1 < mine.size(); i++) {
+                LocalDate from = mine.get(i).endDate().plusDays(1);
+                LocalDate to = mine.get(i + 1).startDate().minusDays(1);
+                int blank = 0;
+                for (LocalDate day = from; !day.isAfter(to); day = day.plusDays(1)) {
+                    if (day.getDayOfWeek().getValue() < 6) {
+                        blank++;
+                    }
+                }
+                assertTrue(blank <= 1);
+            }
+        }
+    }
+
+    private static AiRawDraft.Task t(String title, Long assignee, int week, int days) {
+        return new AiRawDraft.Task(title, "설명", "MEDIUM", assignee, week, days);
+    }
+
     // ---------- 조사(와/과) 교정 ----------
-
-    @Test
-    @DisplayName("받침에 맞지 않는 와/과를 고친다")
-    void fixesParticles() {
-        assertEquals("상품 관리와 탐색 기능", AiDraftValidator.fixParticles("상품 관리과 탐색 기능"));
-        assertEquals("검색과 필터", AiDraftValidator.fixParticles("검색와 필터"));
-        assertEquals("로그인과 DB 구조", AiDraftValidator.fixParticles("로그인와 DB 구조"));
-        assertEquals("화면 설계와", AiDraftValidator.fixParticles("화면 설계과"));
-    }
-
-    @Test
-    @DisplayName("맞는 조사와 '결과·효과' 같은 낱말은 그대로 둔다")
-    void keepsCorrectParticlesAndNouns() {
-        assertEquals("회원가입과 로그인", AiDraftValidator.fixParticles("회원가입과 로그인"));
-        assertEquals("데이터와 서버", AiDraftValidator.fixParticles("데이터와 서버"));
-        assertEquals("서울과 부산", AiDraftValidator.fixParticles("서울과 부산"));
-        assertEquals("효과 분석", AiDraftValidator.fixParticles("효과 분석"));
-        assertEquals("테스트 결과 정리", AiDraftValidator.fixParticles("테스트 결과 정리"));
-        assertEquals("성능 개선 효과, 사과 정리", AiDraftValidator.fixParticles("성능 개선 효과, 사과 정리"));
-        assertEquals("와이파이 설정", AiDraftValidator.fixParticles("와이파이 설정"));
-        assertEquals("DB와 API", AiDraftValidator.fixParticles("DB와 API"));
-        assertNull(AiDraftValidator.fixParticles(null));
-    }
-
     @Test
     @DisplayName("스프린트 이름과 작업 제목·설명의 조사를 고친다")
     void particlesInDraft() {

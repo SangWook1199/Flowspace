@@ -242,4 +242,75 @@ class AiDraftGeneratorTest {
         assertEquals(List.of(1), attempts);
         assertEquals(1, model.received.size());
     }
+
+    // 답을 한 번에 주지 않고 앞에서부터 조금씩 잘라서 onPartial로 흘려 주는 가짜 모델이에요.
+    static class StreamingModel extends FakeModel {
+
+        @Override
+        public String chat(List<Message> messages, Map<String, Object> schema,
+            java.util.function.Consumer<String> onPartial) {
+            String content = chat(messages, schema);
+
+            for (int end = 40; end < content.length(); end += 40) {
+                onPartial.accept(content.substring(0, end));
+            }
+
+            onPartial.accept(content);
+
+            return content;
+        }
+    }
+
+    @Test
+    @DisplayName("모델이 글을 쓰는 동안 퍼센트와 만든 작업이 올라가고, 다 받으면 검사 단계(99%)를 알린다")
+    void reportsProgress() {
+        StreamingModel model = new StreamingModel();
+        model.answer(json(4));
+
+        List<com.flowspace.dto.ai.AiProgressInfo> reports = new ArrayList<>();
+
+        generator(model).generate(request, names(), context, new AiDraftGenerator.Listener() {
+
+            @Override
+            public void onProgress(com.flowspace.dto.ai.AiProgressInfo progress) {
+                reports.add(progress);
+            }
+        });
+
+        assertTrue(reports.size() >= 3);
+
+        int previous = 0;
+
+        for (com.flowspace.dto.ai.AiProgressInfo report : reports) {
+            assertTrue(report.percent() >= previous); // 퍼센트가 줄어들면 안 돼요
+            previous = report.percent();
+        }
+
+        com.flowspace.dto.ai.AiProgressInfo last = reports.get(reports.size() - 1);
+
+        assertEquals("CHECKING", last.phase());
+        assertEquals(99, last.percent());
+        assertEquals(4, last.sprintCount());
+        assertEquals(4, last.taskCount());
+        assertEquals("작업", last.recentTasks().get(last.recentTasks().size() - 1));
+    }
+
+    @Test
+    @DisplayName("글을 받는 도중에 취소되면 바로 멈춘다")
+    void cancelsWhileStreaming() {
+        StreamingModel model = new StreamingModel();
+        model.answer(json(4));
+
+        java.util.concurrent.atomic.AtomicInteger checks = new java.util.concurrent.atomic.AtomicInteger();
+
+        assertThrows(AiJobCancelledException.class,
+            () -> generator(model).generate(request, names(), context, new AiDraftGenerator.Listener() {
+
+                // 첫 확인(시도 시작 때)은 통과하고, 글을 받는 중에 취소돼요.
+                @Override
+                public boolean isCancelled() {
+                    return checks.incrementAndGet() > 1;
+                }
+            }));
+    }
 }

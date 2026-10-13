@@ -15,6 +15,7 @@ import com.flowspace.dto.ai.AiDraft;
 import com.flowspace.dto.ai.AiDraftContext;
 import com.flowspace.dto.ai.AiJobResponse;
 import com.flowspace.dto.ai.AiJobStatus;
+import com.flowspace.dto.ai.AiProgressInfo;
 import com.flowspace.dto.ai.AiProjectRequest;
 import com.flowspace.dto.ai.AiStatusResponse;
 import com.flowspace.entity.User;
@@ -73,6 +74,8 @@ public class AiDraftJobService {
         }
 
         Map<Long, String> nicknames = new LinkedHashMap<>();
+        // 멤버가 적은 역할이에요. 서버가 "화면 작업은 프런트 멤버에게"처럼 담당자를 바로잡을 때 써요.
+        Map<Long, String> roles = new LinkedHashMap<>();
 
         for (AiProjectRequest.Member member : request.members()) {
 
@@ -84,6 +87,8 @@ public class AiDraftJobService {
             if (nicknames.put(member.userId(), workspaceUsers.get(member.userId())) != null) {
                 throw new FlowSpaceException(ErrorCode.AI_DRAFT_INVALID);
             }
+
+            roles.put(member.userId(), member.role() == null ? "" : member.role());
         }
 
         List<AiDraftContext.FixedEvent> fixedEvents = request.fixedEvents() == null ? List.of()
@@ -91,7 +96,7 @@ public class AiDraftJobService {
 
         // 기간·길이가 올바른지는 여기서 정해져요(스프린트가 12개를 넘으면 AI_PERIOD_TOO_LONG).
         AiDraftContext context = new AiDraftContext(request.startDate(), request.endDate(), request.sprintWeeks(),
-            nicknames.keySet(), fixedEvents);
+            roles, fixedEvents);
 
         if (!modelClient.isAvailable()) {
             throw new FlowSpaceException(ErrorCode.AI_UNAVAILABLE);
@@ -108,6 +113,11 @@ public class AiDraftJobService {
                 @Override
                 public void onAttempt(int attempt, int maxAttempts) {
                     running.onAttempt(attempt, maxAttempts);
+                }
+
+                @Override
+                public void onProgress(AiProgressInfo progress) {
+                    running.onProgress(progress);
                 }
             }));
 
@@ -194,6 +204,6 @@ public class AiDraftJobService {
 
         return new AiJobResponse(job.jobId(), status, job.attempt(), job.maxAttempts(), message,
             status == AiJobStatus.DONE ? job.draft() : null, status == AiJobStatus.FAILED ? job.error() : null,
-            Math.max(0, elapsed));
+            Math.max(0, elapsed), status == AiJobStatus.RUNNING ? job.progress() : null);
     }
 }

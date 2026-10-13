@@ -346,4 +346,36 @@ class AiDraftJobServiceTest {
 
         assertEquals(AiJobStatus.CANCELLED, service.get(5L, job.jobId(), "a@a.com").status());
     }
+
+    @Test
+    @DisplayName("만드는 중에는 진행 상황이 응답에 담기고, 끝나면 빠진다")
+    void progressIsReportedWhileRunning() throws Exception {
+        CountDownLatch reported = new CountDownLatch(1);
+        CountDownLatch finish = new CountDownLatch(1);
+        com.flowspace.dto.ai.AiProgressInfo progress = new com.flowspace.dto.ai.AiProgressInfo(42, "WRITING", 2, 3,
+            "상품 등록", 5, List.of("상품 등록 API"));
+
+        lenient().when(generator.generate(any(), any(), any(), any())).thenAnswer(invocation -> {
+            AiDraftGenerator.Listener listener = invocation.getArgument(3);
+            listener.onAttempt(1, 3);
+            listener.onProgress(progress);
+            reported.countDown();
+            finish.await();
+
+            return draft;
+        });
+
+        AiJobResponse job = startJob();
+        reported.await();
+
+        AiJobResponse running = service.get(5L, job.jobId(), "a@a.com");
+
+        assertEquals(AiJobStatus.RUNNING, running.status());
+        assertEquals(progress, running.progress());
+
+        finish.countDown();
+        waitUntil(() -> service.get(5L, job.jobId(), "a@a.com").status() == AiJobStatus.DONE);
+
+        assertNull(service.get(5L, job.jobId(), "a@a.com").progress());
+    }
 }

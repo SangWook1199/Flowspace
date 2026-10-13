@@ -301,10 +301,18 @@ export function useSprintData({ userId, workspaceId }) {
     });
     setTasks((prev) => prev.filter((task) => !idSet.has(task.id)));
 
-    const results = await Promise.allSettled(taskIds.map((id) => taskApi.deleteTask(id)));
-    const failed = results.find((result) => result.status === "rejected");
-    if (failed) {
-      notifyError(failed.reason, "일부 작업을 삭제하지 못했어요.");
+    // 서버는 작업 하나를 지울 때마다 같은 칸의 나머지 작업 순서를 다시 매겨요. 동시에 여러 개를 보내면
+    // 서로 같은 행을 건드려 충돌하니까, 하나씩 차례로 지우고 실패한 것만 모아서 알려요.
+    let firstError = null;
+    for (const id of taskIds) {
+      try {
+        await taskApi.deleteTask(id);
+      } catch (error) {
+        firstError ??= error;
+      }
+    }
+    if (firstError) {
+      notifyError(firstError, "일부 작업을 삭제하지 못했어요.");
       await refresh();
     }
   };

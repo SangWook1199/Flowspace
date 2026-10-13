@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
+import { Sparkles } from "lucide-react";
 
 import SprintBanner from "../components/dashboard/SprintBanner";
 import MetricCard from "../components/dashboard/MetricCard";
@@ -14,6 +15,7 @@ import * as eventApi from "../api/events";
 import * as activityApi from "../api/activities";
 import { toActivity } from "../api/mappers";
 import { useRequest } from "../hooks/useRequest";
+import useAiStatus from "../hooks/useAiStatus";
 import { todayKey, formatDateDots, formatDateWithWeekday, parseDateKey } from "../utils/date";
 import { pickCurrentSprint } from "../utils/sprintRange";
 import { isEventOnDate, sortEventsByStart } from "../utils/calendarRange";
@@ -65,8 +67,11 @@ export default function Dashboard() {
   const { user } = useAuth();
   const displayName = user?.nickname || user?.name || "회원";
   // 스프린트·작업·팀원은 서버에서 불러와 MainLayout(WorkspaceProvider)이 내려줘요.
-  const { workspaceId, sprints, sprintTasks, taskStatuses, members, pages, sprintDataLoading, sprintDataError, reloadSprintData } =
+  const { workspaceId, sprints, sprintTasks, taskStatuses, members, pages, sprintDataLoading, sprintDataError, reloadSprintData, canManageWorkspace } =
     useOutletContext();
+  const navigate = useNavigate();
+  // 스프린트가 하나도 없을 때 "AI로 프로젝트 구성하기"를 보여줘요(관리자이고 AI를 쓸 수 있을 때만).
+  const { status: aiStatus } = useAiStatus();
   // "오늘"은 처음 렌더링할 때 한 번만 정해요(테스트 때는 window.__TODAY__로 바꿀 수 있어요).
   const [today] = useState(todayKey);
 
@@ -183,6 +188,13 @@ export default function Dashboard() {
       {!banner && !sprintDataLoading && !sprintDataError && (
         <section className={styles.hero}>
           <p className={styles.heroEmpty}>아직 스프린트가 없어요. 스프린트를 만들면 진행 상황이 여기에 보여요.</p>
+          {canManageWorkspace && aiStatus?.enabled && (
+            <div className="aiEmptyActionWrap">
+              <button type="button" className="aiEmptyAction" onClick={() => navigate("/sprints/ai")}>
+                <Sparkles size={16} /> AI로 프로젝트 구성하기
+              </button>
+            </div>
+          )}
         </section>
       )}
 

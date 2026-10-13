@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import SprintCreate from "./pages/SprintCreate";
+import AiProject from "./pages/AiProject";
 import SprintEdit from "./pages/SprintEdit";
 import SprintList from "./pages/SprintList";
 import SprintDetail from "./pages/SprintDetail";
@@ -57,6 +58,7 @@ function App() {
                 <Route path="sprints/:sprintId" element={<SprintDetail />} />
                 <Route path="sprints/:sprintId/tasks" element={<SprintTasks />} />
                 <Route path="sprints/new" element={<SprintCreate />} />
+                <Route path="sprints/ai" element={<AiProject />} />
                 <Route path="sprints/:sprintId/edit" element={<SprintEdit />} />
                 <Route path="kanban" element={<Kanban />} />
                 <Route path="calendar" element={<Calendar />} />

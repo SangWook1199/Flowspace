@@ -106,16 +106,16 @@ public class RetrospectiveService {
             retrospectiveBySprint.put(retrospective.getSprint().getSprintId(), retrospective);
         }
 
-        List<TaskSnapshot> allSnapshots = retrospectiveBySprint.isEmpty()
-            ? List.of()
-            : taskSnapshotRepository.findByRetrospectiveInOrderBySnapshotStatus_PositionAscPositionAsc(
-                retrospectiveBySprint.values());
+        List<TaskSnapshot> allSnapshots = retrospectiveBySprint.isEmpty() ? List.of()
+            : taskSnapshotRepository
+                .findByRetrospectiveInOrderBySnapshotStatus_PositionAscPositionAsc(retrospectiveBySprint.values());
 
         Map<Long, List<TaskSnapshot>> snapshotsByRetrospective = new HashMap<>();
 
         for (TaskSnapshot snapshot : allSnapshots) {
-            snapshotsByRetrospective.computeIfAbsent(snapshot.getRetrospective().getRetrospectiveId(),
-                key -> new ArrayList<>()).add(snapshot);
+            snapshotsByRetrospective
+                .computeIfAbsent(snapshot.getRetrospective().getRetrospectiveId(), key -> new ArrayList<>())
+                .add(snapshot);
         }
 
         Map<Long, List<TaskSnapshotAssignee>> assigneesBySnapshot = groupAssignees(allSnapshots);
@@ -131,8 +131,8 @@ public class RetrospectiveService {
                 return RetrospectiveListItem.withoutRetrospective(sprint);
             }
 
-            List<TaskSnapshot> snapshots = snapshotsByRetrospective
-                .getOrDefault(retrospective.getRetrospectiveId(), List.of());
+            List<TaskSnapshot> snapshots = snapshotsByRetrospective.getOrDefault(retrospective.getRetrospectiveId(),
+                List.of());
 
             return RetrospectiveListItem.of(sprint, retrospective, createSummary(snapshots, assigneesBySnapshot),
                 actionItemsByPage.getOrDefault(retrospective.getPage().getPageId(), 0));
@@ -186,13 +186,19 @@ public class RetrospectiveService {
         }
     }
 
+    // 회고 스냅샷에는 상태의 이름만 남아 있어서 이름으로 "완료"를 알아봐요.
+    // 기본 상태 이름이 DONE에서 "완료"로 바뀌었고, 예전에 만든 회고에는 DONE이 그대로 남아 있어서 둘 다 봐요.
+    private static boolean isDoneStatusName(String name) {
+        return "DONE".equals(name) || "완료".equals(name);
+    }
+
     // 회고 요약 생성
     private RetrospectiveSummary createSummary(List<TaskSnapshot> snapshots,
         Map<Long, List<TaskSnapshotAssignee>> assigneesBySnapshot) {
 
         int total = snapshots.size();
 
-        int completed = (int) snapshots.stream().filter(s -> "DONE".equals(s.getSnapshotStatus().getName())).count();
+        int completed = (int) snapshots.stream().filter(s -> isDoneStatusName(s.getSnapshotStatus().getName())).count();
 
         int incomplete = total - completed;
 

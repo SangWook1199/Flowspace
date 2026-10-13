@@ -1,8 +1,17 @@
+/* 사이드바가 차지하는 폭이에요. 접으면(<html data-sidebar="collapsed">) 0이 돼서, 본문(.main)과
+   화면 아래에 붙는 버튼 줄이 이 값만 따라 움직여요. */
+:root {
+  --sidebar-w: 278px;
+}
+:root[data-sidebar="collapsed"] {
+  --sidebar-w: 0px;
+}
 .sidebar {
   position: fixed;
   left: 0;
   top: 0;
   width: 278px;
+  transition: transform 0.22s ease;
   height: 100vh;
   background: #fbfcff;
   border-right: 1px solid #e8edf5;
@@ -757,9 +766,80 @@
   background: #fbe3f0;
   color: #c1408a;
 }
+/* 접힌 사이드바: 왼쪽으로 밀려 나가고, 끝난 뒤에는 숨겨서 키보드로도 들어가지 않게 해요(inert와 같이). */
+.sidebarCollapsed {
+  transform: translateX(-100%);
+  visibility: hidden;
+  transition:
+    transform 0.22s ease,
+    visibility 0s linear 0.22s;
+}
+/* 사이드바 맨 위는 "로고 + 접기 버튼(로고 오른쪽 끝)"이에요. */
+.sidebarCollapseBtn {
+  position: absolute;
+  top: 26px;
+  right: 13px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #7c879c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sidebarCollapseBtn:hover {
+  background: #eef1f8;
+  color: #2a3951;
+}
+.sidebar .flowspace-brand {
+  margin-top: -3px;
+  margin-bottom: 29px;
+}
+/* 로고는 누르는 버튼이 아니라서 눌러지는 것처럼 보이지 않게 해요. */
+.sidebar div.flowspace-brand {
+  cursor: default;
+}
+.sidebar div.flowspace-brand:hover {
+  opacity: 1;
+}
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+/* 접었을 때 헤더 왼쪽 끝의 펼치기 버튼. 사이드바 로고 아이콘이 있던 자리(왼쪽 24~64px)에 놓여요. */
+.sidebarOpenBtn {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border: 1px solid #e6ebf4;
+  border-radius: 10px;
+  background: #fff;
+  color: #5b6a85;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sidebarOpenBtn:hover {
+  background: #f4f6fa;
+  color: #2a3951;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .sidebarCollapsed,
+  .main {
+    transition: none;
+  }
+}
 .main {
-  margin-left: 278px;
-  width: calc(100% - 278px);
+  margin-left: var(--sidebar-w, 278px);
+  width: calc(100% - var(--sidebar-w, 278px));
+  transition:
+    margin-left 0.22s ease,
+    width 0.22s ease;
   min-height: 100vh;
   display: flex;
   flex-direction: column;

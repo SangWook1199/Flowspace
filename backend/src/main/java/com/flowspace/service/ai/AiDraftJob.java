@@ -5,6 +5,7 @@ import java.util.concurrent.Future;
 
 import com.flowspace.dto.ai.AiDraft;
 import com.flowspace.dto.ai.AiJobStatus;
+import com.flowspace.dto.ai.AiProgressInfo;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 
@@ -20,6 +21,7 @@ public class AiDraftJob {
     private int attempt;
     private int maxAttempts;
     private AiDraft draft;
+    private AiProgressInfo progress;
     private String error;
     private Instant finishedAt;
 
@@ -94,9 +96,19 @@ public class AiDraftJob {
         }
     }
 
+    // 새 시도가 시작되면 진행 상황은 처음부터 다시예요(모델이 첫 글을 쓰기 전까지는 없어요).
     public synchronized void onAttempt(int attempt, int maxAttempts) {
         this.attempt = attempt;
         this.maxAttempts = maxAttempts;
+        this.progress = null;
+    }
+
+    public synchronized void onProgress(AiProgressInfo progress) {
+        this.progress = progress;
+    }
+
+    public synchronized AiProgressInfo progress() {
+        return progress;
     }
 
     // 취소된 작업은 늦게 끝나도 결과를 받지 않아요.

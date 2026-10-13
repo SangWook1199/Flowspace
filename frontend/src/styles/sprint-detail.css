@@ -349,7 +349,8 @@
 }
 .detailBottomActions {
   position: fixed;
-  left: 278px;
+  left: var(--sidebar-w, 278px);
+  transition: left 0.22s ease;
   right: 0;
   bottom: 0;
   height: 76px;
@@ -627,7 +628,7 @@
 
 /* ===== 작업 목록: 높이 고정 + 빈 상태 ===== */
 .taskListBody {
-  height: 400px;
+  height: 480px;
   overflow-y: auto;
 }
 .taskListEmpty {
