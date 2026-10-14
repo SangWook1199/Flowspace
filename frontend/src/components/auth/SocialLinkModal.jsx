@@ -42,6 +42,8 @@ export default function SocialLinkModal({ provider, payload, onClose, onLinked }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // 이 모달은 로그인·가입 폼 안에서 열려요. React 이벤트는 포털을 통해서도 위로 올라가서, 막지 않으면 그 폼의 제출까지 같이 실행돼요.
+    e.stopPropagation();
     if (password === "" || submittingRef.current) return;
 
     submittingRef.current = true;

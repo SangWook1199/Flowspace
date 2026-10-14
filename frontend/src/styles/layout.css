@@ -13,6 +13,7 @@
   width: 278px;
   transition: transform 0.22s ease;
   height: 100vh;
+  height: 100dvh;
   background: #fbfcff;
   border-right: 1px solid #e8edf5;
   padding: 25px 14px;
@@ -1063,4 +1064,37 @@
 .profileMenu .workspaceItem {
   font-size: 13px;
   color: #475569;
+}
+
+/* 좁은 화면(폰·좁은 창): 사이드바는 본문을 밀지 않고 위에 겹쳐서 열려요(MainLayout의 NARROW_QUERY와 같은 폭). */
+@media (max-width: 900px) {
+  :root,
+  :root[data-sidebar="collapsed"] {
+    --sidebar-w: 0px;
+  }
+  .sidebar {
+    z-index: 40;
+    box-shadow: 0 0 40px rgba(15, 23, 42, 0.2);
+  }
+  .sidebarBackdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 39;
+    background: rgba(15, 23, 42, 0.35);
+  }
+  .header {
+    padding: 0 14px;
+    gap: 10px;
+  }
+  .headerLeft {
+    flex: 1 1 auto;
+  }
+  .search {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .headerMembers {
+    display: none;
+  }
 }

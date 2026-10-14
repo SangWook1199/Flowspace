@@ -78,7 +78,7 @@ export default function AiProject() {
         </Notice>
       ) : !status?.enabled ? (
         <Notice title="AI 기능이 꺼져 있어요" onBack={goBack}>
-          이 서버에서는 AI 프로젝트 구성을 쓸 수 없어요. 서버 설정(flowspace.ai.enabled)을 확인해 주세요.
+          지금은 AI 프로젝트 구성을 쓸 수 없어요. 관리자에게 문의해 주세요.
         </Notice>
       ) : (
         <>
@@ -98,7 +98,7 @@ export default function AiProject() {
               members={members}
               sprints={sprints}
               starting={starting}
-              blocked={status.available ? "" : "지금 AI 모델에 연결할 수 없어요. 모델 서버(Ollama)가 켜져 있는지 확인한 뒤 다시 시도해 주세요."}
+              blocked={status.available ? "" : "지금 AI 모델에 연결할 수 없어요. 잠시 뒤 다시 시도해 주세요."}
               message={error}
               onSubmit={() => start(buildRequest(form))}
               onCancel={goBack}

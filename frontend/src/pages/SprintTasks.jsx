@@ -1,5 +1,5 @@
 import { ArrowLeft } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useOutletContext, useParams, useSearchParams } from "react-router-dom";
 import TaskDetailPanel from "../components/sprint/TaskDetailPanel";
 import TaskTable from "../components/sprint/TaskTable";
@@ -86,6 +86,19 @@ function SprintTasksBody({ sprint }) {
     return (target ?? sprintOwnTasks[0])?.id ?? null;
   });
   const [checkedIds, setCheckedIds] = useState([]);
+
+  // 이미 이 화면에 있는 채로 헤더 검색·활동 목록의 링크(?task=)를 누르면 그 작업으로 선택을 옮겨요.
+  const wantedTask = searchParams.get("task");
+  const handledTask = useRef(wantedTask);
+  useEffect(() => {
+    if (!wantedTask || wantedTask === handledTask.current) return;
+
+    const target = sprintOwnTasks.find((task) => String(task.id) === wantedTask);
+    if (!target) return;
+    handledTask.current = wantedTask;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedId(target.id);
+  }, [wantedTask, sprintOwnTasks]);
 
   const tasks = sprintOwnTasks.map((task) => ({
     ...task,

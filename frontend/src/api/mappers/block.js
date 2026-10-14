@@ -47,6 +47,17 @@ export function toEditorComments(comments) {
   return out;
 }
 
+// 서버 블록들이 가리키는 하위 페이지 id를 모아요(없어진 페이지인지 가려내기 전에, 페이지 목록이 낡았는지 보려고요).
+export function findLinkedPageIds(items) {
+  const ids = new Set();
+  for (const item of items ?? []) {
+    if (item.type !== "TEXT") continue;
+    const pageId = parseEnvelope(item.content).pageId;
+    if (pageId != null) ids.add(pageId);
+  }
+  return ids;
+}
+
 // 서버 블록 목록을 에디터의 평평한 배열(indent 방식)로 바꿔요.
 // options.knownPageIds: 지금 존재하는 페이지 id 집합(없어진 페이지를 가리키는 링크는 풀어요)
 // options.databases: databaseId → 에디터 database 객체

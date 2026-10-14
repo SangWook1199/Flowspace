@@ -211,7 +211,7 @@ export default function TaskDetailPanel({
 // 작업 설명 에디터예요. 처음 열 때의 값만 에디터에 넣고(작업을 바꾸면 key로 새로 시작해요), 그 뒤로는 에디터가
 // 알려주는 값을 저장만 해요 — 저장된 값을 다시 에디터에 밀어넣으면 커서가 튀어요.
 function DescriptionField({ description, onChange }) {
-  const [initialHtml] = useState(() => toEditorHtml(description));
+  const [html, setHtml] = useState(() => toEditorHtml(description));
   const [tooLong, setTooLong] = useState(false);
 
   return (
@@ -219,23 +219,25 @@ function DescriptionField({ description, onChange }) {
       <span>설명</span>
       <RichTextEditor
         label=""
-        value={initialHtml}
+        value={html}
         maxLength={DESCRIPTION_MAX}
         placeholder="작업에 대한 설명을 작성하세요. (선택)"
         hint="글머리 기호, 번호 목록, 링크를 쓸 수 있어요."
-        onChange={(html) => {
+        onChange={(next) => {
+          // 글자 수 표시가 따라가도록 에디터가 알려준 값을 그대로 들고 있어요(같은 값이라 에디터 내용을 다시 쓰지 않아요).
+          setHtml(next);
           // 너무 길면 저장하지 않고 안내해요(서버가 거절하기 전에 막아요).
-          if (htmlToText(html).length > DESCRIPTION_MAX) {
+          if (htmlToText(next).length > DESCRIPTION_MAX) {
             setTooLong(true);
             return;
           }
           setTooLong(false);
-          onChange(html);
+          onChange(next);
         }}
       />
       {tooLong && (
         <small role="alert" style={{ color: "#dc2626", display: "block", marginTop: 6 }}>
-          설명이 너무 길어서 저장하지 않았어요. {DESCRIPTION_MAX.toLocaleString()}자 이하로 줄여주세요.
+          설명이 너무 길어서 저장하지 않았어요. {DESCRIPTION_MAX.toLocaleString()}자 이하로 줄이기 전에 닫으면 이 내용은 사라져요.
         </small>
       )}
     </div>
@@ -572,16 +574,28 @@ function Field({ label, children }) {
     </label>
   );
 }
+// 연도를 직접 타이핑하면 브라우저가 0002-10-14 같은 중간 값을 계속 내보내요. 그 값으로 바로 저장·검사하면 입력이 꼬이고
+// 엉뚱한 날짜가 저장되니, 입력하는 동안은 화면에서만 들고 있다가 끝까지 입력된 날짜(또는 지움)일 때만 부모에게 알려요.
 function DateInput({ value, min, max, onChange }) {
+  const [draft, setDraft] = useState(null);
+  const shown = draft ?? value ?? "";
+
   return (
     <label className={styles.dateInput}>
       <CalendarDays size={15} />
       <input
         type="date"
-        value={value ?? ""}
+        value={shown}
         min={min || undefined}
         max={max || undefined}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          const next = e.target.value;
+          setDraft(next);
+          // 일·월·연 중 일부만 입력된 상태(badInput)는 값이 ""로 오지만 지운 게 아니에요.
+          if (e.target.validity?.badInput) return;
+          if (next === "" || isCompleteDate(next)) onChange(next);
+        }}
+        onBlur={() => setDraft(null)}
       />
     </label>
   );

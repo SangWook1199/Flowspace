@@ -397,6 +397,17 @@ export default function RichTextInput({
       spellCheck={false}
       data-rich-block-id={id}
       data-placeholder={showPlaceholder ? placeholder : undefined}
+      onClick={(e) => {
+        // 글을 고치는 칸이라 그냥 누르면 커서만 놓여요. Ctrl/⌘를 누르고 링크를 누르면 새 탭에서 열어요.
+        if (!(e.ctrlKey || e.metaKey)) return;
+        const link = e.target instanceof Element ? e.target.closest("a[href]") : null;
+        if (!link || !e.currentTarget.contains(link)) return;
+
+        const href = link.getAttribute("href");
+        if (!isSafeHref(href)) return;
+        e.preventDefault();
+        window.open(href, "_blank", "noopener,noreferrer");
+      }}
       onInput={handleInput}
       onCompositionEnd={() => {
         if (sentinelRef.current && cleanupSentinel(sentinelRef.current)) sentinelRef.current = null;

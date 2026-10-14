@@ -8,11 +8,11 @@ import * as authApi from "../../api/auth";
 import { getInitial } from "../../utils/initial";
 import { getErrorMessage, getErrorCode } from "../../utils/apiError";
 import useDialog from "../../context/useDialog";
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, PASSWORD_RULE_TEXT } from "../../utils/passwordRule";
 
 // 입력 규칙. 닉네임 30자는 users.nickname 컬럼(length 30)에 맞춘 값이라,
 // 이보다 길게 보내면 서버에서 저장하다 실패해요.
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PASSWORD_MIN_LENGTH = 8;
 const NICKNAME_MAX_LENGTH = 30;
 const PROFILE_MAX_BYTES = 5 * 1024 * 1024;
 
@@ -64,6 +64,14 @@ export default function SignupForm() {
   // state는 다음 렌더에야 반영돼서 엔터 연타 같은 같은 순간의 두 번째
   // 제출을 못 막을 수 있어요. ref로 즉시 잠가요.
   const submittingRef = useRef(false);
+  // 가입이 끝나면 로그인 상태가 되어 이 폼이 바로 사라질 수 있어요. 그 뒤 늦게 끝난 작업이 화면을 다시 옮기지 않게 확인용으로 둬요.
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   // 단계를 오갈 때 이전 단계에서 났던 오류가 남아 있으면, 지금 단계와
   // 상관없는 메시지가 보이니까 같이 지워요.
@@ -160,11 +168,12 @@ export default function SignupForm() {
           const { data: updated } = await authApi.updateProfile(profileData);
           setUser(updated);
         } catch {
-          // 프로필 사진 업로드만 실패 — 조용히 넘어가요.
+          // 프로필 사진 업로드만 실패 — 가입은 끝났으니 알리고 넘어가요.
+          notify("프로필 사진을 올리지 못했어요. 내 계정에서 다시 올려 주세요.");
         }
       }
 
-      navigate("/");
+      if (mountedRef.current) navigate("/");
     } catch (err) {
       const message = getErrorMessage(err, "회원가입에 실패했어요. 다시 시도해주세요.");
 
@@ -189,7 +198,7 @@ export default function SignupForm() {
 
   const emailTrimmed = form.email.trim();
   const emailValid = EMAIL_PATTERN.test(emailTrimmed);
-  const passwordValid = form.password.length >= PASSWORD_MIN_LENGTH;
+  const passwordValid = form.password.length >= PASSWORD_MIN_LENGTH && form.password.length <= PASSWORD_MAX_LENGTH;
   const confirmValid = form.password === form.confirmPassword;
 
   // 1단계에서 지금 보여줄 규칙 위반 메시지 하나(위에서부터 우선순위).
@@ -197,7 +206,7 @@ export default function SignupForm() {
     touched.email && form.email && !emailValid
       ? "올바른 이메일 형식이 아니에요."
       : touched.password && form.password && !passwordValid
-        ? `비밀번호는 ${PASSWORD_MIN_LENGTH}자 이상이어야 해요.`
+        ? `비밀번호는 ${PASSWORD_RULE_TEXT}로 입력해 주세요.`
         : touched.confirmPassword && form.confirmPassword && !confirmValid
           ? "비밀번호가 서로 달라요."
           : "";
@@ -273,7 +282,8 @@ export default function SignupForm() {
                 id={passwordId}
                 type={showPassword ? "text" : "password"}
                 autoComplete="new-password"
-                placeholder={`비밀번호를 입력하세요 (${PASSWORD_MIN_LENGTH}자 이상)`}
+                placeholder={`비밀번호를 입력하세요 (${PASSWORD_RULE_TEXT})`}
+                maxLength={PASSWORD_MAX_LENGTH}
                 value={form.password}
                 onChange={(e) => updateField("password", e.target.value)}
                 onBlur={() => touch("password")}

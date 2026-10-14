@@ -981,6 +981,7 @@
 }
 
 .block-input a {
+  /* Ctrl/⌘를 누르고 누르면 새 탭에서 열려요(RichTextInput). */
   color: #4f5cf6;
   text-decoration: underline;
   text-decoration-color: rgba(79, 92, 246, 0.35);

@@ -93,7 +93,8 @@ export default function SocialLogin() {
   // 투명 버튼이 덮지 못한 가장자리를 누르거나 설정이 없을 때 오는 곳이에요.
   const handleGoogleLogin = () => {
     if (!GOOGLE_CLIENT_ID) {
-      setError("Google 로그인이 아직 설정되지 않았어요. (VITE_GOOGLE_CLIENT_ID)");
+      console.warn("VITE_GOOGLE_CLIENT_ID가 설정되지 않았어요.");
+      setError("지금은 Google 로그인을 쓸 수 없어요. 이메일로 로그인하거나 관리자에게 문의해 주세요.");
       return;
     }
     setError("");
@@ -102,7 +103,8 @@ export default function SocialLogin() {
 
   const handleMicrosoftLogin = async () => {
     if (!MICROSOFT_CLIENT_ID) {
-      setError("Microsoft 로그인이 아직 설정되지 않았어요. (VITE_MICROSOFT_CLIENT_ID)");
+      console.warn("VITE_MICROSOFT_CLIENT_ID가 설정되지 않았어요.");
+      setError("지금은 Microsoft 로그인을 쓸 수 없어요. 이메일로 로그인하거나 관리자에게 문의해 주세요.");
       return;
     }
     if (busyRef.current) return;
@@ -116,12 +118,11 @@ export default function SocialLogin() {
       if (err instanceof SocialLoginCancelled) return;
       console.error("[Microsoft 로그인]", err);
 
-      // Microsoft가 알려준 이유(AADSTS… 코드)가 있으면 같이 보여줘요 — 설정 문제를 찾는 데 도움이 돼요.
-      const detail = err?.message && err.message !== "popup-blocked" ? ` (${String(err.message).slice(0, 160)})` : "";
+      // Microsoft가 알려준 이유(AADSTS… 코드)는 개발자용이라 화면에는 내지 않고 콘솔(위)에만 남겨요.
       setError(
         err?.message === "popup-blocked"
           ? "팝업이 차단됐어요. 이 사이트의 팝업을 허용하고 다시 시도해주세요."
-          : `Microsoft 로그인에 실패했어요. 다시 시도해주세요.${detail}`,
+          : "Microsoft 로그인에 실패했어요. 다시 시도해주세요.",
       );
     }
   };

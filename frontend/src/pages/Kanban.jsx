@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, Fragment } from "react";
+import { useEffect, useMemo, useRef, useState, Fragment } from "react";
 import { CircleCheck, Plus } from "lucide-react";
 import { Link, useNavigate, useOutletContext } from "react-router-dom";
 
@@ -118,6 +118,7 @@ function KanbanBoard({ activeSprint }) {
     saveStatus: saveStatusOnServer,
     deleteStatus: deleteStatusOnServer,
     reorderStatuses,
+    canManageWorkspace = false,
   } = useOutletContext();
   const auth = useAuth();
   const { confirm, notify } = useDialog();
@@ -436,15 +437,24 @@ function KanbanBoard({ activeSprint }) {
 
   // 컬럼(상태) 만들기/고치기/지우기 — 서버 저장과 목록 갱신은 공용 데이터(useSprintData)가 해요.
   // 새 상태는 맨 끝에 붙어요. 만들기에 성공하면 모달을 닫고, 실패하면 안내만 뜨고 모달은 그대로예요.
+  // 같은 이름의 컬럼이 두 번 만들어지지 않게, 서버 응답을 기다리는 동안 다시 눌러도 무시해요.
+  const creatingStatus = useRef(false);
   const createStatus = async (data) => {
-    const ok = await createStatusOnServer(data);
-    if (ok) setCreateOpen(false);
+    if (creatingStatus.current) return;
+    creatingStatus.current = true;
+
+    try {
+      const ok = await createStatusOnServer(data);
+      if (ok) setCreateOpen(false);
+    } finally {
+      creatingStatus.current = false;
+    }
   };
 
   // 이름/카테고리/색을 바꿔요. 기본 상태를 고치면 서버가 이 워크스페이스 전용 새 상태로 바꿔 끼우고 작업도 옮겨줘요.
   const saveStatus = (data) => saveStatusOnServer(data);
 
-  // 상태를 지울 땐 그 상태의 작업을 모달에서 고른 상태로 옮겨요(서버가 해줘요).
+  // 상태를 지울 땐 그 상태의 작업을 모달에서 고른 상태로 옮겨요(서버가 해줘요). 관리자 이상만 지울 수 있어요.
   const deleteStatus = (data) => deleteStatusOnServer(data);
 
   return (
@@ -499,7 +509,7 @@ function KanbanBoard({ activeSprint }) {
               status={status}
               statuses={statuses}
               onStatusSave={saveStatus}
-              onStatusDelete={deleteStatus}
+              onStatusDelete={canManageWorkspace ? deleteStatus : undefined}
               tasks={shownTasks.filter((task) => task.statusId === status.id)}
               totalCount={tasks.filter((task) => task.statusId === status.id).length}
               collapsed={collapsedIds.includes(status.id)}

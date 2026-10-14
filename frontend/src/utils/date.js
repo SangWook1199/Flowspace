@@ -7,9 +7,9 @@ const pad = (n) => String(n).padStart(2, "0");
 // Date → "YYYY-MM-DD" (로컬 시간 기준).
 export const toDateKey = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 
-// "오늘"의 날짜 키. 테스트나 화면 확인용으로 window.__TODAY__("YYYY-MM-DD")가 있으면 그 값을 써요.
+// "오늘"의 날짜 키. 개발 중 화면 확인용으로 window.__TODAY__("YYYY-MM-DD")가 있으면 그 값을 써요(배포 빌드에서는 무시해요).
 export const todayKey = () => {
-  if (typeof window !== "undefined" && typeof window.__TODAY__ === "string") return window.__TODAY__;
+  if (import.meta.env.DEV && typeof window !== "undefined" && typeof window.__TODAY__ === "string") return window.__TODAY__;
   return toDateKey(new Date());
 };
 

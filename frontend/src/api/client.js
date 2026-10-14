@@ -1,6 +1,7 @@
 import axios from "axios";
 import { refresh } from "./auth";
 import { getErrorMessage } from "../utils/apiError";
+import { API_BASE_URL } from "../utils/env";
 import {
   getAccessToken,
   getRefreshToken,
@@ -8,9 +9,9 @@ import {
   clearTokens,
 } from "../utils/token";
 
-// 배포 환경마다 서버 주소가 다르니까 .env의 VITE_API_BASE_URL을 우선
-// 쓰고, 없을 때만 로컬 개발용 주소로 떨어져요.
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+// 배포 환경마다 서버 주소가 다르니까 .env의 VITE_API_BASE_URL을 우선 쓰고(utils/env.js),
+// 없을 때만 개발용 주소로 떨어져요.
+const BASE_URL = API_BASE_URL;
 
 // 토큰이 완전히 만료돼서 로그인 상태를 더 유지할 수 없을 때 window로
 // 쏘는 이벤트 이름이에요. 이 파일은 React 바깥(axios)이라 Context를
@@ -49,6 +50,7 @@ const NO_REFRESH_URL = /^\/?auth\/(login|signup|refresh|google|microsoft|social\
 let refreshPromise = null;
 
 const NO_REFRESH_TOKEN = "NO_REFRESH_TOKEN";
+const REFRESH_SUPERSEDED = "REFRESH_SUPERSEDED";
 
 const refreshAccessToken = () => {
   if (!refreshPromise) {
@@ -57,13 +59,27 @@ const refreshAccessToken = () => {
     refreshPromise = (
       refreshToken
         ? refresh(refreshToken).then(({ data }) => {
+            // 기다리는 사이 로그아웃했거나 다른 탭이 이미 새 토큰을 저장했다면, 내 결과로 덮어쓰지 않아요
+            // (로그아웃한 브라우저에 토큰이 되살아나거나, 1회용 refresh 토큰이 엇갈리는 걸 막아요).
+            if (getRefreshToken() !== refreshToken) {
+              const current = getAccessToken();
+              if (current) return current;
+              throw new Error(REFRESH_SUPERSEDED);
+            }
+
             saveTokens(data);
             return data.accessToken;
           })
         : Promise.reject(new Error(NO_REFRESH_TOKEN))
-    ).finally(() => {
-      refreshPromise = null;
-    });
+    )
+      .catch((err) => {
+        // 어떤 refresh 토큰으로 시도했는지 남겨요(다른 탭이 새 토큰을 저장했는지 가릴 때 써요).
+        if (err && typeof err === "object") err.refreshTokenUsed = refreshToken;
+        throw err;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
   }
 
   return refreshPromise;
@@ -122,13 +138,27 @@ client.interceptors.response.use(
           : await refreshAccessToken();
     } catch (refreshError) {
       if (isSessionExpired(refreshError)) {
-        clearTokens();
-        window.dispatchEvent(new CustomEvent(AUTH_LOGOUT_EVENT));
+        const stored = getRefreshToken();
+
+        if (stored && stored !== refreshError.refreshTokenUsed && getAccessToken()) {
+          // 그 사이 다른 탭이 새 토큰을 저장했어요 — 지우지 말고 그 토큰으로 다시 시도해요.
+          newToken = getAccessToken();
+        } else {
+          clearTokens();
+          window.dispatchEvent(new CustomEvent(AUTH_LOGOUT_EVENT));
+        }
       }
 
-      // 호출한 쪽(예: AuthProvider)이 원래 401 오류를 보고 판단할 수 있게
-      // refresh 오류가 아니라 원래 오류를 넘겨요.
-      return Promise.reject(error);
+      if (!newToken) {
+        // 네트워크 끊김·서버 5xx처럼 "로그인이 풀린 게 아니라 지금 확인을 못 한" 경우는 표시를 달아요.
+        // 호출한 쪽(AuthProvider)이 이 표시를 보고 토큰을 지우지 않고 "다시 시도"를 보여줘요.
+        const status = refreshError.response?.status;
+        error.refreshUnavailable = !refreshError.response ? refreshError.message !== NO_REFRESH_TOKEN : status >= 500;
+
+        // 호출한 쪽(예: AuthProvider)이 원래 401 오류를 보고 판단할 수 있게
+        // refresh 오류가 아니라 원래 오류를 넘겨요.
+        return Promise.reject(error);
+      }
     }
 
     // 재시도는 try 밖에서 해요. 재시도한 요청 자체의 실패(예: 500)를

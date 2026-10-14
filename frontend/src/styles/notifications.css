@@ -27,7 +27,7 @@
   position: absolute;
   top: calc(100% + 12px);
   right: -8px;
-  width: 392px;
+  width: min(392px, calc(100vw - 24px));
   max-height: 560px;
   display: flex;
   flex-direction: column;

@@ -75,9 +75,11 @@ const pickDateForMonth = (monthDate, selectedDate, today) => {
 };
 
 // 공용 작업 → 캘린더가 쓰는 작업 모양. 날짜가 없는 작업은 달력에 올릴 수 없어서 빼요.
+// 시작일 없이 마감일만 있는 작업은 마감일 하루짜리로 보여요.
 const toCalendarTask = (task, statusById) => {
   const status = statusById[task.statusId];
   const subtasks = task.subtasks ?? [];
+  const startDate = task.startDate || task.dueDate;
 
   return {
     id: task.id,
@@ -85,9 +87,9 @@ const toCalendarTask = (task, statusById) => {
     code: task.code ?? task.id,
     title: task.title,
     assignees: task.assignees ?? [],
-    start: task.startDate,
+    start: startDate,
     // 마감일이 없거나 시작일보다 앞서면 하루짜리로 보여요.
-    end: task.dueDate && task.dueDate >= task.startDate ? task.dueDate : task.startDate,
+    end: task.dueDate && task.dueDate >= startDate ? task.dueDate : startDate,
     status: {
       id: task.statusId,
       name: status?.name ?? task.statusName,
@@ -192,7 +194,7 @@ function CalendarBody() {
     const statusById = Object.fromEntries(taskStatuses.map((s) => [s.id, s]));
 
     return sprintTasks
-      .filter((task) => task.sprintId === selectedSprint && task.startDate)
+      .filter((task) => task.sprintId === selectedSprint && (task.startDate || task.dueDate))
       .map((task) => toCalendarTask(task, statusById));
   }, [sprintTasks, taskStatuses, selectedSprint]);
 

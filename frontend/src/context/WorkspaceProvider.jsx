@@ -9,11 +9,11 @@ import { getSavedWorkspaceId, saveWorkspaceId } from "../utils/workspaceStorage"
 import { useSprintData } from "./useSprintData";
 import useDialog from "./useDialog";
 
-// 사이드바 메뉴 목록은 아직 목데이터예요(대시보드 연결 M4에서 정리해요).
+// 사이드바 메뉴 목록(고정된 메뉴 정의)이에요.
 import { NAVIGATION } from "../utils/navigation";
 // workspaceId가 없는 페이지(서버에 만드는 중인 임시 페이지 등)는 1번 워크스페이스 소속으로 봐요.
 const DEFAULT_WORKSPACE_ID = 1;
-const DEFAULT_CREATOR = "상욱"; // 로그인 정보가 없을 때만 쓰는 예전 기본값이에요.
+const DEFAULT_CREATOR = "나"; // 로그인 정보가 없을 때만 쓰는 대신 이름이에요.
 
 // 페이지 제목·아이콘을 고칠 때 서버에 보내기까지 기다리는 시간(타이핑 중 요청 폭주 방지).
 const PAGE_SAVE_DELAY_MS = 600;
@@ -26,9 +26,7 @@ const inWorkspace = (item, workspaceId) =>
 const isServerId = (id) => typeof id === "number" && id > 0;
 
 // 삭제할 페이지 + 그 아래 모든 하위 페이지(재귀)의 id를 모아요.
-// pages 테이블에 soft-delete용 컬럼이 있는 걸 감안하면 실제로는 하드
-// 삭제 대신 deleted_at을 채우는 식이겠지만, 목데이터 단계라 배열에서
-// 바로 걷어내는 걸로 대신해요.
+// 화면에서 휴지통으로 보낼 페이지 묶음을 미리 계산하는 데 써요(서버가 같은 규칙으로 처리해요).
 function collectWithDescendants(pages, rootId) {
   const ids = new Set([rootId]);
   let changed = true;
@@ -85,6 +83,9 @@ export function WorkspaceProvider({ children }) {
   // 오래된 응답이 새 상태를 덮어쓰지 않게 요청마다 번호를 매겨요.
   const workspaceRequestId = useRef(0);
 
+  // 워크스페이스가 하나도 없는 상태로 만드는 함수예요(아래 exitAllWorkspaces). 위쪽 loadWorkspaces에서도 부르려고 ref로 건네요.
+  const exitAllRef = useRef(() => {});
+
   const loadWorkspaces = useCallback(async () => {
     const id = ++workspaceRequestId.current;
     setWorkspaceError(null);
@@ -94,7 +95,8 @@ export function WorkspaceProvider({ children }) {
       if (id !== workspaceRequestId.current) return;
 
       if (list.length === 0) {
-        setWorkspaceError("참여 중인 워크스페이스가 없어요.");
+        // 마지막 워크스페이스에서 내보내졌을 때처럼, 남아 있던 이전 워크스페이스 화면이 그대로 보이지 않게 모두 비워요.
+        exitAllRef.current();
         return;
       }
 
@@ -136,6 +138,7 @@ export function WorkspaceProvider({ children }) {
   });
 
   // silent: 화면을 "불러오는 중"으로 바꾸지 않고 조용히 서버 상태와 맞춰요(삭제·복원 뒤 등).
+  // 서버 목록을 받아 반영했으면 그 페이지 id 집합을, 건너뛰었거나 실패했으면 null을 돌려줘요.
   const loadPages = useCallback(async (workspaceId, { silent = false } = {}) => {
     const id = ++pagesRequestId.current;
     if (!silent) setPagesError(null);
@@ -146,24 +149,44 @@ export function WorkspaceProvider({ children }) {
         pageApi.getPages(workspaceId),
         pageApi.getTrashedPages(workspaceId).catch(() => null),
       ]);
-      if (id !== pagesRequestId.current) return;
+      if (id !== pagesRequestId.current) return null;
 
       // 조용한 새로고침에서 휴지통을 못 받았다면 "휴지통이 비었다"고 착각하지 않게 이번엔 건너뛰어요.
-      if (trashed === null && silent) return;
+      if (trashed === null && silent) return null;
 
       const dirtyIds = new Set(saveTimers.current.keys());
-      setPages((prev) => mergeServerPages(prev, [...active, ...(trashed ?? [])], workspaceId, dirtyIds));
+      const serverPages = [...active, ...(trashed ?? [])];
+      setPages((prev) => mergeServerPages(prev, serverPages, workspaceId, dirtyIds));
       setPagesLoadedFor(workspaceId);
+      return new Set(serverPages.map((page) => page.id));
     } catch (err) {
-      if (id !== pagesRequestId.current) return;
+      if (id !== pagesRequestId.current) return null;
       if (!silent) {
         setPagesError(getErrorMessage(err));
         setPagesLoadedFor(workspaceId);
       }
+      return null;
     }
   }, []);
 
   const membersRequestId = useRef(0);
+
+  // 참여 중인 워크스페이스가 하나도 없는 상태로 만들어요(이전 워크스페이스의 페이지·팀원·요청 결과도 비워요).
+  const exitAllWorkspaces = () => {
+    pagesRequestId.current++;
+    membersRequestId.current++;
+    setWorkspaces([]);
+    setCurrentWorkspaceId(null);
+    setPages([]);
+    setMembers([]);
+    setMembersError(null);
+    setPagesLoadedFor(null);
+    setPagesError(null);
+    setWorkspaceError("참여 중인 워크스페이스가 없어요.");
+  };
+  useEffect(() => {
+    exitAllRef.current = exitAllWorkspaces;
+  });
 
   const loadMembers = useCallback(
     async (workspaceId) => {
@@ -203,7 +226,7 @@ export function WorkspaceProvider({ children }) {
   }, []);
 
   const refreshPages = useCallback(
-    () => (currentWorkspaceId == null ? Promise.resolve() : loadPages(currentWorkspaceId, { silent: true })),
+    () => (currentWorkspaceId == null ? Promise.resolve(null) : loadPages(currentWorkspaceId, { silent: true })),
     [currentWorkspaceId, loadPages],
   );
 
@@ -547,6 +570,7 @@ export function WorkspaceProvider({ children }) {
     setMembersError(null);
     setPagesLoadedFor(null);
     setPagesError(null);
+    setWorkspaceError(null);
     setCurrentWorkspaceId(workspaceId);
     if (userId != null) saveWorkspaceId(userId, workspaceId);
   };
@@ -639,8 +663,12 @@ export function WorkspaceProvider({ children }) {
     await request(leavingId);
 
     const rest = workspaces.filter((w) => w.id !== leavingId);
-    setWorkspaces(rest);
-    if (rest.length > 0) enterWorkspace(rest[0].id);
+    if (rest.length > 0) {
+      setWorkspaces(rest);
+      enterWorkspace(rest[0].id);
+    } else {
+      exitAllWorkspaces();
+    }
   };
 
   const leaveCurrentWorkspace = () => leaveOrDropCurrent(workspaceApi.leaveWorkspace);
@@ -679,6 +707,7 @@ export function WorkspaceProvider({ children }) {
     pagesLoading,
     pagesError,
     reloadPages,
+    refreshPages,
     createPage,
     createChildPage,
     pageIdMap,

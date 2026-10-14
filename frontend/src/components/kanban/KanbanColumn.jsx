@@ -363,8 +363,10 @@ export default function KanbanColumn({
             setEditOpen(false);
             restoreMenuFocus();
           }}
-          onSave={(data) => {
-            onStatusSave?.(data);
+          onSave={async (data) => {
+            // 저장에 실패하면 입력한 내용이 사라지지 않게 모달을 그대로 둬요(안내는 저장 쪽에서 띄워요).
+            const ok = await onStatusSave?.(data);
+            if (ok === false) return;
             setEditOpen(false);
             restoreMenuFocus();
           }}
@@ -379,8 +381,9 @@ export default function KanbanColumn({
             setDeleteOpen(false);
             restoreMenuFocus();
           }}
-          onDelete={(data) => {
-            onStatusDelete?.(data);
+          onDelete={async (data) => {
+            const ok = await onStatusDelete?.(data);
+            if (ok === false) return;
             setDeleteOpen(false);
           }}
         />

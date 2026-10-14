@@ -34,6 +34,8 @@ import useMultiBlockTextSelection from "./hooks/useMultiBlockTextSelection.js";
 import { selectionTextBounds } from "./lib/selectionMove.js";
 
 // 기본값으로 매 렌더마다 새 배열([])을 만들면 memo된 BlockRow의 props가 항상 "달라져" 보여요.
+// 서버가 받는 파일 하나의 최대 크기예요(백엔드 application.yaml의 max-file-size와 같게 맞춰요).
+const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 const NO_PAGES = [];
 const NO_TASKS = [];
 const NO_REMOTE_EDITORS = {};
@@ -58,7 +60,14 @@ export default function BlockEditor({
   // 다른 멤버가 저장한 내용을 합친 블록 배열을 통째로 화면에 넣는 함수를 여기에 등록해 둬요(usePageBlocks가 불러요).
   applyRef,
 }) {
-  const { confirm } = useDialog();
+  const { confirm, notify } = useDialog();
+
+  // 서버가 받는 업로드 한도(20MB)보다 큰 파일은 올리기 전에 알려요(base64로 메모리를 크게 쓰고 저장 때마다 실패하는 걸 막아요).
+  const rejectIfTooLarge = (file) => {
+    if (file.size <= MAX_UPLOAD_BYTES) return false;
+    notify(`“${file.name}” 파일이 20MB를 넘어서 올릴 수 없어요.`);
+    return true;
+  };
   // pages/{pageId}/blocks API로 교체 예정. onChange가 있으면 상위(페이지 목록
   // 상태)로 변경 사항을 올려서 다른 화면에서도 최신 블록이 보이게 해요.
   //
@@ -1091,6 +1100,7 @@ export default function BlockEditor({
   // 바꾸는 토글이라, content/image를 초기화하는 convertBlock과 달리
   // type 필드만 바꿔서 데이터(사진/파일 자체)는 그대로 남아있어요.
   const swapImageFileType = (id, type) => {
+    pushUndoSnapshot();
     updateBlock(id, { type });
     setBlockMenu(null);
   };
@@ -1154,6 +1164,7 @@ export default function BlockEditor({
   };
 
   const bulkSetTextColor = (textColor) => {
+    pushUndoSnapshot();
     setBlocks((prev) =>
       prev.map((b) => (selectedBlockIds.has(b.id) && blockCanHaveTextColor(b) ? { ...b, textColor } : b)),
     );
@@ -1318,7 +1329,7 @@ export default function BlockEditor({
     // "/"는 무시). 일단 열린 다음에는 "/h1"처럼 계속 이어 칠 때마다
     // query가 갱신돼야 필터링/키보드 선택이 되니까, 이미 열려 있는
         // 동안엔 wasEmpty 조건과 상관없이 계속 추적해요.
-    const wasEmpty = isBlockContentEmpty(block.content);
+    const wasEmpty = isBlockContentEmpty(block.content, block.type);
     const isSlashActive = slashMenu?.blockId === block.id;
 
     // 요청: "블록 생성에 대한 ctrl z" — 글자 입력도 스냅샷 대상이에요(1초 안에 이어진
@@ -1486,7 +1497,7 @@ export default function BlockEditor({
   };
 
   const handleImageSelect = (block, file) => {
-    if (!file) return;
+    if (!file || rejectIfTooLarge(file)) return;
 
     pushUndoSnapshot();
     const reader = new FileReader();
@@ -1526,7 +1537,7 @@ export default function BlockEditor({
   // insertBlockAfter/handleImageSelect를 합친 모양이에요 — 새 블록을
   // 만들자마자 그 자리의 id로 이미지를 채워요.
   const insertImageBlockAfter = (id, file) => {
-    if (!file) return;
+    if (!file || rejectIfTooLarge(file)) return;
     const newId = nextId();
 
     pushUndoSnapshot();
@@ -1601,7 +1612,9 @@ export default function BlockEditor({
     const imageItem = Array.from(items).find(
       (item) => item.kind === "file" && item.type?.startsWith("image/"),
     );
-    if (imageItem) {
+    // 엑셀·구글 시트·일부 웹 복사는 글자(표)와 함께 그 모습을 찍은 이미지도 클립보드에 담아요. 글자가 있으면 이미지로 가로채지 않아요.
+    const hasText = (e.clipboardData.getData("text/plain") ?? "").trim() !== "";
+    if (imageItem && !hasText) {
       e.preventDefault();
       insertImageBlockAfter(block.id, imageItem.getAsFile());
       return;
@@ -1739,7 +1752,7 @@ export default function BlockEditor({
   };
 
   const insertImageBlocksFromFiles = (files, anchor) => {
-    const imageFiles = Array.from(files || []).filter((file) => file.type?.startsWith("image/"));
+    const imageFiles = Array.from(files || []).filter((file) => file.type?.startsWith("image/") && !rejectIfTooLarge(file));
     let currentAnchor = anchor;
 
     imageFiles.forEach((file) => {
@@ -1762,7 +1775,13 @@ export default function BlockEditor({
     const newId = nextId();
     setBlocks((prev) => spliceBlockAt(prev, createEmptyBlock(newId, "IMAGE", onCreateChildPage), anchor));
 
-    const fileName = decodeURIComponent(url.split("/").pop()?.split("?")[0] || "image");
+    const rawName = url.split("/").pop()?.split("?")[0] || "image";
+    let fileName = rawName;
+    try {
+      fileName = decodeURIComponent(rawName);
+    } catch {
+      // %가 홀로 들어간 주소처럼 해석할 수 없는 이름이면 원문 그대로 써요.
+    }
     updateBlock(newId, { image: { fileName, fileSize: "", url } });
   };
 

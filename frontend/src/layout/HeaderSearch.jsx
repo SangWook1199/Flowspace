@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import * as Icons from "lucide-react";
 import { searchWorkspace } from "../api/search";
 import "../styles/search.css";
+import { shortcutKey } from "../utils/shortcutKey";
 
 // 결과 묶음 순서와 이름
 const GROUPS = [
@@ -95,7 +96,9 @@ export default function HeaderSearch({ workspaceId }) {
   // Ctrl/⌘ + K
   useEffect(() => {
     const onKeyDown = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+      // 에디터가 이미 Ctrl/⌘+K를 링크 삽입으로 쓴 경우(preventDefault 됨)에는 검색창으로 가져오지 않아요.
+      if (e.defaultPrevented) return;
+      if ((e.ctrlKey || e.metaKey) && shortcutKey(e) === "k") {
         e.preventDefault();
         inputRef.current?.focus();
         setOpen(true);
@@ -114,6 +117,9 @@ export default function HeaderSearch({ workspaceId }) {
   };
 
   const onKeyDown = (e) => {
+    // 한글 조합 중 Enter(조합 확정)는 결과 이동으로 보지 않아요.
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+
     if (e.key === "Escape") {
       setOpen(false);
       inputRef.current?.blur();

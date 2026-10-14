@@ -99,8 +99,8 @@ export default function Dashboard() {
       .filter(
         (task) =>
           task.sprintId !== null &&
-          task.startDate &&
-          today >= task.startDate &&
+          (task.startDate || task.dueDate) &&
+          today >= (task.startDate || task.dueDate) &&
           today <= (task.dueDate || task.startDate),
       )
       .map((task) => {
@@ -131,7 +131,7 @@ export default function Dashboard() {
   const { data: events, error: eventsError } = useRequest(
     () => eventApi.getEventsAround(workspaceId, base.getFullYear(), base.getMonth() + 1),
     [workspaceId, today],
-    { initialData: [] },
+    { initialData: [], resetOnChange: true },
   );
   const todaySchedule = useMemo(
     () =>
@@ -144,6 +144,7 @@ export default function Dashboard() {
   // 최근 활동: 서버가 준 활동에 화면이 가진 작업·스프린트·페이지 이름을 붙여 문구를 만들어요.
   const { data: rawActivities, error: activitiesError } = useRequest(() => activityApi.getRecentActivities(workspaceId), [workspaceId], {
     initialData: [],
+    resetOnChange: true,
   });
   const activities = useMemo(() => {
     const lookup = {

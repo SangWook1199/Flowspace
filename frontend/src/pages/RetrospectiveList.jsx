@@ -46,6 +46,7 @@ export default function RetrospectiveList() {
     reload,
   } = useRequest(() => retrospectiveApi.getRetrospectives(workspaceId), [workspaceId], {
     initialData: [],
+    resetOnChange: true,
   });
   const retrospectiveList = useMemo(() => data ?? [], [data]);
 

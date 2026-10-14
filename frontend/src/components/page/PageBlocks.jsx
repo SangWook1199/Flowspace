@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 
 import BlockEditor from "./BlockEditor";
 import { usePageBlocks } from "../../hooks/usePageBlocks";
+import { useWorkspace } from "../../context/WorkspaceContext";
 
 // 페이지 본문: 서버에서 블록을 불러와 BlockEditor에 넘기고, 고친 내용은 알아서 서버에 저장해요.
 // 페이지가 바뀌면 통째로 다시 마운트돼요(부모에서 key={pageId}).
@@ -24,6 +25,8 @@ export default function PageBlocks({
   useEffect(() => {
     pagesRef.current = pages;
   });
+  // 다른 멤버가 방금 만든 하위 페이지는 내 목록에 아직 없을 수 있어서, 모르는 링크가 보이면 목록을 새로 받아 다시 확인해요.
+  const { refreshPages } = useWorkspace();
 
   const {
     status,
@@ -44,6 +47,7 @@ export default function PageBlocks({
   } =
     usePageBlocks(pageId, {
       getKnownPageIds: () => new Set(pagesRef.current.map((p) => p.id)),
+      refreshKnownPageIds: refreshPages,
       pageIdMap,
     });
 
