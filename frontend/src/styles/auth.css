@@ -930,8 +930,16 @@
     flex-direction: column;
   }
 
+  /* 세로로 쌓일 땐 flex:1(높이 0에서 시작)이 버튼 높이를 줄이니, 두 버튼 모두 48px로 고정해요. */
+  .social-buttons > .social-button {
+    flex: none;
+    width: 100%;
+    height: 48px;
+  }
+
   .social-slot {
-    min-height: 48px;
+    flex: none;
+    height: 48px;
   }
 
   .signup-actions {
