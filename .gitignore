@@ -8,3 +8,6 @@ Thumbs.db
 
 # Environment
 .env
+*.pem
+*.key
+backend/uploads
