@@ -281,7 +281,7 @@ java -version     # 21 이어야 해요
    ```bash
    sudo mysql < ~/ddl.sql
    ```
-   이 파일이 `flow_space` 데이터베이스와 모든 테이블을 만들어요. (이번에 추가된 열 블록 타입 `COLUMN_LIST`/`COLUMN`, 페이지 `version` 열이 이미 들어 있어요.)
+   이 파일이 `flow_space` 데이터베이스와 모든 테이블을 만들어요. (열 블록 타입 `COLUMN_LIST`/`COLUMN`, 페이지 `version` 열, 가입 이메일 인증용 `users.email_verified` 열과 `email_verification_tokens` 테이블이 이미 들어 있어요.)
 4. 앱 계정에 권한을 줘요.
    ```sql
    GRANT SELECT, INSERT, UPDATE, DELETE ON flow_space.* TO 'flowspace'@'localhost';
@@ -290,11 +290,22 @@ java -version     # 21 이어야 해요
    ```
    서버는 `ddl-auto: validate`라서 테이블을 스스로 만들거나 고치지 않아요. 그래서 위 4가지 권한이면 충분해요.
 
-> 이미 운영 중인 DB가 있다면(새로 만드는 게 아니라면): `ddl.sql`을 다시 실행하면 안 돼요. 대신 아래 두 가지를 직접 적용해야 해요. 먼저 **mysqldump로 백업**하세요.
+> 이미 운영 중인 DB가 있다면(새로 만드는 게 아니라면): `ddl.sql`을 다시 실행하면 안 돼요. 대신 아래 세 가지를 직접 적용해야 해요. 먼저 **mysqldump로 백업**하세요.
 > ```sql
 > ALTER TABLE blocks MODIFY COLUMN type ENUM('TEXT','H1','H2','H3','TODO','BULLET','NUMBERED','QUOTE','TOGGLE','CALLOUT','TASK','EVENT','SPRINT','DATABASE','IMAGE','FILE','DIVIDER','CODE','COLUMN_LIST','COLUMN') NOT NULL DEFAULT 'TEXT';
 > ALTER TABLE pages ADD COLUMN version BIGINT NOT NULL DEFAULT 0;   -- 이미 있으면 오류가 나니 먼저 DESCRIBE pages; 로 확인
+> -- 가입 이메일 인증: 기존 계정은 모두 인증된 것으로 두려고 DEFAULT TRUE예요. 이미 있으면 오류가 나니 DESCRIBE users; 로 확인
+> ALTER TABLE users ADD COLUMN email_verified BOOLEAN NOT NULL DEFAULT TRUE;
+> CREATE TABLE email_verification_tokens (
+>     verification_token_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+>     user_id BIGINT NOT NULL,
+>     token_hash VARCHAR(64) NOT NULL UNIQUE,
+>     expires_at DATETIME NOT NULL,
+>     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+>     CONSTRAINT fk_verification_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+> );
 > ```
+> (위 SQL은 `USE flow_space;` 를 먼저 실행한 상태에서 적용하세요.)
 
 ---
 
@@ -497,7 +508,8 @@ sudo certbot --nginx -d flowspace.example.com     # 이메일 입력 → 약관 
 2. `플랫폼 추가` → `단일 페이지 애플리케이션`이 이미 있다면 거기에 **리디렉션 URI** `https://flowspace.example.com/auth-callback.html` 을 추가해요.
 3. 저장.
 
-### Gmail (비밀번호 찾기 메일)
+### Gmail (가입 인증 메일 · 비밀번호 찾기 메일)
+- 이 메일 설정이 없으면 **가입 인증 메일이 가지 않아서 아무도 가입을 끝낼 수 없어요.** 배포 전에 꼭 넣으세요(서버 로그에는 링크가 남지만 사용자에게는 안 가요).
 - 지금 쓰는 앱 비밀번호를 그대로 환경 변수에 넣으면 돼요. Google 계정에서 2단계 인증이 켜져 있어야 앱 비밀번호가 유효해요.
 - Gmail은 하루 발송 한도가 있어서(개인 계정 약 500통) 사용자가 많아지면 별도 메일 서비스가 필요해요.
 
@@ -508,7 +520,9 @@ sudo certbot --nginx -d flowspace.example.com     # 이메일 입력 → 약관 
 브라우저(가능하면 시크릿 창)에서 `https://flowspace.example.com` 으로 하나씩 확인하세요.
 
 - [ ] 접속하면 로그인 화면이 나오고 주소창에 자물쇠(HTTPS)가 보인다.
-- [ ] 이메일로 회원가입 → 로그인이 된다.
+- [ ] 이메일로 회원가입 → "인증 메일을 보냈어요" 화면이 나오고, 메일의 버튼을 누르면 "이메일 인증을 마쳤어요"가 뜬 뒤 로그인이 된다.
+- [ ] 인증 전에 로그인하면 "이메일 인증이 필요해요"와 함께 "다시 보내기"가 나온다.
+- [ ] 인증 메일 안 링크가 `https://flowspace.example.com/verify-email?...` 로 열린다.
 - [ ] Google 로그인, Microsoft 로그인이 된다.
 - [ ] 비밀번호 찾기 메일이 오고, 메일 안 링크가 `https://flowspace.example.com/reset-password?...` 로 열린다.
 - [ ] 새 워크스페이스 → 페이지 생성 → 글 입력 후 새로고침해도 남아 있다(저장).
@@ -547,6 +561,7 @@ sudo certbot --nginx -d flowspace.example.com     # 이메일 입력 → 약관 
 
 | 항목 | 내용 |
 | --- | --- |
+| 인증하지 않은 가입 계정이 남음 | 가입만 하고 메일 인증을 안 한 계정은 DB에 그대로 남아요(로그인은 못 해요). 같은 이메일로 다시 가입하면 새 정보로 덮어써서 인증 메일을 다시 보내요. 쌓이면 나중에 정리 작업을 추가하세요. |
 | 로그인 시도 횟수 제한 없음 | 비밀번호를 무한히 대입할 수 있어요. 당장은 nginx `limit_req`(분당 요청 수 제한)를 `/api/auth/` 에 걸어 두면 좋아요. |
 | 업로드 파일이 주소만 알면 누구나 열림 | 주소가 무작위(UUID)라 추측은 어렵지만, 워크스페이스에서 나간 사람도 주소를 알면 볼 수 있어요. |
 | Microsoft 로그인의 이메일 신뢰 | 다른 조직 계정이 임의 이메일로 가입할 수 있는 이론적 위험이 있어요(Entra 앱 설정에 따라 다름). 외부 공개 전에 허용 테넌트를 제한하는 것을 권장해요. |

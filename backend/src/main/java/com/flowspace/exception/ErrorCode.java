@@ -14,6 +14,8 @@ public enum ErrorCode {
     SOCIAL_EMAIL_NOT_VERIFIED(HttpStatus.BAD_REQUEST, "이메일이 인증되지 않은 Google 계정으로는 로그인할 수 없어요."),
     SOCIAL_LINK_REQUIRED(HttpStatus.CONFLICT, "이미 이 이메일로 가입된 계정이 있어요. 그 계정의 비밀번호를 입력하면 연결할 수 있어요."),
     SOCIAL_LINK_PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "비밀번호가 올바르지 않아요."),
+    EMAIL_NOT_VERIFIED(HttpStatus.FORBIDDEN, "이메일 인증이 필요해요. 가입할 때 받은 메일의 인증 링크를 눌러 주세요."),
+    INVALID_VERIFICATION_TOKEN(HttpStatus.BAD_REQUEST, "인증 링크가 만료됐거나 이미 사용됐어요. 이미 인증했다면 바로 로그인해 보세요."),
     INVALID_RESET_TOKEN(HttpStatus.BAD_REQUEST, "링크가 만료됐거나 이미 사용됐어요. 비밀번호 찾기를 다시 해주세요."),
     NICKNAME_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 사용 중인 닉네임입니다."),
     INVALID_LOGIN(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."),

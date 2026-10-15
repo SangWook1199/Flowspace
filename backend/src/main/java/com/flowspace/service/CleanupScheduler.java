@@ -36,6 +36,12 @@ public class CleanupScheduler {
         }
 
         try {
+            log.info("만료된 이메일 인증 토큰 {}건 삭제", cleanupService.deleteExpiredEmailVerificationTokens());
+        } catch (Exception e) {
+            log.error("만료된 이메일 인증 토큰 정리 중 오류", e);
+        }
+
+        try {
             log.info("오래된 대기 초대 {}건 삭제 (보관 {}일)", cleanupService.deleteStaleInvites(inviteRetentionDays),
                 inviteRetentionDays);
         } catch (Exception e) {

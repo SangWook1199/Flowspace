@@ -1,5 +1,7 @@
 package com.flowspace.controller;
 
+import com.flowspace.dto.auth.EmailResendRequest;
+import com.flowspace.dto.auth.EmailVerifyRequest;
 import com.flowspace.dto.auth.GoogleLoginRequest;
 import com.flowspace.dto.auth.LoginRequest;
 import com.flowspace.dto.auth.LoginResponse;
@@ -11,6 +13,7 @@ import com.flowspace.dto.auth.SocialLinkRequest;
 import com.flowspace.dto.auth.ProfileUpdateRequest;
 import com.flowspace.dto.auth.RefreshRequest;
 import com.flowspace.dto.auth.SignupRequest;
+import com.flowspace.dto.auth.SignupResponse;
 import com.flowspace.dto.auth.UserResponse;
 import com.flowspace.dto.auth.WithdrawCheckResponse;
 import com.flowspace.dto.auth.WithdrawRequest;
@@ -18,6 +21,7 @@ import com.flowspace.dto.auth.TokenResponse;
 import com.flowspace.dto.auth.TokenRequest;
 import com.flowspace.service.AccountService;
 import com.flowspace.service.AuthService;
+import com.flowspace.service.EmailVerificationService;
 import com.flowspace.service.PasswordResetService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -38,10 +42,11 @@ public class AuthController {
     private final AuthService authService;
     private final AccountService accountService;
     private final PasswordResetService passwordResetService;
+    private final EmailVerificationService emailVerificationService;
 
-    @Operation(summary = "회원가입")
+    @Operation(summary = "회원가입", description = "계정을 만들고 인증 메일을 보냅니다. 메일의 링크로 인증해야 로그인할 수 있습니다.")
     @PostMapping("/signup")
-    public LoginResponse signup(@Valid @RequestBody SignupRequest request) {
+    public SignupResponse signup(@Valid @RequestBody SignupRequest request) {
         return authService.signup(request);
     }
 
@@ -132,6 +137,18 @@ public class AuthController {
     @PostMapping("/social/link")
     public LoginResponse linkSocialAccount(@Valid @RequestBody SocialLinkRequest request) {
         return authService.linkSocialAccount(request);
+    }
+
+    @Operation(summary = "이메일 인증", description = "메일 링크의 토큰으로 가입 이메일을 인증합니다.")
+    @PostMapping("/email/verify")
+    public void verifyEmail(@Valid @RequestBody EmailVerifyRequest request) {
+        emailVerificationService.verify(request);
+    }
+
+    @Operation(summary = "인증 메일 다시 보내기", description = "인증하지 않은 계정이면 인증 링크를 다시 보냅니다. 가입 여부와 관계없이 항상 성공으로 응답합니다.")
+    @PostMapping("/email/resend")
+    public void resendVerification(@Valid @RequestBody EmailResendRequest request) {
+        emailVerificationService.resend(request);
     }
 
     @Operation(summary = "비밀번호 찾기 메일 발송", description = "가입된 이메일이면 재설정 링크를 보냅니다. 가입 여부와 관계없이 항상 성공으로 응답합니다.")

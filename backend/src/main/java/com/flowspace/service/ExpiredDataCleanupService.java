@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.flowspace.entity.enums.InviteStatus;
+import com.flowspace.repository.EmailVerificationTokenRepository;
 import com.flowspace.repository.PasswordResetTokenRepository;
 import com.flowspace.repository.RefreshTokenRepository;
 import com.flowspace.repository.WorkspaceInviteRepository;
@@ -19,6 +20,7 @@ public class ExpiredDataCleanupService {
 
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final WorkspaceInviteRepository workspaceInviteRepository;
 
     // 만료된 리프레시 토큰 삭제 (반환: 지운 개수)
@@ -31,6 +33,12 @@ public class ExpiredDataCleanupService {
     @Transactional
     public int deleteExpiredPasswordResetTokens() {
         return passwordResetTokenRepository.deleteExpired(LocalDateTime.now());
+    }
+
+    // 만료된 이메일 인증 토큰 삭제 (반환: 지운 개수)
+    @Transactional
+    public int deleteExpiredEmailVerificationTokens() {
+        return emailVerificationTokenRepository.deleteExpired(LocalDateTime.now());
     }
 
     // 보낸 지 retentionDays일이 지나도록 수락·거절이 없는 초대 삭제 (반환: 지운 개수)

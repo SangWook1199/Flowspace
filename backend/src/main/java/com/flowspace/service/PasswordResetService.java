@@ -109,6 +109,8 @@ public class PasswordResetService {
         }
 
         user.changePassword(passwordEncoder.encode(request.newPassword()));
+        // 메일로 받은 링크를 눌렀다는 건 이메일 주인이라는 뜻이라, 인증 전이던 계정이면 인증으로 봐요.
+        user.verifyEmail();
 
         tokenRepository.deleteByUser(user);
         refreshTokenRepository.deleteByUser(user);

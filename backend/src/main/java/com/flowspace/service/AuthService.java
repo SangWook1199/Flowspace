@@ -10,6 +10,7 @@ import com.flowspace.dto.auth.PasswordChangeRequest;
 import com.flowspace.dto.auth.ProfileUpdateRequest;
 import com.flowspace.dto.auth.RefreshRequest;
 import com.flowspace.dto.auth.SignupRequest;
+import com.flowspace.dto.auth.SignupResponse;
 import com.flowspace.dto.auth.SocialLinkRequest;
 import com.flowspace.dto.auth.UserResponse;
 import com.flowspace.dto.auth.TokenResponse;
@@ -69,6 +70,7 @@ public class AuthService {
     private final JwtProvider jwtProvider;
     private final WorkspaceService workspaceService;
     private final FileService fileService;
+    private final EmailVerificationService emailVerificationService;
 
     // 로그인 상태를 유지하지 않을 때 리프레시 토큰이 살아 있는 시간
     private static final Duration SESSION_REFRESH_TTL = Duration.ofDays(1);
@@ -83,26 +85,38 @@ public class AuthService {
 
     private volatile JwtDecoder microsoftJwtDecoder;
 
-    // 회원가입
+    // 회원가입: 계정을 만들고 인증 메일을 보내요. 메일의 링크로 인증해야 로그인할 수 있어서 토큰은 아직 주지 않아요.
     @Transactional
-    public LoginResponse signup(SignupRequest request) {
+    public SignupResponse signup(SignupRequest request) {
 
-        if (userRepository.existsByEmail(request.email())) {
-            throw new FlowSpaceException(ErrorCode.EMAIL_ALREADY_EXISTS);
+        User existing = userRepository.findByEmail(request.email()).orElse(null);
+
+        if (existing != null) {
+
+            // 이미 인증을 마친 계정이 있으면 가입할 수 없어요.
+            if (existing.isEmailVerified()) {
+                throw new FlowSpaceException(ErrorCode.EMAIL_ALREADY_EXISTS);
+            }
+
+            // 인증하지 않은 채 남은 계정이면 같은 이메일로 다시 가입하는 걸로 보고, 새로 입력한 정보로 바꿔서 인증 메일을 다시 보내요.
+            // (인증 전에는 로그인할 수 없어서, 남의 이메일로 먼저 가입해 두어도 그 주소의 주인이 다시 가입하면 되돌릴 수 있어요.)
+            existing.restartSignup(request.nickname(), passwordEncoder.encode(request.password()));
+            emailVerificationService.sendVerification(existing);
+
+            return new SignupResponse(existing.getEmail());
         }
 
         User user = User.builder().email(request.email()).password(passwordEncoder.encode(request.password()))
-            .nickname(request.nickname()).provider(Provider.LOCAL).build();
+            .nickname(request.nickname()).provider(Provider.LOCAL).emailVerified(false).build();
 
         userRepository.save(user);
 
         // 개인 워크스페이스 자동 생성
-        Workspace workspace = workspaceService.createPersonalWorkspace(user);
+        workspaceService.createPersonalWorkspace(user);
 
-        String accessToken = jwtProvider.createAccessToken(user);
-        String refreshToken = issueRefreshToken(user, true);
+        emailVerificationService.sendVerification(user);
 
-        return LoginResponse.from(user, accessToken, refreshToken, workspace.getWorkspaceId());
+        return new SignupResponse(user.getEmail());
     }
 
     // 로그인 및 JWT 발급
@@ -113,6 +127,11 @@ public class AuthService {
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new FlowSpaceException(ErrorCode.INVALID_LOGIN);
+        }
+
+        // 비밀번호까지 맞은 뒤에 알려요(인증 여부로 가입된 이메일인지 알아내지 못하게요).
+        if (!user.isEmailVerified()) {
+            throw new FlowSpaceException(ErrorCode.EMAIL_NOT_VERIFIED);
         }
 
         String accessToken = jwtProvider.createAccessToken(user);
@@ -161,6 +180,10 @@ public class AuthService {
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new FlowSpaceException(ErrorCode.INVALID_LOGIN);
+        }
+
+        if (!user.isEmailVerified()) {
+            throw new FlowSpaceException(ErrorCode.EMAIL_NOT_VERIFIED);
         }
 
         String accessToken = jwtProvider.createAccessToken(user);
@@ -315,6 +338,23 @@ public class AuthService {
             .save(UserSocialAccount.builder().user(user).provider(provider).providerId(providerId).build());
     }
 
+    // 이메일로 가입했지만 인증을 마치지 않은 계정이 있으면, 소셜 계정을 연결하고 인증을 마친 계정으로 바꿔요.
+    // 가입 때 정한 비밀번호는 지워요 — 이메일 주인이 아닌 사람이 먼저 가입해 두었을 수 있어서, 주인은 소셜 로그인이나 비밀번호 찾기로 들어와요.
+    private User claimUnverifiedAccount(String email, Provider provider, String providerId) {
+
+        User pending = userRepository.findByEmail(email).filter(u -> !u.isEmailVerified() && !u.isWithdrawn())
+            .orElse(null);
+
+        if (pending == null) {
+            return null;
+        }
+
+        pending.claimBySocialLogin();
+        linkSocial(pending, provider, providerId);
+
+        return pending;
+    }
+
     // 같은 이메일의 계정이 이미 있을 때 새 계정을 만들지 못하게 막아요.
     //  - 비밀번호가 있는 계정(이메일 가입): 그 비밀번호로 본인임을 확인하면 연결할 수 있다고 알려요(SOCIAL_LINK_REQUIRED).
     //    이메일만 보고 합치면 남의 계정을 가로챌 수 있어서, 꼭 비밀번호로 확인해요.
@@ -373,6 +413,8 @@ public class AuthService {
             }
 
             linkSocial(existing, provider, providerId);
+            // 소셜 계정이 이 이메일의 주인임을 보여주니, 아직 인증 전이던 계정이면 인증으로 봐요.
+            existing.verifyEmail();
             user = existing;
         }
 
@@ -398,6 +440,13 @@ public class AuthService {
 
     // Google 회원 생성
     private User createGoogleUser(GoogleUserInfo googleUser) {
+
+        // 이메일 인증 전인 가입 계정이 있으면 소셜 계정이 이메일 주인임을 보여주니, 그 계정을 넘겨받아요.
+        User pending = claimUnverifiedAccount(googleUser.email(), Provider.GOOGLE, googleUser.providerId());
+
+        if (pending != null) {
+            return pending;
+        }
 
         // 같은 이메일로 이미 가입한 계정이 있으면 새로 만들지 않아요(연결 확인 또는 안내).
         rejectExistingEmail(googleUser.email(), Provider.GOOGLE);
@@ -485,6 +534,13 @@ public class AuthService {
 
     // Microsoft 회원 생성
     private User createMicrosoftUser(MicrosoftUserInfo microsoftUser, String accessToken) {
+
+        // 이메일 인증 전인 가입 계정이 있으면 소셜 계정이 이메일 주인임을 보여주니, 그 계정을 넘겨받아요.
+        User pending = claimUnverifiedAccount(microsoftUser.email(), Provider.MICROSOFT, microsoftUser.providerId());
+
+        if (pending != null) {
+            return pending;
+        }
 
         // 같은 이메일로 이미 가입한 계정이 있으면 새로 만들지 않아요(연결 확인 또는 안내).
         rejectExistingEmail(microsoftUser.email(), Provider.MICROSOFT);
