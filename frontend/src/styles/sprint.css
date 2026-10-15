@@ -124,6 +124,8 @@
   padding-top: 0;
 }
 .sprintDateBox {
+  /* 날짜 두 칸을 나란히 둘지 위아래로 둘지는 화면이 아니라 이 상자의 폭으로 정해요. */
+  container: dates / inline-size;
   padding: 21px 18px;
   border: 1px solid #e3e8f0;
   border-radius: 11px;
@@ -131,7 +133,7 @@
 }
 .dateFields {
   display: grid;
-  grid-template-columns: 1fr 17px 1fr;
+  grid-template-columns: minmax(0, 1fr) 17px minmax(0, 1fr);
   gap: 11px;
   align-items: end;
 }
@@ -251,11 +253,13 @@
   font-size: 13px;
 }
 .formActions {
-  height: 75px;
+  min-height: 75px;
+  padding-bottom: env(safe-area-inset-bottom);
   border-top: 1px solid #e6ebf2;
   background: #fff;
   position: fixed;
-  left: 278px;
+  left: var(--sidebar-w, 278px);
+  transition: left 0.22s ease;
   right: 0;
   bottom: 0;
   z-index: 3;
@@ -289,12 +293,19 @@
 @media (max-width: 1100px) {
   .sprintFormBody {
     grid-template-columns: 1fr;
+    min-height: 0;
   }
   .formRight {
     grid-template-columns: 1fr 1fr;
   }
-  .formActions {
-    left: 238px;
+}
+/* 날짜 상자가 좁으면 시작일·종료일을 위아래로 쌓아요(가운데 ~ 표시는 숨겨요). */
+@container dates (max-width: 330px) {
+  .dateFields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .dateFields > i {
+    display: none;
   }
 }
 @media (max-width: 820px) {
@@ -315,11 +326,69 @@
     grid-template-columns: 1fr;
   }
   .formActions {
-    left: 76px;
-    padding: 0 18px;
+    padding-left: 18px;
+    padding-right: 18px;
   }
   .formActions button {
     width: 110px;
+  }
+}
+@media (max-width: 640px) {
+  .sprintCreatePage {
+    padding: 16px 12px 96px;
+  }
+  .breadcrumb {
+    height: auto;
+    min-height: 27px;
+    flex-wrap: wrap;
+  }
+  .sprintPageHeading {
+    margin: 8px 0 18px;
+  }
+  .sprintPageHeading h1 {
+    font-size: 24px;
+    letter-spacing: -1px;
+  }
+  .sprintFormBody {
+    padding: 18px 14px;
+    gap: 22px;
+  }
+  .formLeft,
+  .formRight {
+    gap: 22px;
+  }
+  .sprintDateBox {
+    padding: 16px 14px;
+  }
+  /* 16px 미만이면 아이폰이 입력칸을 눌렀을 때 화면을 확대해요. 그래서 터치 기기에서만 16px로 키우고, PC에서 창만 좁힐 땐 글자 크기를 그대로 둬요. */
+  @media (hover: none) and (pointer: coarse) {
+    .formField input,
+    .formField textarea,
+    .dateFields input,
+    .editor {
+      font-size: 16px;
+    }
+  }
+  .colorPicker > div {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .editorTools {
+    height: auto;
+    min-height: 43px;
+    flex-wrap: wrap;
+    padding: 6px 10px;
+  }
+  .formActions {
+    gap: 8px;
+    padding-top: 10px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  }
+  .formActions button {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+    height: 46px;
   }
 }
 /* 이동할 수 있는 경로(이전 단계) 글자예요. */

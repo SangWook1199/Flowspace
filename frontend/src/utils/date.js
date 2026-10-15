@@ -7,9 +7,9 @@ const pad = (n) => String(n).padStart(2, "0");
 // Date → "YYYY-MM-DD" (로컬 시간 기준).
 export const toDateKey = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 
-// "오늘"의 날짜 키. 테스트나 화면 확인용으로 window.__TODAY__("YYYY-MM-DD")가 있으면 그 값을 써요.
+// "오늘"의 날짜 키. 개발 중 화면 확인용으로 window.__TODAY__("YYYY-MM-DD")가 있으면 그 값을 써요(배포 빌드에서는 무시해요).
 export const todayKey = () => {
-  if (typeof window !== "undefined" && typeof window.__TODAY__ === "string") return window.__TODAY__;
+  if (import.meta.env.DEV && typeof window !== "undefined" && typeof window.__TODAY__ === "string") return window.__TODAY__;
   return toDateKey(new Date());
 };
 
@@ -20,6 +20,14 @@ export const parseDateKey = (value) => {
   if (!m) return null;
   const date = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
   return Number.isNaN(date.getTime()) ? null : date;
+};
+
+// 날짜 키에 days일을 더한(음수면 뺀) 날짜 키. 달·해가 넘어가는 것도 Date가 맞춰줘요. 잘못된 값이면 그대로 돌려줘요.
+export const addDays = (key, days) => {
+  const d = parseDateKey(key);
+  if (!d) return key;
+  d.setDate(d.getDate() + days);
+  return toDateKey(d);
 };
 
 // 두 날짜 키 사이의 일 수(b - a). 서머타임에도 안 틀리게 반올림해요. 하나라도 잘못되면 null.

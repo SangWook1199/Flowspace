@@ -1,26 +1,23 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Mail, Lock, Eye, EyeOff, X } from "lucide-react";
+import { User, Mail, Lock, Eye, EyeOff } from "lucide-react";
 
 import SocialLogin from "./SocialLogin";
+import TermsModal from "./TermsModal";
+import ResendVerification from "./ResendVerification";
 import { useAuth } from "../../context/useAuth";
-import * as authApi from "../../api/auth";
 import { getInitial } from "../../utils/initial";
 import { getErrorMessage, getErrorCode } from "../../utils/apiError";
-import useDialog from "../../context/useDialog";
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, PASSWORD_RULE_TEXT } from "../../utils/passwordRule";
 
 // 입력 규칙. 닉네임 30자는 users.nickname 컬럼(length 30)에 맞춘 값이라,
 // 이보다 길게 보내면 서버에서 저장하다 실패해요.
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PASSWORD_MIN_LENGTH = 8;
 const NICKNAME_MAX_LENGTH = 30;
-const PROFILE_MAX_BYTES = 5 * 1024 * 1024;
 
 export default function SignupForm() {
-  const { notify } = useDialog();
   const navigate = useNavigate();
-  const fileInputRef = useRef(null);
-  const { signup, setUser } = useAuth();
+  const { signup } = useAuth();
 
   // label ↔ input 연결용 id (같은 화면에 폼이 겹쳐도 충돌하지 않게 useId)
   const uid = useId();
@@ -37,11 +34,12 @@ export default function SignupForm() {
     password: "",
     confirmPassword: "",
     agree: false,
-    profile: null,
   });
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  // 약관 보기 창: null(닫힘) | "terms" | "privacy"
+  const [termsTab, setTermsTab] = useState(null);
 
   const updateField = (key, value) => {
     // 입력을 고치기 시작하면 이전 시도의 오류(예: 이메일 중복)는 더 이상
@@ -64,6 +62,8 @@ export default function SignupForm() {
   // state는 다음 렌더에야 반영돼서 엔터 연타 같은 같은 순간의 두 번째
   // 제출을 못 막을 수 있어요. ref로 즉시 잠가요.
   const submittingRef = useRef(false);
+  // 가입 메일을 보냈다고 안내 중인 이메일 (null이면 가입 폼을 보여줘요)
+  const [sentTo, setSentTo] = useState(null);
 
   // 단계를 오갈 때 이전 단계에서 났던 오류가 남아 있으면, 지금 단계와
   // 상관없는 메시지가 보이니까 같이 지워요.
@@ -71,54 +71,6 @@ export default function SignupForm() {
     setError("");
     setStep(next);
   };
-
-  const handleProfile = (e) => {
-    const file = e.target.files?.[0];
-
-    // 같은 파일을 다시 골라도 change 이벤트가 오도록 값을 비워둬요.
-    e.target.value = "";
-
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      setError("이미지 파일만 프로필 사진으로 올릴 수 있어요.");
-      return;
-    }
-
-    if (file.size > PROFILE_MAX_BYTES) {
-      setError("프로필 사진은 5MB 이하만 올릴 수 있어요.");
-      return;
-    }
-
-    setError("");
-    updateField("profile", file);
-  };
-
-  const removeProfile = () => {
-    updateField("profile", null);
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  // 미리보기 주소(blob URL)는 렌더마다 새로 만들면 안 돼요. 만들 때마다
-  // 브라우저 메모리에 파일이 붙잡혀서 revoke 전까지 계속 쌓여요(누수).
-  // 파일이 바뀔 때 한 번만 만들고, 바뀌거나 사라질 때 revoke해요. effect
-  // 안에서 만들고 정리하면 개발 모드의 이중 실행에서도 안전해요.
-  const [preview, setPreview] = useState(null);
-
-  useEffect(() => {
-    if (!form.profile) return;
-
-    const url = URL.createObjectURL(form.profile);
-    setPreview({ file: form.profile, url });
-
-    return () => URL.revokeObjectURL(url);
-  }, [form.profile]);
-
-  const previewImage =
-    preview && preview.file === form.profile ? preview.url : null;
 
   const handleSignup = async () => {
     if (!signupValid || submittingRef.current) return;
@@ -132,39 +84,14 @@ export default function SignupForm() {
     const nickname = form.nickname.trim();
 
     try {
-      await signup(
-        {
-          email,
-          password: form.password,
-          nickname,
-        },
-        // 가입이 끝나면 로그인 상태로 넘어가기 전에 성공했다고 한 번 알려줘요.
-        { beforeLogin: () => notify("회원가입에 성공했어요!", { type: "success" }) },
-      );
+      // 가입하면 인증 메일이 가요. 로그인은 메일의 링크로 인증한 뒤에 할 수 있어서 안내 화면으로 넘어가요.
+      await signup({
+        email,
+        password: form.password,
+        nickname,
+      });
 
-      // 프로필 사진은 가입 요청(email/password/nickname)에는 안 들어가요
-      // — 가입이 끝난 뒤 발급된 토큰으로 PATCH /auth/me/profile을 따로
-      // 호출해서 붙여줘요. 여기서 실패해도 가입 자체는 이미 성공한
-      // 상태라 화면 이동은 그대로 진행해요(사진은 나중에 다시 올리면 됨).
-      if (form.profile) {
-        try {
-          const profileData = new FormData();
-          profileData.append(
-            "data",
-            new Blob([JSON.stringify({ nickname })], {
-              type: "application/json",
-            }),
-          );
-          profileData.append("image", form.profile);
-
-          const { data: updated } = await authApi.updateProfile(profileData);
-          setUser(updated);
-        } catch {
-          // 프로필 사진 업로드만 실패 — 조용히 넘어가요.
-        }
-      }
-
-      navigate("/");
+      setSentTo(email);
     } catch (err) {
       const message = getErrorMessage(err, "회원가입에 실패했어요. 다시 시도해주세요.");
 
@@ -189,7 +116,7 @@ export default function SignupForm() {
 
   const emailTrimmed = form.email.trim();
   const emailValid = EMAIL_PATTERN.test(emailTrimmed);
-  const passwordValid = form.password.length >= PASSWORD_MIN_LENGTH;
+  const passwordValid = form.password.length >= PASSWORD_MIN_LENGTH && form.password.length <= PASSWORD_MAX_LENGTH;
   const confirmValid = form.password === form.confirmPassword;
 
   // 1단계에서 지금 보여줄 규칙 위반 메시지 하나(위에서부터 우선순위).
@@ -197,7 +124,7 @@ export default function SignupForm() {
     touched.email && form.email && !emailValid
       ? "올바른 이메일 형식이 아니에요."
       : touched.password && form.password && !passwordValid
-        ? `비밀번호는 ${PASSWORD_MIN_LENGTH}자 이상이어야 해요.`
+        ? `비밀번호는 ${PASSWORD_RULE_TEXT}로 입력해 주세요.`
         : touched.confirmPassword && form.confirmPassword && !confirmValid
           ? "비밀번호가 서로 달라요."
           : "";
@@ -226,6 +153,26 @@ export default function SignupForm() {
 
     handleSignup();
   };
+
+  if (sentTo) {
+    return (
+      <div className="login-form">
+        <span className="login-label">SIGN UP</span>
+
+        <h1>인증 메일을 보냈어요</h1>
+        <p>
+          <b>{sentTo}</b>로 인증 메일을 보냈어요. 메일의 인증 버튼을 누르면 가입이 끝나요. 링크는 24시간 동안만 쓸 수 있고, 메일이 안
+          보이면 스팸함도 확인해주세요.
+        </p>
+
+        <button type="button" className="login-button" onClick={() => navigate("/login")}>
+          로그인으로 가기
+        </button>
+
+        <ResendVerification email={sentTo} startWaiting />
+      </div>
+    );
+  }
 
   return (
     <form className="login-form" onSubmit={handleSubmit} noValidate>
@@ -273,7 +220,8 @@ export default function SignupForm() {
                 id={passwordId}
                 type={showPassword ? "text" : "password"}
                 autoComplete="new-password"
-                placeholder={`비밀번호를 입력하세요 (${PASSWORD_MIN_LENGTH}자 이상)`}
+                placeholder={`비밀번호를 입력하세요 (${PASSWORD_RULE_TEXT})`}
+                maxLength={PASSWORD_MAX_LENGTH}
                 value={form.password}
                 onChange={(e) => updateField("password", e.target.value)}
                 onBlur={() => touch("password")}
@@ -347,44 +295,11 @@ export default function SignupForm() {
           <div className="profile-preview">
             <div className="profile-avatar-wrapper">
               <div className="profile-avatar">
-                {previewImage ? (
-                  <img src={previewImage} alt="프로필 미리보기" />
-                ) : previewText ? (
-                  <span>{previewText}</span>
-                ) : (
-                  <User size={28} />
-                )}
+                {previewText ? <span>{previewText}</span> : <User size={28} />}
               </div>
-
-              {previewImage && (
-                <button
-                  type="button"
-                  className="profile-remove"
-                  aria-label="프로필 사진 제거"
-                  onClick={removeProfile}
-                >
-                  <X size={15} strokeWidth={2.5} />
-                </button>
-              )}
             </div>
 
-            <p>사진을 선택하지 않으면 닉네임 첫 글자가 프로필로 표시됩니다.</p>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={handleProfile}
-            />
-
-            <button
-              type="button"
-              className="profile-upload"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              프로필 사진 선택
-            </button>
+            <p>닉네임 첫 글자가 프로필로 표시돼요. 사진은 가입 후 내 계정에서 올릴 수 있어요.</p>
           </div>
 
           <div className="login-field">
@@ -412,9 +327,29 @@ export default function SignupForm() {
                 checked={form.agree}
                 onChange={(e) => updateField("agree", e.target.checked)}
               />
-              이용약관 및 개인정보 처리방침에 동의합니다.
+              <span>
+                <button type="button" className="signup-terms-link" onClick={(e) => { e.preventDefault(); setTermsTab("terms"); }}>
+                  이용약관
+                </button>{" "}
+                및{" "}
+                <button type="button" className="signup-terms-link" onClick={(e) => { e.preventDefault(); setTermsTab("privacy"); }}>
+                  개인정보 처리방침
+                </button>
+                에 동의합니다.
+              </span>
             </label>
           </div>
+
+          {termsTab && (
+            <TermsModal
+              initialTab={termsTab}
+              onClose={() => setTermsTab(null)}
+              onAgree={() => {
+                updateField("agree", true);
+                setTermsTab(null);
+              }}
+            />
+          )}
 
           {error && (
             <p className="login-error" role="alert">

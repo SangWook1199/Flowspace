@@ -1,7 +1,8 @@
 import { BLOCK_TYPES, RICH_TEXT_TYPES } from "./blockTypes.js";
 import { sanitizeInlineHtml, escapePlainTextToHtml } from "../RichTextInput";
 
-const VALID_BLOCK_TYPES = new Set(BLOCK_TYPES.map((t) => t.type));
+// 열 묶음/열은 슬래시 메뉴 항목이 아니라 구조 블록이라 메뉴 목록(BLOCK_TYPES)에는 없어요.
+const VALID_BLOCK_TYPES = new Set([...BLOCK_TYPES.map((t) => t.type), "COLUMN_LIST", "COLUMN"]);
 
 // 불러온 데이터나 붙여넣은 블록 JSON(바깥에서 온 값)을 믿고 쓰기 전에 모양을 바로잡아요:
 //  - 객체가 아니면 버리고(null), 모르는 type이거나 type이 없으면 일반 텍스트(TEXT)로 바꿔요
@@ -58,6 +59,8 @@ export function createEmptyBlock(id, type, onCreateRowPage) {
   // 배경으로 시작해요 — 배경색은 이미 있는 BLOCK_COLORS의 "gray"를
   // 그대로 재사용해서, 렌더링 쪽에 "콜아웃은 색이 없어도 항상 박스로
   // 보여야 한다" 같은 별도 예외 처리를 안 만들어도 돼요.
+  if (type === "COLUMN_LIST") return { id, type };
+  if (type === "COLUMN") return { id, type, width: null };
   if (type === "TOGGLE") return { id, type, content: "", collapsed: false };
   if (type === "CALLOUT") return { id, type, content: "", calloutIcon: "💡", color: "gray" };
   return { id, type, content: "" };

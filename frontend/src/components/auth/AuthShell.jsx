@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import FlowSpaceLogo from "../common/FlowSpaceLogo";
 import PreviewCarousel from "./PreviewCarousel";
+import useMediaQuery from "../../hooks/useMediaQuery";
 import "../../styles/auth.css";
 
 import dashboard from "../../assets/login/dashboard-summary.png";
@@ -20,9 +21,14 @@ const PREVIEWS = [
   },
 ];
 
+// 로그인 폼 아래로 소개 카드가 내려가는 폭(auth.css의 1080px)과 같아야 해요.
+const HIDE_PREVIEW_QUERY = "(max-width: 1080px)";
+
 // 로그인 화면과 같은 모양(왼쪽 카드 + 오른쪽 소개)에 내용만 갈아 끼우는 틀이에요. 비밀번호 찾기·재설정 화면이 써요.
 export default function AuthShell({ children }) {
   const [current, setCurrent] = useState(0);
+  // 한 줄로 쌓이는 폭에서는 소개 카드를 그리지 않아요(숨겨도 이미지를 계속 내려받으니까요).
+  const hidePreview = useMediaQuery(HIDE_PREVIEW_QUERY);
 
   return (
     <main className="login-page">
@@ -32,9 +38,11 @@ export default function AuthShell({ children }) {
           {children}
         </section>
 
-        <section className="preview-card">
-          <PreviewCarousel items={PREVIEWS} current={current} onChange={setCurrent} />
-        </section>
+        {!hidePreview && (
+          <section className="preview-card">
+            <PreviewCarousel items={PREVIEWS} current={current} onChange={setCurrent} />
+          </section>
+        )}
       </div>
     </main>
   );

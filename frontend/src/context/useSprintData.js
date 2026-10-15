@@ -10,6 +10,10 @@ const TASK_SAVE_DELAY_MS = 600;
 
 export const BACKLOG_ID = "backlog";
 
+// 작업 수정 화면에서 고칠 수 있는 값들이에요. 서버는 수정할 때 이 값을 전부 한꺼번에 받아서,
+// 저장 직전에 서버 값을 받아다가 "내가 고친 값"만 덮어써서 보내요(안 그러면 낡은 화면 값이 남의 변경을 되돌려요).
+const EDITABLE_TASK_FIELDS = ["title", "assignees", "priority", "startDate", "dueDate", "description", "statusId", "sprintId"];
+
 const BACKLOG_BASE = {
   id: BACKLOG_ID,
   name: "백로그",
@@ -45,6 +49,10 @@ export function useSprintData({ userId, workspaceId }) {
   const statusesRef = useRef(statuses);
   // 작업 수정 저장 대기 타이머(taskId → timeout id). 대기 중인 작업은 서버 목록으로 덮어쓰지 않아요.
   const saveTimers = useRef(new Map());
+  // 저장 대기 중인 작업에서 내가 고친 값의 이름들(taskId → Set).
+  const dirtyFields = useRef(new Map());
+  // 서버에 보내는 중인 낙관적 변경(드래그 등)의 수. 그동안 도착한 목록 새로고침은 화면에 적용하지 않아요(방금 옮긴 카드가 되돌아가 보이지 않게).
+  const inflight = useRef(0);
 
   useEffect(() => {
     tasksRef.current = tasks;
@@ -69,12 +77,15 @@ export function useSprintData({ userId, workspaceId }) {
       const incoming = [...perSprint.flat(), ...backlogTasks];
       const dirtyIds = new Set(saveTimers.current.keys());
 
-      setTasks((prev) => {
-        if (dirtyIds.size === 0) return incoming;
-        // 고치는 중(저장 대기)인 작업은 화면 값을 유지해요.
-        const prevById = new Map(prev.map((task) => [task.id, task]));
-        return incoming.map((task) => (dirtyIds.has(task.id) ? (prevById.get(task.id) ?? task) : task));
-      });
+      // 서버에 보내는 중인 변경이 있으면 작업 목록은 건드리지 않아요(끝난 뒤 다시 맞춰요).
+      if (inflight.current === 0) {
+        setTasks((prev) => {
+          if (dirtyIds.size === 0) return incoming;
+          // 고치는 중(저장 대기)인 작업은 화면 값을 유지해요.
+          const prevById = new Map(prev.map((task) => [task.id, task]));
+          return incoming.map((task) => (dirtyIds.has(task.id) ? (prevById.get(task.id) ?? task) : task));
+        });
+      }
       setSprints(realSprints);
       setStatuses([...statusList].sort((a, b) => a.position - b.position));
       setLoadedFor(id);
@@ -92,6 +103,7 @@ export function useSprintData({ userId, workspaceId }) {
     requestId.current++;
     saveTimers.current.forEach((timer) => clearTimeout(timer));
     saveTimers.current.clear();
+    dirtyFields.current.clear();
 
     /* eslint-disable react-hooks/set-state-in-effect */
     setSprints([]);
@@ -242,37 +254,97 @@ export function useSprintData({ userId, workspaceId }) {
     }
   };
 
+  // 작업 하나를 서버에 저장해요. 같은 작업의 저장은 줄을 세워서 하나씩 보내요 — 앞의 저장이 끝나기 전에 다음 저장이
+  // 서버 값을 받으면, 앞에서 고친 값이 아직 서버에 없어서 옛 값으로 되돌려 버리거든요.
+  const saveChain = useRef(new Map());
+
+  const saveTaskNow = (taskId) => {
+    const previous = saveChain.current.get(taskId) ?? Promise.resolve();
+    const next = previous.then(() => writeTask(taskId));
+    saveChain.current.set(taskId, next);
+    return next;
+  };
+
+  // 오류는 안에서 안내하고 삼켜요(줄이 끊기지 않게).
+  const writeTask = async (taskId) => {
+    const task = tasksRef.current.find((item) => item.id === taskId);
+    const edited = dirtyFields.current.get(taskId);
+    dirtyFields.current.delete(taskId);
+    if (!task || !edited || edited.size === 0) return;
+
+    inflight.current += 1;
+    try {
+      // 서버는 수정할 때 값을 전부 받아서, 화면에 낡게 남은 값을 그대로 보내면 그 사이 다른 사람이 바꾼 상태·스프린트·담당자가 되돌아가요.
+      // 그래서 지금 서버 값을 받아서, 내가 고친 값만 얹어서 보내요.
+      const fresh = await taskApi.getTask(taskId);
+      const toSend = { ...fresh };
+      for (const field of EDITABLE_TASK_FIELDS) if (edited.has(field)) toSend[field] = task[field];
+
+      const saved = await taskApi.updateTask(toSend);
+
+      // 그 사이 또 고쳤다면(새 저장 대기 중) 그 값은 건드리지 않고, 내가 안 고친 값은 서버 값으로 맞춰요. 순서·완료 시각은 서버가 정해요.
+      const editedSince = dirtyFields.current.get(taskId) ?? new Set();
+      const adopted = {};
+      for (const field of EDITABLE_TASK_FIELDS) {
+        if (!edited.has(field) && !editedSince.has(field)) adopted[field] = saved[field];
+      }
+
+      setTasks((prev) =>
+        prev.map((item) =>
+          item.id === taskId
+            ? { ...item, ...adopted, position: saved.position, completedAt: saved.completedAt, statusName: saved.statusName }
+            : item,
+        ),
+      );
+    } catch (err) {
+      notifyError(err, "작업을 저장하지 못했어요.");
+      refresh();
+    } finally {
+      inflight.current -= 1;
+    }
+  };
+
   const scheduleTaskSave = (taskId) => {
     clearTimeout(saveTimers.current.get(taskId));
     saveTimers.current.set(
       taskId,
-      setTimeout(async () => {
+      setTimeout(() => {
         saveTimers.current.delete(taskId);
-
-        const task = tasksRef.current.find((item) => item.id === taskId);
-        if (!task) return;
-
-        try {
-          const saved = await taskApi.updateTask(task);
-          // 그 사이 또 고쳤다면(새 저장 대기 중) 서버가 정한 값(순서·완료 시각)만 반영해요.
-          setTasks((prev) =>
-            prev.map((item) =>
-              item.id === taskId
-                ? { ...item, position: saved.position, completedAt: saved.completedAt, statusName: saved.statusName }
-                : item,
-            ),
-          );
-        } catch (err) {
-          notifyError(err, "작업을 저장하지 못했어요.");
-          refresh();
-        }
+        saveTaskNow(taskId);
       }, TASK_SAVE_DELAY_MS),
     );
   };
 
+  // 탭을 닫거나 다른 탭으로 가는 순간 아직 보내지 않은 수정이 있으면 기다리지 않고 바로 보내요.
+  const saveTaskNowRef = useRef(saveTaskNow);
+  useEffect(() => {
+    saveTaskNowRef.current = saveTaskNow;
+  });
+  useEffect(() => {
+    const flushPending = () => {
+      if (document.visibilityState === "visible") return;
+      for (const [taskId, timer] of [...saveTimers.current]) {
+        clearTimeout(timer);
+        saveTimers.current.delete(taskId);
+        saveTaskNowRef.current(taskId);
+      }
+    };
+
+    document.addEventListener("visibilitychange", flushPending);
+    window.addEventListener("pagehide", flushPending);
+    return () => {
+      document.removeEventListener("visibilitychange", flushPending);
+      window.removeEventListener("pagehide", flushPending);
+    };
+  }, []);
+
   // 작업 값을 고쳐요. 화면에는 바로 반영하고, 서버에는 잠깐 기다렸다가 한 번만 보내요.
   // patch는 화면 작업 모양의 일부({title, assignees, priority, startDate, dueDate, description, statusId, sprintId …})예요.
   const updateTask = (taskId, patch) => {
+    const fields = dirtyFields.current.get(taskId) ?? new Set();
+    Object.keys(patch).forEach((field) => fields.add(field));
+    dirtyFields.current.set(taskId, fields);
+
     setTasks((prev) =>
       prev.map((task) => {
         if (task.id !== taskId) return task;
@@ -298,13 +370,22 @@ export function useSprintData({ userId, workspaceId }) {
     idSet.forEach((id) => {
       clearTimeout(saveTimers.current.get(id));
       saveTimers.current.delete(id);
+      dirtyFields.current.delete(id);
     });
     setTasks((prev) => prev.filter((task) => !idSet.has(task.id)));
 
-    const results = await Promise.allSettled(taskIds.map((id) => taskApi.deleteTask(id)));
-    const failed = results.find((result) => result.status === "rejected");
-    if (failed) {
-      notifyError(failed.reason, "일부 작업을 삭제하지 못했어요.");
+    // 서버는 작업 하나를 지울 때마다 같은 칸의 나머지 작업 순서를 다시 매겨요. 동시에 여러 개를 보내면
+    // 서로 같은 행을 건드려 충돌하니까, 하나씩 차례로 지우고 실패한 것만 모아서 알려요.
+    let firstError = null;
+    for (const id of taskIds) {
+      try {
+        await taskApi.deleteTask(id);
+      } catch (error) {
+        firstError ??= error;
+      }
+    }
+    if (firstError) {
+      notifyError(firstError, "일부 작업을 삭제하지 못했어요.");
       await refresh();
     }
   };
@@ -339,12 +420,34 @@ export function useSprintData({ userId, workspaceId }) {
     });
 
     setTasks(reordered);
+    inflight.current += 1;
 
     try {
-      if (original.statusId !== statusId) await taskApi.updateTaskStatus(taskId, statusId);
+      let saved = null;
+      if (original.statusId !== statusId) saved = await taskApi.updateTaskStatus(taskId, statusId);
       if (items.length > 0) await taskApi.reorderTasks(items);
+      inflight.current -= 1;
+
+      // 서버가 정한 완료 시각·상태 이름을 반영해요(안 그러면 완료 컬럼에 놓은 카드가 "오래된 완료 작업"으로 접혀요).
+      if (saved) {
+        setTasks((prev) =>
+          prev.map((item) =>
+            item.id === taskId ? { ...item, completedAt: saved.completedAt, statusName: saved.statusName } : item,
+          ),
+        );
+      }
     } catch (err) {
+      inflight.current -= 1;
       notifyError(err, "작업을 옮기지 못했어요.");
+
+      // 서버에 닿지 않아도 화면은 원래대로 돌아와야 해서, 옮기기 전 모습으로 먼저 되돌리고 서버 값으로 한 번 더 맞춰요.
+      const touched = new Set([taskId, ...items.map((item) => item.taskId)]);
+      const before = new Map(current.map((task) => [task.id, task]));
+      setTasks((prev) =>
+        prev === reordered
+          ? current
+          : prev.map((task) => (touched.has(task.id) && before.has(task.id) ? before.get(task.id) : task)),
+      );
       await refresh();
     }
   };
@@ -366,6 +469,7 @@ export function useSprintData({ userId, workspaceId }) {
       await taskApi.updateSubtask(subtask.id, { content: subtask.text, isCompleted: checked, assigneeId: subtask.assigneeId });
     } catch (err) {
       notifyError(err, "하위 작업을 저장하지 못했어요.");
+      patchSubtasks(taskId, (list) => list.map((item) => (item.id === subtask.id ? { ...item, checked: subtask.checked } : item)));
       await refresh();
     }
   };
@@ -382,6 +486,7 @@ export function useSprintData({ userId, workspaceId }) {
       await taskApi.updateSubtask(subtaskId, { content, isCompleted: subtask.checked, assigneeId: subtask.assigneeId });
     } catch (err) {
       notifyError(err, "하위 작업 이름을 저장하지 못했어요.");
+      patchSubtasks(taskId, (list) => list.map((item) => (item.id === subtaskId ? { ...item, text: subtask.text } : item)));
       await refresh();
     }
   };
@@ -397,6 +502,9 @@ export function useSprintData({ userId, workspaceId }) {
       await taskApi.updateSubtask(subtaskId, { content: subtask.text, isCompleted: subtask.checked, assigneeId });
     } catch (err) {
       notifyError(err, "하위 작업 담당자를 저장하지 못했어요.");
+      patchSubtasks(taskId, (list) =>
+        list.map((item) => (item.id === subtaskId ? { ...item, assigneeId: subtask.assigneeId } : item)),
+      );
       await refresh();
     }
   };
@@ -416,6 +524,7 @@ export function useSprintData({ userId, workspaceId }) {
       await taskApi.reorderSubtasks(ordered.map((item) => ({ subtaskId: item.id, position: item.position })));
     } catch (err) {
       notifyError(err, "하위 작업 순서를 저장하지 못했어요.");
+      patchSubtasks(taskId, () => list);
       await refresh();
     }
   };
@@ -436,12 +545,14 @@ export function useSprintData({ userId, workspaceId }) {
   };
 
   const deleteSubtask = async (taskId, subtaskId) => {
+    const before = tasksRef.current.find((task) => task.id === taskId)?.subtasks ?? [];
     patchSubtasks(taskId, (list) => list.filter((item) => item.id !== subtaskId));
 
     try {
       await taskApi.deleteSubtask(subtaskId);
     } catch (err) {
       notifyError(err, "하위 작업을 삭제하지 못했어요.");
+      patchSubtasks(taskId, () => before);
       await refresh();
     }
   };
@@ -465,9 +576,12 @@ export function useSprintData({ userId, workspaceId }) {
       setStatuses((prev) => prev.map((status) => (status.id === data.id ? { ...status, ...updated, position: status.position } : status)));
       // 기본 상태를 고치면 서버가 이 워크스페이스 전용 새 상태(새 id)로 바꿔 끼우고 작업도 그쪽으로 옮겨요.
       // 화면의 작업도 새 id로 맞춰야 컬럼 밖으로 밀려나지 않아요.
-      if (updated?.id != null && updated.id !== data.id) {
-        setTasks((prev) => prev.map((task) => (task.statusId === data.id ? { ...task, statusId: updated.id } : task)));
-      }
+      const newId = updated?.id ?? data.id;
+      setTasks((prev) =>
+        prev.map((task) =>
+          task.statusId === data.id ? { ...task, statusId: newId, statusName: updated?.name ?? task.statusName } : task,
+        ),
+      );
       return true;
     } catch (err) {
       notifyError(err, "상태를 저장하지 못했어요.");
@@ -479,18 +593,24 @@ export function useSprintData({ userId, workspaceId }) {
   const deleteStatus = async ({ deleteStatusId, moveToStatusId }) => {
     const canMove =
       moveToStatusId !== deleteStatusId && statusesRef.current.some((status) => status.id === moveToStatusId);
-    if (!canMove) return;
+    if (!canMove) {
+      notify("작업을 옮길 다른 상태를 골라 주세요.");
+      return false;
+    }
 
     try {
       await taskApi.deleteStatus(workspaceId, deleteStatusId, moveToStatusId);
       await refresh();
+      return true;
     } catch (err) {
       notifyError(err, "상태를 삭제하지 못했어요.");
+      return false;
     }
   };
 
   // 컬럼 순서를 저장해요(orderedStatuses는 왼쪽부터의 컬럼 배열).
   const reorderStatuses = async (orderedStatuses) => {
+    const before = statusesRef.current;
     setStatuses(orderedStatuses.map((status, index) => ({ ...status, position: index })));
 
     try {
@@ -500,6 +620,7 @@ export function useSprintData({ userId, workspaceId }) {
       );
     } catch (err) {
       notifyError(err, "컬럼 순서를 저장하지 못했어요.");
+      setStatuses(before);
       await refresh();
     }
   };

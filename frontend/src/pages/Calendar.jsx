@@ -10,6 +10,7 @@ import EventDetail from "../components/calendar/EventDetail";
 
 import * as eventApi from "../api/events";
 import { useCalendarEvents } from "../hooks/useCalendarEvents";
+import useMediaQuery from "../hooks/useMediaQuery";
 import { toDateKey, todayKey, parseDateKey, inclusiveDays } from "../utils/date";
 import { isCalendarSprint, pickInitialSprint } from "../utils/calendarSprint";
 import { isEventOnDate, sortEventsByStart } from "../utils/calendarRange";
@@ -75,9 +76,11 @@ const pickDateForMonth = (monthDate, selectedDate, today) => {
 };
 
 // 공용 작업 → 캘린더가 쓰는 작업 모양. 날짜가 없는 작업은 달력에 올릴 수 없어서 빼요.
+// 시작일 없이 마감일만 있는 작업은 마감일 하루짜리로 보여요.
 const toCalendarTask = (task, statusById) => {
   const status = statusById[task.statusId];
   const subtasks = task.subtasks ?? [];
+  const startDate = task.startDate || task.dueDate;
 
   return {
     id: task.id,
@@ -85,9 +88,9 @@ const toCalendarTask = (task, statusById) => {
     code: task.code ?? task.id,
     title: task.title,
     assignees: task.assignees ?? [],
-    start: task.startDate,
+    start: startDate,
     // 마감일이 없거나 시작일보다 앞서면 하루짜리로 보여요.
-    end: task.dueDate && task.dueDate >= task.startDate ? task.dueDate : task.startDate,
+    end: task.dueDate && task.dueDate >= startDate ? task.dueDate : startDate,
     status: {
       id: task.statusId,
       name: status?.name ?? task.statusName,
@@ -174,7 +177,11 @@ function CalendarBody() {
 
   const mainRef = useRef(null);
   const [view, setView] = useState(loadView);
-  const [railOpen, setRailOpen] = useState(() => typeof window === "undefined" || window.innerWidth >= 1200);
+  // 왼쪽 레일(미니 달력·스프린트·표시 설정)은 창이 1200px 이상이면 기본으로 열려 있고, 그보다 좁으면 닫혀 있어요.
+  // 창 크기를 바꾸면 이 기본값을 따라가고, 사용자가 직접 열거나 닫은 뒤에는 그 선택을 유지해요.
+  const wideScreen = useMediaQuery("(min-width: 1200px)");
+  const [railChoice, setRailChoice] = useState(null); // null이면 창 크기를 따라가요
+  const railOpen = railChoice ?? wideScreen;
   // 날짜를 누르면 그 칸 옆에 상세 패널이 떠요.
   const [detailOpen, setDetailOpen] = useState(false);
   // 열려 있는 창: { type: "create" } | { type: "detail", id } | { type: "edit", id }
@@ -192,7 +199,7 @@ function CalendarBody() {
     const statusById = Object.fromEntries(taskStatuses.map((s) => [s.id, s]));
 
     return sprintTasks
-      .filter((task) => task.sprintId === selectedSprint && task.startDate)
+      .filter((task) => task.sprintId === selectedSprint && (task.startDate || task.dueDate))
       .map((task) => toCalendarTask(task, statusById));
   }, [sprintTasks, taskStatuses, selectedSprint]);
 
@@ -319,7 +326,7 @@ function CalendarBody() {
   };
 
   // 팝오버의 작업을 누르면 작업 페이지로 가서 그 작업이 선택된 채로 열려요.
-  const openTask = (task) => navigate(`/sprints/${task.sprintId}/tasks?task=${task.id}`);
+  const openTask = (task) => navigate(`/sprints/${task.sprintId ?? "backlog"}/tasks?task=${task.id}`);
 
   return (
     <div className="calendarPage">
@@ -349,7 +356,7 @@ function CalendarBody() {
             today={today}
             sprint={sprint}
             railOpen={railOpen}
-            onToggleRail={() => setRailOpen((prev) => !prev)}
+            onToggleRail={() => setRailChoice(!railOpen)}
             onPrevMonth={() => moveMonth(-1)}
             onNextMonth={() => moveMonth(1)}
             onToday={goToday}

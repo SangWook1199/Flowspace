@@ -97,6 +97,7 @@
 .sprintFilter > div {
   display: flex;
   gap: 5px;
+  flex: none;
 }
 .sprintFilter > div button {
   height: 31px;
@@ -115,7 +116,9 @@
 .sprintFilter label {
   margin-left: auto;
   height: 36px;
-  width: 250px;
+  /* 좁아지면 검색창이 조금씩 줄어들어요(탭 아래로 갑자기 내려가지 않아요). */
+  flex: 0 1 250px;
+  min-width: 130px;
   border: 1px solid #dfe6f0;
   border-radius: 8px;
   background: #fff;
@@ -188,6 +191,8 @@
 .sprintCards {
   display: grid;
   gap: 10px;
+  /* 카드 안의 칸 배치는 화면이 아니라 이 목록의 폭으로 정해요(사이드바가 열려 있으면 화면보다 훨씬 좁아요). */
+  container: cards / inline-size;
 }
 .sprintCard {
   min-height: 122px;
@@ -232,6 +237,7 @@
   display: flex;
   align-items: center;
   gap: 15px;
+  min-width: 0;
 }
 .sprintIcon {
   width: 62px;
@@ -256,9 +262,22 @@
   background: #fff5e3;
   color: #f2a321;
 }
+/* 이름·목표·날짜는 항상 한 줄이에요. 길면 "…"으로 줄여서 카드 높이가 들쭉날쭉해지지 않게 해요. */
 .sprintIdentity h2 {
   font-size: 18px;
   margin: 0 0 7px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+/* 이름이 길면 이름만 "…"으로 줄이고, 상태 배지는 항상 보여요. */
+.sprintIdentity h2 .sprintName {
+  min-width: 0;
+  font-style: normal;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .sprintIdentity h2 span {
   font-size: 11px;
@@ -267,19 +286,30 @@
   background: #eeedff;
   border-radius: 9px;
   padding: 4px 8px;
-  margin-left: 8px;
-  vertical-align: 2px;
+  flex: none;
+  white-space: nowrap; /* "진행 중" 배지가 글자 중간에서 줄바꿈되지 않게 */
+}
+.sprintIdentity > div:last-child {
+  min-width: 0;
 }
 .sprintIdentity p {
   margin: 0 0 9px;
   font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .sprintIdentity small {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
+  display: block;
   color: #62728a;
   font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sprintIdentity small svg {
+  margin-right: 5px;
+  vertical-align: -2px;
 }
 /* 상태별로 묶은 스프린트 목록(진행 중 / 계획됨 / 완료) */
 .sprintGroup {
@@ -312,6 +342,7 @@
 .sprintNumbers span {
   font-size: 11px;
   color: #6c7b91;
+  white-space: nowrap;
 }
 .sprintProgress strong {
   display: block;
@@ -438,20 +469,84 @@
   font-weight: 600;
 }
 
-@media (max-width: 1150px) {
+/* 카드 폭 기준: 880px 이하면 "상세보기" 버튼을 빼고 3칸, 620px 이하면 한 칸씩 쌓아요. */
+@container cards (max-width: 880px) {
   .sprintCard {
-    grid-template-columns: 1.3fr 0.7fr 1fr;
+    grid-template-columns: minmax(0, 1.7fr) minmax(0, 0.6fr) minmax(0, 1fr);
+    gap: 14px;
   }
-  .sprintDetail {
+  .sprintCard .sprintIcon {
+    width: 52px;
+    height: 52px;
+  }
+  .sprintCard .sprintIdentity {
+    gap: 12px;
+  }
+  .sprintCard .sprintDetail {
     display: none;
+  }
+}
+@container cards (max-width: 620px) {
+  /* 카드가 뚱뚱해지지 않게: 위에 이름·목표·날짜, 아래에 진행률과 숫자 4개를 한 줄로 놓아요. */
+  .sprintCard {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr);
+    gap: 12px 18px;
+    min-height: 0;
+    padding: 14px 16px;
+  }
+  .sprintCard .sprintIdentity {
+    grid-column: 1 / -1;
+    gap: 12px;
+  }
+  .sprintCard .sprintIcon {
+    width: 46px;
+    height: 46px;
+    border-radius: 11px;
+  }
+  .sprintCard .sprintIcon svg {
+    width: 24px;
+    height: 24px;
+  }
+  .sprintCard .sprintIdentity h2 {
+    font-size: 16px;
+    margin-bottom: 4px;
+  }
+  .sprintCard .sprintIdentity p {
+    margin-bottom: 4px;
+  }
+  .sprintCard .sprintProgress strong {
+    font-size: 18px;
+    margin: 2px 0 6px;
+  }
+  .sprintCard .sprintNumbers {
+    gap: 6px;
+  }
+  .sprintCard .sprintNumbers b {
+    margin-top: 4px;
+    font-size: 16px;
+  }
+}
+/* 아주 좁으면 진행률과 숫자를 위아래로 놓고, 진행률은 "진행률 0%"를 한 줄에 둬요. */
+@container cards (max-width: 440px) {
+  .sprintCard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sprintCard .sprintProgress {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0 8px;
+  }
+  .sprintCard .sprintProgress strong {
+    margin: 0 0 6px;
+  }
+  .sprintCard .sprintProgress div {
+    flex: 1 0 100%;
   }
 }
 @media (max-width: 860px) {
   .sprintListPage {
     padding: 22px 18px;
-  }
-  .sprintSummary {
-    grid-template-columns: 1fr;
   }
   .sprintListBody {
     grid-template-columns: 1fr;
@@ -468,17 +563,81 @@
     width: auto;
     flex: 1;
   }
-  .sprintCard {
-    grid-template-columns: 1fr;
-    padding: 18px;
+}
+@media (max-width: 640px) {
+  .sprintListPage {
+    padding: 18px 14px 32px;
   }
+  /* 제목 줄 아래로 버튼이 한 줄로 내려와요(글자가 세로로 꺾이지 않게). */
+  .sprintListHeading {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .sprintListHeading > div:first-child {
+    flex: 1 1 100%;
+  }
+  .sprintListHeading h1 {
+    margin-bottom: 6px;
+    font-size: 24px;
+    letter-spacing: -1px;
+  }
+  .sprintHeadingActions {
+    width: 100%;
+  }
+  .sprintHeadingActions > button {
+    flex: 1;
+    justify-content: center;
+    white-space: nowrap;
+  }
+  /* 요약 카드 3장은 폰에서도 한 줄로 작게 놓아요(세로로 쌓으면 화면 절반을 차지해요). */
+  .sprintSummary {
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .sprintSummary article {
+    height: auto;
+    padding: 12px;
+  }
+  .sprintSummary span {
+    left: 12px;
+    top: 15px;
+  }
+  .sprintSummary p {
+    margin: 0 0 6px 16px;
+    font-size: 11px;
+  }
+  .sprintSummary strong {
+    margin-left: 16px;
+    font-size: 20px;
+  }
+  /* 폰에서만 검색창이 탭 아래 한 줄로 내려와요. */
   .sprintFilter {
     height: auto;
     padding: 10px 0;
     flex-wrap: wrap;
   }
   .sprintFilter label {
+    flex: 1 1 100%;
     margin-left: 0;
-    width: 100%;
+  }
+  .sprintFilter > div {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  .sprintFilter > div button {
+    flex: none;
+    height: 36px;
+    padding: 0 14px;
+  }
+  .sprintFilter label {
+    height: 40px;
+  }
+  /* 16px 미만이면 아이폰이 입력칸을 눌렀을 때 화면을 확대해요. 그래서 터치 기기에서만 16px로 키우고, PC에서 창만 좁힐 땐 글자 크기를 그대로 둬요. */
+  @media (hover: none) and (pointer: coarse) {
+    .sprintFilter input {
+      font-size: 16px;
+    }
   }
 }

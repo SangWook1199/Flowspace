@@ -11,7 +11,7 @@ export default function KanbanTaskCard({ task }) {
 
   return (
     <article className="retro-task-card">
-      <h4>{task.title}</h4>
+      <h4 title={task.title}>{task.title}</h4>
 
       <div className="retro-task-card__footer">
         <div className="retro-assignee">

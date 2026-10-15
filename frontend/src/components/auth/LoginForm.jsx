@@ -3,9 +3,10 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 
 import SocialLogin from "./SocialLogin";
+import ResendVerification from "./ResendVerification";
 import { useAuth } from "../../context/useAuth";
 import { getSafeRedirect } from "../../utils/authRedirect";
-import { getErrorMessage } from "../../utils/apiError";
+import { getErrorCode, getErrorMessage } from "../../utils/apiError";
 
 export default function LoginForm() {
   const navigate = useNavigate();
@@ -28,6 +29,8 @@ export default function LoginForm() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  // 이메일 인증 전이라 로그인이 막혔을 때, 인증 메일을 다시 받을 수 있게 그 이메일을 기억해요.
+  const [unverifiedEmail, setUnverifiedEmail] = useState("");
 
   // state는 다음 렌더 때 반영돼서, 엔터+버튼 클릭처럼 같은 순간에 두 번
   // 들어오면 둘 다 통과할 수 있어요. ref는 즉시 바뀌어서 중복 요청을 막아요.
@@ -41,6 +44,7 @@ export default function LoginForm() {
     submittingRef.current = true;
     setSubmitting(true);
     setError("");
+    setUnverifiedEmail("");
 
     try {
       await login(email.trim(), password, remember);
@@ -49,6 +53,7 @@ export default function LoginForm() {
       // 외부/위험한 주소면 홈으로 보내요.
       navigate(getSafeRedirect(location.state?.from) ?? "/", { replace: true });
     } catch (err) {
+      if (getErrorCode(err) === "EMAIL_NOT_VERIFIED") setUnverifiedEmail(email.trim());
       setError(getErrorMessage(err, "로그인에 실패했어요. 다시 시도해주세요."));
     } finally {
       submittingRef.current = false;
@@ -124,6 +129,8 @@ export default function LoginForm() {
           {error}
         </p>
       )}
+
+      {unverifiedEmail && <ResendVerification email={unverifiedEmail} />}
 
       <button
         type="submit"

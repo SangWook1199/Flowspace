@@ -1,10 +1,6 @@
 // 서버는 파일을 /uploads/x.png, /covers/x.png 같은 상대경로로 내려줘요.
 // 화면(5173)과 서버(8080) 주소가 달라서 서버 주소를 붙여 절대 주소로 바꿔요.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
-
-const SERVER_ORIGIN = (
-  import.meta.env.VITE_SERVER_ORIGIN || API_BASE_URL.replace(/\/api\/?$/, "")
-).replace(/\/$/, "");
+import { SERVER_ORIGIN } from "./env";
 
 export function fileUrl(path) {
   if (!path) return null;

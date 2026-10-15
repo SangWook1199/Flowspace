@@ -699,7 +699,7 @@ export default function DatabaseBlock({
                                 maxLength={100}
                                 onBlur={(e) => renameOption(col.id, opt.id, e.target.value)}
                                 onKeyDown={(e) => {
-                                  if (e.key === "Enter") e.currentTarget.blur();
+                                  if (e.key === "Enter" && !e.nativeEvent.isComposing) e.currentTarget.blur();
                                 }}
                               />
                               {col.type === "STATUS" && (
@@ -1154,7 +1154,8 @@ function SelectCell({ value, options, onChoose }) {
                 maxLength={100}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
+                  // 한글 조합 중 Enter(조합 확정)는 옵션 선택으로 보지 않아요.
+                  if (e.key === "Enter" && !e.nativeEvent.isComposing) {
                     e.preventDefault();
                     if (filtered.length > 0) choose(filtered[0].value);
                     else if (query.trim()) choose(query);
@@ -1268,7 +1269,8 @@ function MultiSelectCell({ values, options, onToggle }) {
                 maxLength={100}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
+                  // 한글 조합 중 Enter(조합 확정)는 옵션 선택으로 보지 않아요.
+                  if (e.key === "Enter" && !e.nativeEvent.isComposing) {
                     e.preventDefault();
                     if (filtered.length > 0) onToggle(filtered[0].value);
                     else if (query.trim()) onToggle(query);

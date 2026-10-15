@@ -1,19 +1,25 @@
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Lock, Eye, EyeOff } from "lucide-react";
 
 import AuthShell from "../components/auth/AuthShell";
 import * as authApi from "../api/auth";
 import { getErrorCode, getErrorMessage } from "../utils/apiError";
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "../utils/passwordRule";
 
-const MIN_LENGTH = 8;
-const MAX_LENGTH = 20;
+const MIN_LENGTH = PASSWORD_MIN_LENGTH;
+const MAX_LENGTH = PASSWORD_MAX_LENGTH;
 
 // 비밀번호 재설정: 메일 링크(/reset-password?token=…)로 들어와서 새 비밀번호를 정해요.
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const token = params.get("token") ?? "";
+  // 토큰은 처음 한 번만 읽어서 들고 있고, 주소창·방문 기록에는 남지 않게 주소에서 지워요.
+  const [token] = useState(() => params.get("token") ?? "");
+
+  useEffect(() => {
+    if (params.has("token")) navigate("/reset-password", { replace: true });
+  }, [params, navigate]);
 
   const uid = useId();
   const [password, setPassword] = useState("");

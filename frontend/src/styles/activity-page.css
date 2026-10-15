@@ -138,7 +138,9 @@
   font-size: 14px;
   line-height: 1.4;
   color: #1e293b;
-  word-break: break-word;
+  /* 한글은 어절 단위로 줄바꿈하고, 공백 없는 아주 긴 글자만 강제로 꺾어요. */
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 .activity-page__text small {
@@ -193,5 +195,63 @@
 @media (max-width: 700px) {
   .activity-page {
     padding: 20px 16px 40px;
+  }
+
+  .activity-page__head h1 {
+    font-size: 22px;
+  }
+
+  .activity-page__filters {
+    margin: 18px 0 14px;
+  }
+
+  /* 멤버 선택은 칩 아래 한 줄을 다 써요(칩 옆에 어정쩡하게 남지 않게). */
+  .activity-page__member {
+    width: 100%;
+  }
+
+  .activity-page__member select {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* 카드 안쪽 여백을 줄여서 글자 폭을 넓혀요. */
+  .activity-page__panel {
+    padding: 4px 10px 16px;
+    border-radius: 12px;
+  }
+
+  .activity-page__row {
+    gap: 10px;
+    padding: 10px 6px;
+  }
+}
+
+/* 폰 너비에서는 종류 칩 5개가 한 줄에 들어가게 여백을 줄여요. */
+@media (max-width: 420px) {
+  .activity-page__chips {
+    gap: 6px;
+  }
+
+  .activity-page__chips button {
+    padding: 0 11px;
+  }
+}
+
+/* iOS는 16px 미만 입력칸에 포커스하면 화면이 확대돼요. 터치 기기에서만 키워요(PC에서 창만 좁힐 땐 그대로예요). */
+@media (hover: none) and (pointer: coarse) {
+  .activity-page__member select {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 340px) {
+  .activity-page__chips {
+    gap: 4px;
+  }
+
+  .activity-page__chips button {
+    padding: 0 9px;
+    font-size: 12.5px;
   }
 }

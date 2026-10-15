@@ -2,9 +2,9 @@
 .taskRow,
 .subtask {
   grid-template-columns:
-    44px 32px 76px minmax(150px, 1.25fr)
-    minmax(120px, 1fr) minmax(104px, 0.8fr) minmax(104px, 0.8fr) minmax(104px, 0.8fr)
-    minmax(140px, 1.1fr) minmax(90px, 0.8fr);
+    40px 28px 64px minmax(140px, 1.3fr)
+    minmax(96px, 1fr) minmax(92px, 0.7fr) minmax(92px, 0.7fr) minmax(92px, 0.7fr)
+    minmax(104px, 0.9fr) minmax(76px, 0.6fr);
 }
 .detailTasks,
 .taskRow,
@@ -79,11 +79,14 @@
   padding: 0 22px;
   background: #fff;
 }
+/* 이름은 한 줄이고 길면 "…"이에요(칸을 넘어 옆 칸을 덮지 않게). */
 .subtaskName {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  justify-content: center;
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: center;
   padding: 0 8px;
   font-size: 13px;
 }
@@ -95,7 +98,9 @@
   color: #28ba74;
   font-style: normal;
   font-size: 10px;
-  display: grid;
+  display: inline-grid;
+  vertical-align: middle;
+  margin-right: 11px;
   place-items: center;
 }
 .subtaskCheck {
@@ -130,14 +135,6 @@
 .taskHead span {
   text-align: center;
 }
-@media (max-width: 1100px) {
-  .taskHead,
-  .taskRow,
-  .subtask {
-    min-width: 1160px;
-  }
-}
-
 /* 토글 다음의 선택 체크박스 칸 */
 .taskCheckCell {
   display: grid;
@@ -163,4 +160,71 @@
 }
 .taskRowLink:hover {
   background: #f8faff;
+}
+
+/* ===== 작업 목록 반응형 =====
+   열을 하나씩 줄이지 않고, 모든 열이 안 들어가는 폭(본문 880px)부터 한 번에 카드 모양이 돼요.
+   (상단 카드·지표와 같은 컨테이너 기준이라 모두 같은 폭에서 같이 바뀌어요.)
+   카드 모양: 제목 위, 담당자·우선순위·마감일·상태 아래. 제목은 한 줄이고 길면 "…"이에요. */
+@container detailbody (max-width: 880px) {
+  .detailTasks > header {
+    height: auto;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 16px;
+  }
+  .detailTasks > header > div:last-child {
+    flex-wrap: wrap;
+  }
+  .taskListBody {
+    height: auto;
+    max-height: 560px;
+  }
+  .taskListBody .taskHead {
+    display: none;
+  }
+  .taskRow {
+    grid-template-columns: 32px 28px minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "tog chk name name mark"
+      ".   .   pri  due  as";
+    row-gap: 8px;
+    column-gap: 8px;
+    padding: 12px 14px;
+  }
+  /* 번호·시작일·하위 작업 진행은 카드 모양에서는 빼요. */
+  .taskRow > :nth-child(3),
+  .taskRow > :nth-child(7),
+  .taskRow > :nth-child(9) {
+    display: none;
+  }
+  .taskRow > :nth-child(1) { grid-area: tog; }
+  .taskRow > :nth-child(2) { grid-area: chk; }
+  .taskRow > :nth-child(4) { grid-area: name; }
+  .taskRow > :nth-child(5) { grid-area: as; justify-self: end; }
+  .taskRow > :nth-child(6) { grid-area: pri; justify-self: start; }
+  .taskRow > :nth-child(8) { grid-area: due; justify-self: start; }
+  .taskRow > :nth-child(10) { grid-area: mark; justify-self: end; }
+  .taskRow em {
+    white-space: nowrap;
+  }
+  .taskName {
+    justify-content: flex-start;
+    padding: 0;
+  }
+  .taskName > b {
+    font-size: 14px;
+  }
+  .subtask {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    column-gap: 10px;
+    padding: 8px 14px 8px 52px;
+  }
+  .subtask > :not(.subtaskName):not(.assigneeStack):not(mark):not(.subtaskEmpty) {
+    display: none;
+  }
+  .subtaskName {
+    padding: 0;
+    text-align: left;
+  }
 }

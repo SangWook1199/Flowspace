@@ -18,9 +18,11 @@ import {
 import SelectionToolbar, { LinkPopover } from "./SelectionToolbar";
 import { BLOCK_TYPES, BLOCK_COLORS, BLOCK_TEXT_COLORS, blockCanHaveBackground, blockCanHaveTextColor, blockPaintKey, LIST_TYPES, RICH_TEXT_TYPES } from "./lib/blockTypes.js";
 import { isBlockContentEmpty, getSubtreeRange, getSubtreeIds, findParentIndex, getDirectChildrenIndices, resolveGroupColor, normalizeIndents, computeHiddenBlockIds, isContainerBlock, computeContainerOwners, collectColorTargetIds, expandSelectionWithSubtrees, computeNumbers } from "./lib/blockTree.js";
+import { COLUMN_LIST, COLUMN, MAX_COLUMNS, isColumnStructure, createColumnLayout, normalizeColumns, computeColumnOwners, isColumnMenuType } from "./lib/blockColumns.js";
 import { captureCaretOffset, restoreCaretOffset, splitContentAtCaret } from "./lib/caret.js";
 import { matchMarkdownShortcut, parseMarkdownLine, BLOCKS_CLIPBOARD_TYPE } from "./lib/blockClipboard.js";
 import BlockRow from "./BlockRow";
+import ColumnsBlock from "./ColumnsBlock";
 import { CURRENT_USER_NAME } from "./lib/comments.js";
 import { useAuth } from "../../context/useAuth";
 import { formatFileSize } from "./blocks/MediaBlocks";
@@ -34,6 +36,8 @@ import useMultiBlockTextSelection from "./hooks/useMultiBlockTextSelection.js";
 import { selectionTextBounds } from "./lib/selectionMove.js";
 
 // 기본값으로 매 렌더마다 새 배열([])을 만들면 memo된 BlockRow의 props가 항상 "달라져" 보여요.
+// 서버가 받는 파일 하나의 최대 크기예요(백엔드 application.yaml의 max-file-size와 같게 맞춰요).
+const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 const NO_PAGES = [];
 const NO_TASKS = [];
 const NO_REMOTE_EDITORS = {};
@@ -58,7 +62,14 @@ export default function BlockEditor({
   // 다른 멤버가 저장한 내용을 합친 블록 배열을 통째로 화면에 넣는 함수를 여기에 등록해 둬요(usePageBlocks가 불러요).
   applyRef,
 }) {
-  const { confirm } = useDialog();
+  const { confirm, notify } = useDialog();
+
+  // 서버가 받는 업로드 한도(20MB)보다 큰 파일은 올리기 전에 알려요(base64로 메모리를 크게 쓰고 저장 때마다 실패하는 걸 막아요).
+  const rejectIfTooLarge = (file) => {
+    if (file.size <= MAX_UPLOAD_BYTES) return false;
+    notify(`“${file.name}” 파일이 20MB를 넘어서 올릴 수 없어요.`);
+    return true;
+  };
   // pages/{pageId}/blocks API로 교체 예정. onChange가 있으면 상위(페이지 목록
   // 상태)로 변경 사항을 올려서 다른 화면에서도 최신 블록이 보이게 해요.
   //
@@ -173,7 +184,13 @@ export default function BlockEditor({
 
   // 하위 페이지를 만들 수 없는 컨텍스트(onCreateChildPage 미전달)에서는
   // "하위 페이지" 메뉴 항목 자체를 숨겨요.
+  // blockTypeOptions: "타입 변경" 메뉴용(2열/3열은 빠져요 — 열은 새로 만드는 것이지 다른 블록을 바꾸는 게 아니에요).
+  // slashTypeOptions: 슬래시 메뉴용(열 안에서는 열을 또 만들 수 없어서 BlockRow가 blockTypeOptions를 대신 써요).
   const blockTypeOptions = useMemo(
+    () => BLOCK_TYPES.filter((item) => !isColumnMenuType(item.type) && (onCreateChildPage || item.type !== "CHILD_PAGE")),
+    [onCreateChildPage],
+  );
+  const slashTypeOptions = useMemo(
     () => (onCreateChildPage ? BLOCK_TYPES : BLOCK_TYPES.filter((item) => item.type !== "CHILD_PAGE")),
     [onCreateChildPage],
   );
@@ -231,7 +248,9 @@ export default function BlockEditor({
       // 지우거나, 드래그로 순서를 옮겨서 바로 앞 블록보다 2단 이상
       // 깊어지는 경우)가 되지 않아요 — 매번 개별 함수마다 따로 정리해줄
       // 필요가 없어요.
-      const normalized = normalizeIndents(next);
+      // 열 구조(열 묶음 > 열 > 내용)도 같은 자리에서 바로잡아요 — 열이 비면 빈 문단을 채우고, 열이 하나만 남으면
+      // 묶음을 풀어요(lib/blockColumns.js). 열 구조 블록이 없으면 아무것도 안 하고 같은 배열을 돌려줘요.
+      const normalized = normalizeIndents(normalizeColumns(normalizeIndents(next), () => nextId()));
       if (pushRec && pushRec.snapshot === prev && normalized === prev) historyApiRef.current.revertSnapshot(pushRec);
       return normalized;
     });
@@ -576,6 +595,73 @@ export default function BlockEditor({
       });
       setBlockMenu(null);
     });
+  };
+
+  // ---------- 열(2열·3열) 조작 ----------
+  // 구조 블록(열 묶음·열)을 지울 때는 안의 내용까지 같이 지워져요. 내용이 있으면 한 번 물어봐요(하위 페이지가 달려 있으면
+  // deleteBlock이 따로 물어봐서 여기선 건너뛰어요).
+  const deleteColumnStructure = async (id, message) => {
+    const index = blocks.findIndex((b) => b.id === id);
+    if (index === -1) return;
+    const inside = blocks.slice(index + 1, getSubtreeRange(blocks, index)).filter((b) => b.type !== COLUMN && b.type !== COLUMN_LIST);
+    const hasContent = inside.some((b) => b.type !== "TEXT" || !isBlockContentEmpty(b.content, b.type) || b.pageId);
+    const hasOwnedPages = inside.some((b) => getOwnedPageIds(b).length > 0);
+    if (hasContent && !hasOwnedPages) {
+      const ok = await confirm({ title: "삭제할까요?", message, confirmLabel: "삭제", danger: true });
+      if (!ok) return;
+    }
+    deleteBlock(id);
+  };
+
+  const removeColumn = (columnId) => deleteColumnStructure(columnId, "이 열과 안의 내용을 지워요.\n지운 뒤에도 실행 취소(Ctrl+Z)로 되돌릴 수 있어요.");
+  const removeColumnLayout = (listId) => deleteColumnStructure(listId, "열 전체와 안의 내용을 지워요.\n지운 뒤에도 실행 취소(Ctrl+Z)로 되돌릴 수 있어요.");
+
+  // 맨 오른쪽에 빈 열을 하나 더해요(최대 MAX_COLUMNS개).
+  const addColumn = (listId) => {
+    const columnId = nextId();
+    const textId = nextId();
+    pushUndoSnapshot();
+    setBlocks((prev) => {
+      const index = prev.findIndex((b) => b.id === listId);
+      if (index === -1) return prev;
+      const end = getSubtreeRange(prev, index);
+      const indent = prev[index].indent || 0;
+      const count = prev.slice(index + 1, end).filter((b) => b.type === COLUMN && (b.indent || 0) === indent + 1).length;
+      if (count >= MAX_COLUMNS) return prev;
+      const next = [...prev];
+      next.splice(
+        end,
+        0,
+        { id: columnId, type: COLUMN, width: null, indent: indent + 1 },
+        { id: textId, type: "TEXT", content: "", richText: true, indent: indent + 2 },
+      );
+      return next;
+    });
+    focusBlock(textId, "start");
+  };
+
+  // 열 사이 경계를 끌어서 바꾼 폭 비율을 저장해요(weights: { 열 id: 비율 }).
+  const setColumnWidths = (weights) => {
+    pushUndoSnapshot();
+    setBlocks((prev) => prev.map((b) => (b.type === COLUMN && weights[b.id] != null ? { ...b, width: Math.round(weights[b.id] * 1000) / 1000 } : b)));
+  };
+
+  // 블록이 열의 "바로 안쪽"(열 안 최상위 단)에 있으면 { onlyChild, isFirst }, 아니면 null이에요. 이런 블록은 더 내어쓸 수 없고
+  // (열 밖으로 나갈 수 없어요), 열의 첫 블록 맨 앞에서 Backspace를 눌러도 위 열과 합쳐지지 않아요.
+  // 열 안(어느 깊이든)에 있는 블록인지 — 열 안에서는 슬래시 메뉴에 2열/3열이 안 나와요.
+  const isInsideColumn = (id) => {
+    const index = blocks.findIndex((b) => b.id === id);
+    return index !== -1 && computeColumnOwners(blocks)[index] != null;
+  };
+
+  const getColumnPosition = (id) => {
+    const index = blocks.findIndex((b) => b.id === id);
+    if (index <= 0) return null;
+    const parent = findParentIndex(blocks, index);
+    if (parent === -1 || blocks[parent].type !== COLUMN || (blocks[parent].indent || 0) !== (blocks[index].indent || 0) - 1) return null;
+    const end = getSubtreeRange(blocks, parent);
+    const siblings = getDirectChildrenIndices(blocks, parent);
+    return { onlyChild: siblings.length === 1 && end > index, isFirst: parent === index - 1 };
   };
 
   // 요청: "모든 핸들버튼에 복제하기를 넣어서 누르면 똑같은게 바로 밑에
@@ -996,7 +1082,44 @@ export default function BlockEditor({
     return sanitizeInlineHtml(out.innerHTML);
   };
 
+  // "/2열", "/3열" — 빈 줄(슬래시 글자만 있는 줄)이면 그 자리를 열 묶음으로 바꾸고, 문장 중간("hello /2열")이면 그 문장은
+  // 두고 바로 아래에 열 묶음을 만들어요. 열 안에서는 만들지 않아요(노션도 열 안에 열을 못 넣어요).
+  const insertColumnLayout = (id, count) => {
+    const fromSlash = slashMenu?.blockId === id;
+    const mid = fromSlash && !!slashMenu.mid;
+    const stripped = mid ? stripTrailingSlashQuery(blocks.find((b) => b.id === id)?.content, slashMenu.query) : null;
+    if (!fromSlash) pushUndoSnapshot();
+    setSlashMenu(null);
+    setBlockMenu(null);
+
+    // 새 블록 id는 상태 업데이트 함수 "밖"에서 미리 뽑아요(업데이트 함수는 두 번 불릴 수 있어요).
+    const pool = Array.from({ length: 1 + count * 2 }, () => nextId());
+    focusBlock(pool[2], "start");
+
+    setBlocks((prev) => {
+      const index = prev.findIndex((b) => b.id === id);
+      if (index === -1) return prev;
+      if (computeColumnOwners(prev)[index] != null) return prev;
+
+      let k = 0;
+      const layout = createColumnLayout(count, prev[index].indent || 0, () => pool[k++]);
+      const next = [...prev];
+      if (mid) {
+        next[index] = { ...next[index], content: stripped, richText: true };
+        next.splice(getSubtreeRange(prev, index), 0, ...layout);
+      } else {
+        next.splice(index, 1, ...layout);
+      }
+      return next;
+    });
+  };
+
   const convertBlock = (id, type) => {
+    if (isColumnMenuType(type)) {
+      insertColumnLayout(id, type === "COLUMNS_3" ? 3 : 2);
+      return;
+    }
+
     if (slashMenu?.blockId === id && slashMenu.mid) {
       const cur = blocks.find((b) => b.id === id);
       const stripped = stripTrailingSlashQuery(cur?.content, slashMenu.query);
@@ -1091,6 +1214,7 @@ export default function BlockEditor({
   // 바꾸는 토글이라, content/image를 초기화하는 convertBlock과 달리
   // type 필드만 바꿔서 데이터(사진/파일 자체)는 그대로 남아있어요.
   const swapImageFileType = (id, type) => {
+    pushUndoSnapshot();
     updateBlock(id, { type });
     setBlockMenu(null);
   };
@@ -1154,6 +1278,7 @@ export default function BlockEditor({
   };
 
   const bulkSetTextColor = (textColor) => {
+    pushUndoSnapshot();
     setBlocks((prev) =>
       prev.map((b) => (selectedBlockIds.has(b.id) && blockCanHaveTextColor(b) ? { ...b, textColor } : b)),
     );
@@ -1318,7 +1443,7 @@ export default function BlockEditor({
     // "/"는 무시). 일단 열린 다음에는 "/h1"처럼 계속 이어 칠 때마다
     // query가 갱신돼야 필터링/키보드 선택이 되니까, 이미 열려 있는
         // 동안엔 wasEmpty 조건과 상관없이 계속 추적해요.
-    const wasEmpty = isBlockContentEmpty(block.content);
+    const wasEmpty = isBlockContentEmpty(block.content, block.type);
     const isSlashActive = slashMenu?.blockId === block.id;
 
     // 요청: "블록 생성에 대한 ctrl z" — 글자 입력도 스냅샷 대상이에요(1초 안에 이어진
@@ -1393,6 +1518,10 @@ export default function BlockEditor({
     if (pi < 0) return;
     const prev = blocks[pi];
 
+    // 열 경계를 넘어서는 합치지 않아요(열의 첫 블록이나 열 묶음 바로 아래 블록).
+    const owners = computeColumnOwners(blocks);
+    if (owners[pi] !== owners[index]) return;
+
     if (prev.type === "DIVIDER") {
       pushUndoSnapshot();
       setBlocks((list) => list.filter((b) => b.id !== prev.id));
@@ -1423,6 +1552,8 @@ export default function BlockEditor({
     while (ni < blocks.length && hidden.has(blocks[ni].id)) ni += 1;
     const next = blocks[ni];
     if (!next || !RICH_TEXT_TYPES.includes(next.type) || next.pageId) return false;
+    const owners = computeColumnOwners(blocks);
+    if (owners[ni] !== owners[index]) return false;
 
     const junction = inputRefs.current[block.id]?.textContent?.length ?? 0;
     const merged = (block.content || "") + (next.content || "");
@@ -1445,6 +1576,9 @@ export default function BlockEditor({
   // 키 처리 본체는 hooks/blockKeyDown.js에 있어요 — 필요한 상태·함수를 매 렌더마다 묶어 넘겨요.
   const handleKeyDown = createBlockKeyDownHandler({
     blockTypeOptions,
+    slashTypeOptions,
+    getColumnPosition,
+    isInsideColumn,
     blocks,
     convertBlock,
     deleteBlock,
@@ -1486,7 +1620,7 @@ export default function BlockEditor({
   };
 
   const handleImageSelect = (block, file) => {
-    if (!file) return;
+    if (!file || rejectIfTooLarge(file)) return;
 
     pushUndoSnapshot();
     const reader = new FileReader();
@@ -1526,7 +1660,7 @@ export default function BlockEditor({
   // insertBlockAfter/handleImageSelect를 합친 모양이에요 — 새 블록을
   // 만들자마자 그 자리의 id로 이미지를 채워요.
   const insertImageBlockAfter = (id, file) => {
-    if (!file) return;
+    if (!file || rejectIfTooLarge(file)) return;
     const newId = nextId();
 
     pushUndoSnapshot();
@@ -1601,7 +1735,9 @@ export default function BlockEditor({
     const imageItem = Array.from(items).find(
       (item) => item.kind === "file" && item.type?.startsWith("image/"),
     );
-    if (imageItem) {
+    // 엑셀·구글 시트·일부 웹 복사는 글자(표)와 함께 그 모습을 찍은 이미지도 클립보드에 담아요. 글자가 있으면 이미지로 가로채지 않아요.
+    const hasText = (e.clipboardData.getData("text/plain") ?? "").trim() !== "";
+    if (imageItem && !hasText) {
       e.preventDefault();
       insertImageBlockAfter(block.id, imageItem.getAsFile());
       return;
@@ -1739,7 +1875,7 @@ export default function BlockEditor({
   };
 
   const insertImageBlocksFromFiles = (files, anchor) => {
-    const imageFiles = Array.from(files || []).filter((file) => file.type?.startsWith("image/"));
+    const imageFiles = Array.from(files || []).filter((file) => file.type?.startsWith("image/") && !rejectIfTooLarge(file));
     let currentAnchor = anchor;
 
     imageFiles.forEach((file) => {
@@ -1762,7 +1898,13 @@ export default function BlockEditor({
     const newId = nextId();
     setBlocks((prev) => spliceBlockAt(prev, createEmptyBlock(newId, "IMAGE", onCreateChildPage), anchor));
 
-    const fileName = decodeURIComponent(url.split("/").pop()?.split("?")[0] || "image");
+    const rawName = url.split("/").pop()?.split("?")[0] || "image";
+    let fileName = rawName;
+    try {
+      fileName = decodeURIComponent(rawName);
+    } catch {
+      // %가 홀로 들어간 주소처럼 해석할 수 없는 이름이면 원문 그대로 써요.
+    }
     updateBlock(newId, { image: { fileName, fileSize: "", url } });
   };
 
@@ -1824,7 +1966,8 @@ export default function BlockEditor({
           // shift+클릭 — 마지막 기준점(anchor)부터 클릭한 블록까지
           // 문서 순서로 전부 선택(노션과 같아요: "shift+클릭으로 다른
           // 블록을 선택하면 그 사이 블록이 전부 선택돼요").
-          const ids = blocks.map((b) => b.id);
+          // 열 묶음·열 블록은 화면에 줄로 그려지지 않으니 범위에서 빼요(넣으면 일부만 골랐는데 열 통째로 지워져요).
+          const ids = blocks.filter((b) => !isColumnStructure(b)).map((b) => b.id);
           const anchorId = selectionAnchorIdRef.current ?? clickedId;
           const anchorIndex = ids.indexOf(anchorId);
           const clickedIndex = ids.indexOf(clickedId);
@@ -2118,6 +2261,7 @@ export default function BlockEditor({
     blockPaintKey(b, !!(openMenuRange && i >= openMenuRange.start && i < openMenuRange.end)),
   );
   const containerOwners = computeContainerOwners(blocks);
+  const columnOwners = computeColumnOwners(blocks); // 열 안에 있는 블록은 슬래시 메뉴에 2열/3열이 안 나와요(열 안에 열은 안 만들어요).
 
   // 요청: "콜아웃/인용을 노션처럼" — 평평한 blocks 배열을 그대로 두고, 렌더링할
   // 때만 콜아웃/인용의 "자식 범위"(getSubtreeRange)를 하나의 박스로 감싸서
@@ -2171,6 +2315,7 @@ export default function BlockEditor({
             pages={block.type === "DATABASE" ? pagesForDb : NO_PAGES}
             onCreateChildPage={onCreateChildPage}
             blockTypeOptions={blockTypeOptions}
+            slashOptions={columnOwners[index] ? blockTypeOptions : slashTypeOptions}
             isSlashOpen={slashMenu?.blockId === block.id}
             slashQuery={slashMenu?.blockId === block.id ? slashMenu.query : ""}
             slashIndex={slashIndex}
@@ -2252,7 +2397,7 @@ export default function BlockEditor({
             }}
             isBulkMenuAnchor={bulkMenu?.anchorBlockId === block.id}
             bulkMenuMode={bulkMenu?.anchorBlockId === block.id ? bulkMenu.mode : "main"}
-            bulkSelectedCount={selectedBlockIds.size}
+            bulkSelectedCount={blocks.reduce((n, b) => (selectedBlockIds.has(b.id) && !isColumnStructure(b) ? n + 1 : n), 0)}
             onBulkOpenColorView={() => setBulkMenu((prev) => (prev ? { ...prev, mode: "color" } : prev))}
             onBulkOpenTextColorView={() =>
               setBulkMenu((prev) => (prev ? { ...prev, mode: "textColor" } : prev))
@@ -2326,6 +2471,51 @@ export default function BlockEditor({
       const block = blocks[i];
       if (hiddenBlockIds.has(block.id)) {
         i += 1;
+        continue;
+      }
+
+      // 열 묶음: 직계 자식(COLUMN)마다 한 칸씩 그려요. 열 자체와 묶음은 줄(BlockRow)이 없어요.
+      if (block.type === COLUMN) {
+        // 열 묶음 밖의 열은 normalizeColumns가 곧 지우지만, 한 번이라도 그려지면 안 되니 건너뛰어요.
+        i += 1;
+        continue;
+      }
+      if (block.type === COLUMN_LIST) {
+        const subEnd = Math.min(getSubtreeRange(blocks, i), end);
+        const ownIndent = block.indent || 0;
+        const rel = ownIndent - indentBase;
+        const colIdx = getDirectChildrenIndices(blocks, i).filter((ci) => blocks[ci].type === COLUMN && ci < subEnd);
+        const columns = colIdx.map((ci, n) => {
+          const colEnd = Math.min(getSubtreeRange(blocks, ci), subEnd);
+          const col = blocks[ci];
+          const nextCol = blocks[colIdx[n + 1]];
+          return {
+            id: col.id,
+            weight: typeof col.width === "number" && col.width > 0 ? col.width : 1,
+            content: (
+              <>
+                {renderRange(ci + 1, colEnd, ownIndent + 2)}
+                {nextCol && renderDropIndicator(nextCol, ownIndent + 2)}
+              </>
+            ),
+          };
+        });
+        out.push(
+          <Fragment key={block.id}>
+            {renderDropIndicator(block, indentBase)}
+            <ColumnsBlock
+              listId={block.id}
+              style={rel > 0 ? { marginLeft: `${rel * 24}px` } : undefined}
+              columns={columns}
+              canAdd={columns.length < MAX_COLUMNS}
+              onResizeCommit={setColumnWidths}
+              onAddColumn={() => addColumn(block.id)}
+              onRemoveColumn={removeColumn}
+              onRemoveAll={() => removeColumnLayout(block.id)}
+            />
+          </Fragment>,
+        );
+        i = subEnd;
         continue;
       }
 

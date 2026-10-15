@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, ChevronsUpDown, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import styles from "../../styles/classes";
 import { getAvatarTone } from "../../utils/avatarColor";
+import AvatarFace from "../common/AvatarFace";
 
 // 탭 정의: key가 task.status 값이에요(null이면 전체). 개수는 tasks에서 세서 탭 이름 옆에 붙여요.
 const FILTERS = [
@@ -184,7 +185,7 @@ export default function TodayWorkCard({ tasks = [] }) {
                       className={`${styles.assignee} ${styles[getAvatarTone(user.id)]}`}
                       title={user.name}
                     >
-                      {user.initial}
+                      <AvatarFace src={user.profileImageUrl} fallback={user.initial} />
                     </span>
                   ))}
 

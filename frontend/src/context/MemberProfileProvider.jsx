@@ -68,7 +68,9 @@ export function MemberProfileProvider({ children }) {
     }
 
     const height = cardRef.current?.offsetHeight ?? 0;
-    const left = Math.min(Math.max(MARGIN, target.rect.left), Math.max(MARGIN, window.innerWidth - CARD_WIDTH - MARGIN));
+    // 좁은 화면에서는 카드 폭도 화면에 맞춰 줄여요.
+    const width = Math.min(CARD_WIDTH, window.innerWidth - MARGIN * 2);
+    const left = Math.min(Math.max(MARGIN, target.rect.left), Math.max(MARGIN, window.innerWidth - width - MARGIN));
     const below = target.rect.bottom + GAP;
     const top =
       below + height > window.innerHeight - MARGIN && target.rect.top - GAP - height > MARGIN
@@ -125,7 +127,7 @@ export function MemberProfileProvider({ children }) {
             loading={!current.profile && !current.error}
             error={current.error}
             isMe={target.userId === myId}
-            style={{ left: position?.left ?? -9999, top: position?.top ?? -9999, width: CARD_WIDTH }}
+            style={{ left: position?.left ?? -9999, top: position?.top ?? -9999, width: `min(${CARD_WIDTH}px, calc(100vw - ${MARGIN * 2}px))` }}
             onOpenTask={(task) => {
               close();
               if (task.link) navigate(task.link);

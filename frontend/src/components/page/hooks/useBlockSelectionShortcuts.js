@@ -2,7 +2,9 @@ import { useEffect } from "react";
 import { RICH_TEXT_TYPES } from "../lib/blockTypes.js";
 import { computeHiddenBlockIds, expandSelectionWithSubtrees } from "../lib/blockTree.js";
 import { BLOCKS_CLIPBOARD_TYPE, blocksToPlainText, blocksToClipboardJson } from "../lib/blockClipboard.js";
+import { isColumnStructure } from "../lib/blockColumns.js";
 import { getOwnedPageIds, createEmptyBlock } from "../lib/blockFactory.js";
+import { shortcutKey } from "../../../utils/shortcutKey";
 
 // 블록 선택과 관련된 window/document 이벤트 이펙트 모음이에요.
 // - 빈 공간에서 사각형으로 드래그해 여러 블록 고르기
@@ -181,18 +183,18 @@ export default function useBlockSelectionShortcuts({ blocks, editorRef, inputRef
       // 같은 블록 구조 변경 직후) 우리 undo 스택을 되돌려요. 선택된
       // 블록이 있고 없고와 무관하게 항상 동작해야 해서 아래
       // selectedBlockIds.size 가드보다 먼저 처리해요.
-      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "z") {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && shortcutKey(e) === "z") {
         e.preventDefault();
         handleUndo();
         return;
       }
-      if ((e.metaKey || e.ctrlKey) && ((e.shiftKey && e.key.toLowerCase() === "z") || e.key.toLowerCase() === "y")) {
+      if ((e.metaKey || e.ctrlKey) && ((e.shiftKey && shortcutKey(e) === "z") || shortcutKey(e) === "y")) {
         e.preventDefault();
         handleRedo();
         return;
       }
 
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a") {
+      if ((e.metaKey || e.ctrlKey) && shortcutKey(e) === "a") {
         e.preventDefault();
         setSelectedBlockIds(new Set(blocks.map((b) => b.id)));
         return;
@@ -212,7 +214,8 @@ export default function useBlockSelectionShortcuts({ blocks, editorRef, inputRef
       if (!focusOnControl && !e.metaKey && !e.ctrlKey && !e.altKey && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
         e.preventDefault();
         const hidden = computeHiddenBlockIds(blocks);
-        const visible = blocks.filter((b) => !hidden.has(b.id)).map((b) => b.id);
+        // 열 묶음·열 블록은 화면에 한 줄로 그려지지 않아서 ↑↓로 고를 대상이 아니에요(고르면 아무것도 안 보이는데 지워져요).
+        const visible = blocks.filter((b) => !hidden.has(b.id) && !isColumnStructure(b)).map((b) => b.id);
         const picked = visible.filter((id) => selectedBlockIds.has(id));
         if (picked.length === 0) return;
         const down = e.key === "ArrowDown";
@@ -268,7 +271,7 @@ export default function useBlockSelectionShortcuts({ blocks, editorRef, inputRef
         bulkDeleteSelected();
         return;
       }
-      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "d") {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && shortcutKey(e) === "d") {
         e.preventDefault();
         bulkDuplicateSelected();
         return;

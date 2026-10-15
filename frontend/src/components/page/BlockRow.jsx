@@ -53,6 +53,7 @@ function BlockRowImpl({
   pages,
   onCreateChildPage,
   blockTypeOptions,
+  slashOptions,
   isSlashOpen,
   slashQuery,
   slashIndex,
@@ -1087,7 +1088,7 @@ function BlockRowImpl({
         {isSlashOpen && (
           <SlashMenu
             query={slashQuery}
-            options={blockTypeOptions}
+            options={slashOptions ?? blockTypeOptions}
             activeIndex={slashIndex}
             onHoverIndex={onSlashHover}
             onSelect={onConvert}

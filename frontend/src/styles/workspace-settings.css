@@ -19,6 +19,7 @@
   max-width: calc(100vw - 40px);
   height: 600px;
   max-height: calc(100vh - 80px);
+  max-height: calc(100dvh - 80px);
   overflow: hidden;
   background: #fff;
   border-radius: 16px;
@@ -529,24 +530,57 @@
 
 /* ---------- 좁은 화면 ---------- */
 
+/* 태블릿 세로(~900px): 왼쪽 탭을 조금 좁혀서 본문 폭을 확보해요. */
+@media (max-width: 900px) {
+  .wsSettings__nav {
+    flex-basis: 168px;
+  }
+
+  .wsSettings__body {
+    padding: 28px 28px 28px 24px;
+  }
+}
+
+/* 폰: 탭을 위로 올리고 모달을 화면에 꽉 차게 써요. */
 @media (max-width: 700px) {
-  .workspaceSettingsModal {
+  .workspaceSettingsBackdrop {
+    padding: 12px;
+  }
+
+  .workspaceSettingsModal,
+  .workspaceSettingsModal.accountSettingsModal {
     flex-direction: column;
-    height: auto;
+    width: 100%;
+    max-width: none;
+    /* 탭을 바꿔도 모달 높이가 들쭉날쭉하지 않게 고정해요. */
+    height: min(640px, calc(100vh - 24px));
+    height: min(640px, calc(100dvh - 24px));
+    max-height: none;
   }
 
   .wsSettings__nav {
     flex: none;
     flex-direction: row;
     flex-wrap: wrap;
-    padding: 18px 14px 10px;
+    gap: 4px;
+    padding: 14px 12px 8px;
     border-right: 0;
     border-bottom: 1px solid #eef1f6;
   }
 
+  /* 오른쪽 위 닫기 버튼과 겹치지 않게 제목 높이를 맞추고 오른쪽을 비워요. */
   .wsSettings__nav h1 {
     width: 100%;
-    margin: 0 8px 8px;
+    height: 32px;
+    margin: 0 44px 4px 8px;
+    line-height: 32px;
+  }
+
+  .wsSettings__tab {
+    height: 36px;
+    padding: 0 10px;
+    gap: 6px;
+    font-size: 13px;
   }
 
   .wsSettings__tab.last {
@@ -554,7 +588,74 @@
   }
 
   .wsSettings__body {
-    padding: 22px 20px;
+    flex: 1 1 0;
+    min-height: 0;
+    padding: 20px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+    overscroll-behavior: contain;
+  }
+
+  .wsSettings__panel h2 {
+    margin-bottom: 16px;
+    font-size: 17px;
+  }
+
+  .wsSettings__field input,
+  .wsSettings__invite input,
+  .wsSettings__danger input {
+    height: 44px;
+  }
+  /* 16px 미만이면 아이폰이 입력칸을 눌렀을 때 화면을 확대해요. 그래서 터치 기기에서만 16px로 키우고, PC에서 창만 좁힐 땐 글자 크기를 그대로 둬요. */
+  @media (hover: none) and (pointer: coarse) {
+    .wsSettings__field input,
+    .wsSettings__invite input,
+    .wsSettings__danger input,
+    .wsSettings__roleSelect {
+      font-size: 16px;
+    }
+  }
+
+  .wsSettings__inviteRow input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .wsSettings__primary,
+  .wsSettings__dangerBtn {
+    height: 44px;
+  }
+
+  .wsSettings__actions .wsSettings__primary {
+    width: 100%;
+  }
+
+  .wsSettings__danger {
+    padding: 16px;
+  }
+
+  /* 멤버 한 줄이 좁으면 이름 아래로 역할·버튼이 내려가요. */
+  .wsSettings__member {
+    flex-wrap: wrap;
+    gap: 6px 10px;
+  }
+
+  .wsSettings__memberName {
+    flex: 1 1 140px;
+  }
+
+  .wsSettings__memberActions {
+    margin-left: auto;
+  }
+
+  .wsSettings__memberActions button,
+  .wsSettings__roleSelect {
+    height: 32px;
+  }
+
+
+
+  .wsSettings__chip {
+    width: 38px;
+    height: 38px;
   }
 }
 

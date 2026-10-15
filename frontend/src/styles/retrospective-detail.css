@@ -24,16 +24,25 @@
   margin-bottom: 2px;
 }
 
+.retro-detail-header > div {
+  min-width: 0;
+}
+
+/* 제목은 한 줄, 넘치면 ...으로 줄여요. */
 .retro-detail-header h1 {
   margin: 0;
   font-size: 21px;
   font-weight: 700;
   color: #111827;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .retro-meta {
   display: flex;
-  gap: 14px;
+  flex-wrap: wrap;
+  gap: 4px 14px;
   margin-top: 4px;
   color: #64748b;
   font-size: 12px;
@@ -61,6 +70,17 @@
   background: #f8fafc;
 }
 
+/* 회고를 못 찾았을 때 나오는 버튼이에요(목록 css가 안 불러와져도 모양이 나오게 여기에도 둬요). */
+.retro-detail-page .detail-btn {
+  height: 38px;
+  padding: 0 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
 /* ---------- Common ---------- */
 
 .retro-section {
@@ -68,6 +88,11 @@
   border: 1px solid #e5e7eb;
   border-radius: 14px;
   padding: 14px;
+  min-width: 0;
+
+  /* 요약·칸반이 "화면 너비" 대신 이 카드의 너비를 보고 배치를 바꿔요(사이드바 열림 여부와 무관).
+     이 카드 안에는 fixed로 뜨는 요소가 없어서 컨테이너로 잡아도 안전해요. */
+  container: retsec / inline-size;
 }
 
 .retro-section__header {
@@ -90,13 +115,13 @@
    Summary
 =========================== */
 
-.retro-summary {
+.retro-detail-page .retro-summary {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 14px;
 }
 
-.summary-card {
+.retro-detail-page .summary-card {
   display: flex;
   align-items: center;
   gap: 14px;
@@ -106,11 +131,11 @@
   background: #fff;
 }
 
-.summary-rate {
+.retro-detail-page .summary-rate {
   background: #f8faff;
 }
 
-.summary-circle {
+.retro-detail-page .summary-circle {
   width: 58px;
   height: 58px;
   border-radius: 50%;
@@ -121,34 +146,42 @@
   flex-shrink: 0;
 }
 
-.summary-circle strong {
+.retro-detail-page .summary-circle strong {
   font-size: 15px;
   color: #111827;
 }
 
-.summary-content {
+.retro-detail-page .summary-content {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
-.summary-content span {
+.retro-detail-page .summary-content span {
   font-size: 12px;
   color: #64748b;
 }
 
-.summary-content h3 {
+.retro-detail-page .summary-content span,
+.retro-detail-page .summary-content p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.retro-detail-page .summary-content h3 {
   margin: 3px 0;
   font-size: 22px;
   color: #111827;
 }
 
-.summary-content p {
+.retro-detail-page .summary-content p {
   margin: 0;
   font-size: 12px;
   color: #94a3b8;
 }
 
-.summary-icon {
+.retro-detail-page .summary-icon {
   width: 46px;
   height: 46px;
   border-radius: 13px;
@@ -158,28 +191,28 @@
   flex-shrink: 0;
 }
 
-.summary-icon.green {
+.retro-detail-page .summary-icon.green {
   background: #ecfdf5;
   color: #16a34a;
 }
 
-.summary-icon.red {
+.retro-detail-page .summary-icon.red {
   background: #fef2f2;
   color: #ef4444;
 }
 
-.summary-icon.orange {
+.retro-detail-page .summary-icon.orange {
   background: #fff7ed;
   color: #ea580c;
 }
 
-.summary-members {
+.retro-detail-page .summary-members {
   display: flex;
   gap: 5px;
   margin-top: 5px;
 }
 
-.summary-avatar {
+.retro-detail-page .summary-avatar {
   width: 24px;
   height: 24px;
   border-radius: 50%;
@@ -191,27 +224,27 @@
   justify-content: center;
 }
 
-.summary-avatar.blue {
+.retro-detail-page .summary-avatar.blue {
   background: #3b82f6;
 }
 
-.summary-avatar.green {
+.retro-detail-page .summary-avatar.green {
   background: #22c55e;
 }
 
-.summary-avatar.orange {
+.retro-detail-page .summary-avatar.orange {
   background: #f59e0b;
 }
 
-.summary-avatar.purple {
+.retro-detail-page .summary-avatar.purple {
   background: #8b5cf6;
 }
 
-.summary-avatar.gray {
+.retro-detail-page .summary-avatar.gray {
   background: #94a3b8;
 }
 
-.summary-avatar.pink {
+.retro-detail-page .summary-avatar.pink {
   background: #ec4899;
 }
 
@@ -221,7 +254,8 @@
 
 .retro-kanban {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* 열 개수는 KanbanSnapshot이 --cols로 넘겨줘요(인라인 스타일은 CSS 반응형 규칙을 덮어써서 변수로 바꿨어요). */
+  grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -255,14 +289,19 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
 .retro-column__title h3 {
   margin: 0;
   font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .column-dot {
+  flex: none;
   width: 9px;
   height: 9px;
   border-radius: 50%;
@@ -281,6 +320,8 @@
 }
 
 .retro-column__count {
+  flex: none;
+  margin-left: 8px;
   font-size: 12px;
   font-weight: 600;
   color: #64748b;
@@ -321,12 +362,21 @@
   font-size: 13.5px;
   color: #111827;
   line-height: 1.4;
+  overflow-wrap: anywhere;
+
+  /* 제목은 두 줄까지만 보여줘요(전체는 마우스를 올리면 title로 보여요). */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
 }
 
 .retro-task-card__footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
   margin-top: 10px;
 }
 
@@ -334,9 +384,17 @@
   display: flex;
   align-items: center;
   gap: 7px;
+  min-width: 0;
+}
+
+.retro-assignee span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .retro-avatar {
+  flex: none;
   width: 24px;
   height: 24px;
   border-radius: 50%;
@@ -370,6 +428,8 @@
 }
 
 .priority {
+  flex: none;
+  white-space: nowrap;
   padding: 4px 8px;
   border-radius: 999px;
   font-size: 10.5px;
@@ -412,34 +472,69 @@
 
 /* ===========================
    Responsive
+   요약/칸반은 .retro-section 카드의 너비("retsec" 컨테이너)를 기준으로 해요.
+   - 요약: 4칸(900px 이상) → 2칸 → 480px 미만은 아이콘을 줄여 2칸 유지
+   - 칸반: 열 개수 그대로(600px 이상) → 1열로 쌓기 (한 번에 바뀌어요)
 =========================== */
 
-@media (max-width: 1280px) {
-  .retro-summary {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .retro-kanban {
-    grid-template-columns: 1fr;
+@media (max-width: 900px) {
+  .retro-detail-page {
+    padding: 14px 12px 24px;
   }
 }
 
-@media (max-width: 768px) {
-  .retro-detail-page {
-    padding: 16px;
+@container retsec (max-width: 899px) {
+  .retro-detail-page .retro-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container retsec (max-width: 479px) {
+  .retro-detail-page .retro-summary {
+    gap: 10px;
   }
 
-  .retro-detail-header {
-    flex-direction: column;
-    gap: 14px;
+  .retro-detail-page .summary-card {
+    gap: 10px;
+    padding: 12px;
   }
 
-  .retro-meta {
-    flex-direction: column;
-    gap: 8px;
+  /* 완료율 카드는 문구가 길어서 한 줄을 다 써요. */
+  .retro-detail-page .summary-rate {
+    grid-column: 1 / -1;
   }
 
-  .retro-summary {
-    grid-template-columns: 1fr;
+  .retro-detail-page .summary-circle {
+    width: 42px;
+    height: 42px;
+    border-width: 3px;
+  }
+
+  .retro-detail-page .summary-circle strong {
+    font-size: 11px;
+  }
+
+  .retro-detail-page .summary-icon {
+    display: none;
+  }
+
+  .retro-detail-page .summary-content h3 {
+    font-size: 20px;
+  }
+
+  .retro-detail-page .summary-members {
+    flex-wrap: wrap;
+  }
+}
+
+@container retsec (max-width: 599px) {
+  .retro-kanban {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .retro-section {
+    padding: 12px;
   }
 }

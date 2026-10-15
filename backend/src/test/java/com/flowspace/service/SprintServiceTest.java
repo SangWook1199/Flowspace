@@ -114,7 +114,7 @@ class SprintServiceTest {
     void setUp() {
         user = User.builder().userId(1L).email("a@a.com").nickname("a").build();
         workspace = Workspace.builder().workspaceId(5L).name("w").initials("W").build();
-        sprint = Sprint.builder().sprintId(10L).workspace(workspace).name("스프린트 1").startDate(LocalDate.now())
+        sprint = Sprint.builder().sprintId(10L).workspace(workspace).createdBy(user).name("스프린트 1").startDate(LocalDate.now())
             .endDate(LocalDate.now().plusDays(7)).status(SprintStatus.ACTIVE).build();
 
         when(userRepository.findByEmail("a@a.com")).thenReturn(Optional.of(user));
@@ -163,6 +163,33 @@ class SprintServiceTest {
 
         verify(activityService).log(eq(workspace), eq(user), eq(ActivityType.SPRINT_COMPLETED),
             eq(ActivityTargetType.SPRINT), eq(10L));
+    }
+
+    @Test
+    @DisplayName("완료된 스프린트는 다시 진행 중으로 되돌릴 수 없다")
+    void completedSprintCannotBeReactivated() {
+        memberWithRole(WorkspaceRole.MEMBER);
+        sprint.updateStatus(SprintStatus.COMPLETED);
+
+        FlowSpaceException e = assertThrows(FlowSpaceException.class,
+            () -> sprintService.updateStatus(10L, new SprintStatusUpdateRequest(SprintStatus.ACTIVE), "a@a.com"));
+
+        assertEquals(ErrorCode.INVALID_SPRINT_STATUS_CHANGE, e.getErrorCode());
+        assertEquals(SprintStatus.COMPLETED, sprint.getStatus());
+    }
+
+    @Test
+    @DisplayName("시작하지 않은 스프린트는 바로 완료할 수 없다")
+    void planningSprintCannotBeCompletedDirectly() {
+        memberWithRole(WorkspaceRole.MEMBER);
+        sprint.updateStatus(SprintStatus.PLANNING);
+
+        FlowSpaceException e = assertThrows(FlowSpaceException.class,
+            () -> sprintService.updateStatus(10L, new SprintStatusUpdateRequest(SprintStatus.COMPLETED), "a@a.com"));
+
+        assertEquals(ErrorCode.INVALID_SPRINT_STATUS_CHANGE, e.getErrorCode());
+        assertEquals(SprintStatus.PLANNING, sprint.getStatus());
+        verify(retrospectiveRepository, never()).save(any(Retrospective.class));
     }
 
     @Test

@@ -1,0 +1,957 @@
+/* "AI로 프로젝트 구성" 화면과 그 진입 버튼 스타일이에요(클래스 이름은 모두 ai로 시작해요). */
+
+/* ---------- 진입 버튼 ---------- */
+
+/* 스프린트 목록 머리글: 새 스프린트 버튼 옆에 AI 버튼을 나란히 둬요. */
+.sprintHeadingActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sprintHeadingActions > button {
+  height: 42px;
+  border: 0;
+  border-radius: 8px;
+  background: #4f5cf6;
+  color: #fff;
+  padding: 0 17px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  box-shadow: 0 5px 13px #4f5cf640;
+}
+.sprintHeadingActions > button.aiEntryButton {
+  border: 1px solid #cdd3fb;
+  background: #f3f4ff;
+  color: #3b46d8;
+  box-shadow: none;
+}
+.sprintHeadingActions > button.aiEntryButton:hover {
+  background: #e9ebff;
+}
+
+/* 대시보드의 "아직 스프린트가 없어요" 안내 아래 버튼 */
+.aiEmptyAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 38px;
+  margin-top: 4px;
+  padding: 0 16px;
+  border: 1px solid #cdd3fb;
+  border-radius: 9px;
+  background: #f3f4ff;
+  color: #3b46d8;
+  font-size: 13px;
+  font-weight: 700;
+}
+.aiEmptyAction:hover {
+  background: #e9ebff;
+}
+.aiEmptyActionWrap {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 14px;
+}
+
+/* 사이드바 "아직 스프린트가 없어요." 아래 링크(.sidebarSprints > button 기본 모양을 따라가요) */
+.sidebarSprints > button.sidebarAiLink {
+  color: #3b46d8;
+  font-weight: 600;
+}
+.sidebarSprints > button.sidebarAiLink svg {
+  color: #4f5cf6;
+}
+
+/* ---------- 화면 공통 ---------- */
+
+.aiTitleIcon {
+  color: #4f5cf6;
+  vertical-align: -4px;
+  margin-right: 4px;
+}
+
+.aiLoading {
+  margin: 60px 0;
+  text-align: center;
+  color: #718099;
+}
+
+.aiSteps {
+  display: flex;
+  gap: 10px;
+  margin: 0 0 18px;
+  padding: 0;
+  list-style: none;
+  flex-wrap: wrap;
+}
+.aiSteps li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px 0 8px;
+  border: 1px solid #e3e8f0;
+  border-radius: 999px;
+  background: #fff;
+  color: #8493a8;
+  font-size: 13px;
+  font-weight: 600;
+}
+.aiSteps li span {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #eef1f6;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+}
+.aiSteps li.current {
+  border-color: #4f5cf6;
+  color: #3b46d8;
+  background: #f3f4ff;
+}
+.aiSteps li.current span {
+  background: #4f5cf6;
+  color: #fff;
+}
+.aiSteps li.done {
+  color: #1f9a63;
+}
+.aiSteps li.done span {
+  background: #e3f6ec;
+  color: #1f9a63;
+}
+
+.aiNotice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 11px 14px;
+  border-radius: 9px;
+  background: #fff8e8;
+  color: #8a5a00;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.aiNotice svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+.aiNotice.info {
+  margin: 0 0 14px;
+  background: #f0f4ff;
+  color: #3b4a7a;
+}
+
+.aiHint {
+  margin: 8px 0 0;
+  color: #7a899f;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ---------- 입력 폼 ---------- */
+
+.aiFormBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 28px;
+  padding: 30px 29px 18px;
+}
+.aiSection h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  font-size: 16px;
+}
+.aiSection h2 b,
+.aiDetailToggle b {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eef1f6;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+}
+.aiForm .formField textarea {
+  height: auto;
+  padding: 12px 14px;
+}
+.aiForm .formField + .formField {
+  margin-top: 18px;
+}
+.aiForm .fieldFooter span:empty {
+  display: none;
+}
+
+.aiPeriod > * {
+  min-width: 0;
+}
+.aiPeriod {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 18px;
+}
+.aiWeeks small {
+  display: block;
+  margin-top: 21px;
+  color: #74839a;
+  font-size: 12px;
+}
+.aiSegment {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.aiSegment button {
+  height: 42px;
+  border: 1px solid #dfe5ee;
+  border-radius: 8px;
+  background: #fff;
+  font-weight: 600;
+}
+.aiSegment button.picked {
+  border-color: #4f5cf6;
+  background: #f3f4ff;
+  color: #3b46d8;
+}
+
+.aiMembers {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.aiMembers li {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.8fr) 1.4fr;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid #e3e8f0;
+  border-radius: 10px;
+  background: #fbfcff;
+}
+.aiMembers li.on {
+  border-color: #c6ccf8;
+  background: #f6f7ff;
+}
+.aiMemberPick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  cursor: pointer;
+  font-weight: 600;
+}
+.aiMemberPick span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.aiRoleInput,
+.aiEventRow input,
+.aiTaskRow input,
+.aiTaskRow select,
+.aiTaskRow textarea,
+.aiSprint input,
+.aiDateRange input {
+  min-width: 0;
+  border: 1px solid #dfe5ee;
+  border-radius: 8px;
+  background: #fff;
+  color: #17243b;
+  font: 13px inherit;
+  outline: 0;
+}
+.aiRoleInput {
+  height: 38px;
+  padding: 0 12px;
+}
+.aiRoleInput:disabled {
+  background: #f3f5f9;
+  color: #9aa7ba;
+}
+.aiRoleInput:focus,
+.aiEventRow input:focus,
+.aiTaskRow input:focus,
+.aiTaskRow select:focus,
+.aiTaskRow textarea:focus,
+.aiSprint input:focus,
+.aiDateRange input:focus {
+  border-color: #6574ff;
+  box-shadow: 0 0 0 3px #4d6dff17;
+}
+
+.aiDetailToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 16px;
+  font-weight: 700;
+}
+.aiDetailToggle svg {
+  transition: transform 0.15s;
+  transform: rotate(-90deg);
+}
+.aiDetailToggle svg.open {
+  transform: none;
+}
+.aiDetail {
+  margin-top: 16px;
+}
+
+.aiEventRow {
+  display: grid;
+  grid-template-columns: 1fr 160px 36px;
+  gap: 8px;
+  margin-top: 8px;
+}
+.aiEventRow input {
+  height: 38px;
+  padding: 0 12px;
+}
+.aiEventRow > button,
+.aiIconButton {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #e3e8f0;
+  border-radius: 8px;
+  background: #fff;
+  color: #718099;
+  display: grid;
+  place-items: center;
+}
+.aiEventRow > button:hover,
+.aiIconButton:hover {
+  border-color: #f3b4b4;
+  background: #fff5f5;
+  color: #dc2626;
+}
+.aiAddButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  margin-top: 10px;
+  padding: 0 14px;
+  border: 1px dashed #b6c0d6;
+  border-radius: 8px;
+  background: #fff;
+  color: #44536b;
+  font-size: 13px;
+  font-weight: 600;
+}
+.aiAddButton:hover {
+  border-color: #4f5cf6;
+  color: #3b46d8;
+}
+
+.aiBlocked {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 29px 12px;
+  padding: 11px 14px;
+  border-radius: 9px;
+  background: #fff1f1;
+  color: #b42318;
+  font-size: 13px;
+}
+.aiTime {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0 30px 22px;
+  color: #7a899f;
+  font-size: 12px;
+}
+.aiRecheck {
+  margin: 12px 0 0;
+}
+.aiRecheck button {
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid #dfe5ee;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ---------- 진행 화면 ---------- */
+
+.aiProgress {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 56px 24px 48px;
+  border: 1px solid #e4e9f1;
+  border-radius: 12px;
+  background: #fff;
+  text-align: center;
+}
+.aiProgress h2 {
+  margin: 6px 0 0;
+  font-size: 20px;
+}
+.aiProgressMessage {
+  margin: 0;
+  color: #44536b;
+}
+.aiSpinner {
+  color: #4f5cf6;
+  animation: aiSpin 1s linear infinite;
+}
+@keyframes aiSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aiSpinner {
+    animation-duration: 3s;
+  }
+}
+.aiProgressMeta {
+  display: flex;
+  gap: 28px;
+  margin: 10px 0 4px;
+}
+.aiProgressMeta div {
+  display: grid;
+  gap: 4px;
+}
+.aiProgressMeta dt {
+  color: #7a899f;
+  font-size: 12px;
+}
+.aiProgressMeta dd {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+.aiProgressNote {
+  margin: 0;
+  color: #7a899f;
+  font-size: 13px;
+}
+.aiProgressError {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 0;
+  padding: 10px 14px;
+  border-radius: 9px;
+  background: #fff1f1;
+  color: #b42318;
+  font-size: 13px;
+}
+.aiProgressError button {
+  margin-left: 6px;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid #f0b8b3;
+  border-radius: 7px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+.aiCancel {
+  margin-top: 12px;
+  height: 40px;
+  padding: 0 22px;
+  border: 1px solid #dfe5ee;
+  border-radius: 9px;
+  background: #fff;
+  font-weight: 700;
+}
+.aiCancel:hover {
+  background: #f6f8fd;
+}
+
+/* ---------- 미리보기 ---------- */
+
+.aiPreview {
+  display: grid;
+  gap: 16px;
+  padding-bottom: 96px;
+}
+.aiCounts {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.aiCounts span {
+  padding: 8px 14px;
+  border: 1px solid #e3e8f0;
+  border-radius: 999px;
+  background: #fff;
+  color: #5d6c84;
+  font-size: 13px;
+}
+.aiCounts b {
+  color: #3b46d8;
+  font-size: 15px;
+}
+
+.aiSprint {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid #e4e9f1;
+  border-radius: 12px;
+  background: #fff;
+}
+.aiSprint > header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.aiSprintNo {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #4f5cf6;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+.aiSprintName {
+  flex: 1 1 200px;
+  height: 38px;
+  padding: 0 12px;
+  font-weight: 700;
+}
+.aiSprintGoal {
+  height: 38px;
+  padding: 0 12px;
+  width: 100%;
+  color: #44536b;
+}
+.aiEventsTitle {
+  margin: 0;
+  font-size: 15px;
+}
+
+.aiDateRange {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.aiDateRange input {
+  height: 36px;
+  padding: 0 8px;
+}
+.aiDateRange i {
+  font-style: normal;
+  color: #8493a8;
+}
+.aiDateRange.invalid input {
+  border-color: #ef4444;
+  background: #fff7f7;
+}
+
+.aiTaskScroll {
+  overflow-x: auto;
+}
+.aiTaskTable {
+  min-width: 860px;
+  display: grid;
+  gap: 6px;
+}
+.aiTaskHead,
+.aiTaskRow {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) 140px 90px 270px 36px;
+  gap: 8px;
+  align-items: start;
+}
+.aiTaskHead {
+  padding: 0 2px 4px;
+  border-bottom: 1px solid #eef1f6;
+  color: #7a899f;
+  font-size: 12px;
+  font-weight: 600;
+}
+.aiTaskRow {
+  padding: 6px 0;
+  border-bottom: 1px solid #f3f5f9;
+}
+.aiTaskRow:last-child {
+  border-bottom: 0;
+}
+.aiTaskRow input,
+.aiTaskRow select {
+  height: 36px;
+  padding: 0 10px;
+  width: 100%;
+}
+.aiTaskTitle {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.aiTaskTitle details summary {
+  cursor: pointer;
+  color: #7a899f;
+  font-size: 12px;
+}
+.aiTaskTitle textarea {
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 10px;
+  resize: vertical;
+  line-height: 1.5;
+}
+.aiPriority.HIGH {
+  border-color: #f3b4b4;
+  background: #fff5f5;
+  color: #b42318;
+}
+.aiPriority.MEDIUM {
+  border-color: #f3d9a4;
+  background: #fffaf0;
+  color: #8a5a00;
+}
+.aiPriority.LOW {
+  border-color: #b9e3cc;
+  background: #f3fbf6;
+  color: #1f7a4d;
+}
+.aiEmptyRow {
+  margin: 0;
+  padding: 10px 2px;
+  color: #8493a8;
+  font-size: 13px;
+}
+.aiError {
+  padding: 0;
+  color: #dc2626;
+}
+
+/* ---------- 안내 카드 ---------- */
+
+.aiNoticeCard {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 48px 24px;
+  border: 1px solid #e4e9f1;
+  border-radius: 12px;
+  background: #fff;
+  text-align: center;
+}
+.aiNoticeCard svg {
+  color: #f59e0b;
+}
+.aiNoticeCard h2 {
+  margin: 4px 0 0;
+  font-size: 18px;
+}
+.aiNoticeCard p {
+  margin: 0;
+  max-width: 460px;
+  color: #5d6c84;
+  line-height: 1.6;
+}
+.aiNoticeCard > div {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.aiNoticeCard button {
+  height: 40px;
+  padding: 0 18px;
+  border: 1px solid #dfe5ee;
+  border-radius: 9px;
+  background: #fff;
+  font-weight: 700;
+}
+.aiNoticeCard button.primary {
+  border-color: #4f5cf6;
+  background: #4f5cf6;
+  color: #fff;
+}
+
+/* ---------- 좁은 화면 ---------- */
+
+@media (max-width: 1100px) {
+  .aiPeriod {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 820px) {
+  .aiFormBody {
+    padding: 22px 18px 12px;
+  }
+  .aiMembers li {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .aiEventRow {
+    grid-template-columns: 1fr 130px 36px;
+  }
+  .aiBlocked {
+    margin: 0 18px 12px;
+  }
+  .aiTime {
+    padding: 0 18px 22px;
+  }
+  .sprintHeadingActions > button.aiEntryButton {
+    padding: 0 12px;
+  }
+}
+
+/* 기간 입력(날짜 칸)이 좁은 화면에서 밀려 나가지 않게 줄어들 수 있게 해요. */
+.aiForm .dateFields {
+  grid-template-columns: minmax(0, 1fr) 17px minmax(0, 1fr);
+}
+.aiForm .dateFields > div,
+.aiForm .dateFields p {
+  min-width: 0;
+}
+
+/* 아래 고정 버튼 줄의 글자가 길어도(예: "스프린트 3개 만들기") 줄바꿈되지 않게 해요. */
+.aiPage .formActions button {
+  width: auto;
+  min-width: 128px;
+  padding: 0 20px;
+  white-space: nowrap;
+}
+
+/* 화면 전체 틀: 스프린트 목록·대시보드와 같이 아주 넓은 화면에서는 폭을 1800px로 고정하고 가운데에 둬요.
+   .main이 flex(column)이라 width:100%가 없으면 max-width가 걸리지 않아서 같이 둬요. */
+.aiPage {
+  width: 100%;
+  max-width: 1800px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* ---------- 진행률과 "방금 만든 작업" ---------- */
+
+.aiMeterBlock {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: min(520px, 100%);
+  margin-top: 6px;
+}
+.aiMeter {
+  position: relative;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e8ecf4;
+}
+.aiMeter i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #4f5cf6;
+  transition: width 0.6s ease;
+}
+/* 모델이 첫 글을 쓰기 전에는 얼마나 걸릴지 몰라서 좌우로 움직이는 막대만 보여줘요. */
+.aiMeterWaiting i {
+  width: 32%;
+  animation: aiMeterSlide 1.4s ease-in-out infinite alternate;
+}
+@keyframes aiMeterSlide {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(212%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aiMeter i {
+    transition: none;
+  }
+  .aiMeterWaiting i {
+    animation: none;
+    width: 100%;
+    opacity: 0.35;
+  }
+}
+.aiMeterPercent {
+  min-width: 52px;
+  color: #3b46d8;
+  font-size: 15px;
+  text-align: right;
+}
+
+.aiTaskFeed {
+  width: min(520px, 100%);
+  margin-top: 4px;
+  padding: 12px 14px;
+  border: 1px solid #e4e9f1;
+  border-radius: 10px;
+  background: #f8fafc;
+  text-align: left;
+}
+.aiTaskFeedTitle {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 0 8px;
+  color: #44536b;
+  font-size: 12px;
+  font-weight: 700;
+}
+.aiTaskFeedTitle span {
+  color: #7a899f;
+  font-weight: 500;
+}
+.aiTaskFeed ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.aiTaskFeed li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: #7a899f;
+  font-size: 13px;
+}
+.aiTaskFeed li svg {
+  flex: none;
+  color: #1a9b5f;
+}
+.aiTaskFeed li span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 가장 최근에 나온 작업은 진하게 보여줘요. */
+.aiTaskFeed li.aiTaskNew {
+  color: #1f2a44;
+  font-weight: 600;
+}
+
+/* =====================================================
+   좁은 화면 보강 (폰·태블릿)
+===================================================== */
+
+/* 그리드 칸이 안쪽 내용(긴 제목 등) 때문에 화면 밖으로 밀리지 않게 해요. */
+.aiPreview {
+  grid-template-columns: minmax(0, 1fr);
+}
+.aiSprint {
+  min-width: 0;
+  container: aisp / inline-size;
+}
+.aiDateRange input {
+  flex: 1 1 0;
+}
+
+/* 입력 폼: 기간 두 칸이 좁아지면 위아래로 쌓아요. */
+@media (max-width: 480px) {
+  .aiForm .dateFields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .aiForm .dateFields > i {
+    display: none;
+  }
+  .aiForm .dateFields span {
+    margin-bottom: 6px;
+  }
+}
+
+/* 초안 미리보기: 스프린트 카드 폭이 좁으면 작업 표를 카드 모양으로 쌓아요(가로 스크롤 없이). */
+@container aisp (max-width: 760px) {
+  .aiTaskScroll {
+    overflow-x: visible;
+  }
+  .aiTaskTable {
+    min-width: 0;
+    gap: 0;
+  }
+  .aiTaskHead {
+    display: none;
+  }
+  .aiTaskRow {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 36px;
+    gap: 8px;
+    padding: 12px 0;
+  }
+  .aiTaskRow > .aiTaskTitle {
+    grid-column: 1 / 3;
+    grid-row: 1;
+  }
+  .aiTaskRow > button.aiIconButton {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .aiTaskRow > select:nth-of-type(1) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .aiTaskRow > select:nth-of-type(2) {
+    grid-column: 2 / 4;
+    grid-row: 2;
+  }
+  .aiTaskRow > .aiDateRange {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    display: flex;
+  }
+}
+@container aisp (max-width: 520px) {
+  .aiSprint > header {
+    flex-wrap: wrap;
+  }
+  .aiSprint > header .aiSprintName {
+    flex: 1 1 0;
+  }
+  .aiSprint > header .aiIconButton {
+    order: 2;
+  }
+  .aiSprint > header .aiDateRange {
+    order: 3;
+    flex: 1 1 100%;
+    display: flex;
+  }
+}
+@media (max-width: 520px) {
+  .aiSprint {
+    padding: 14px;
+  }
+  .aiFormBody {
+    padding: 20px 14px 12px;
+  }
+  .aiPage h1 {
+    font-size: 22px;
+  }
+}
+
+/* 터치 기기에서 입력창 글자가 16px 미만이면 iOS가 화면을 확대해요. */
+@media (hover: none) and (pointer: coarse) {
+  .aiPage input,
+  .aiPage select,
+  .aiPage textarea {
+    font-size: 16px;
+  }
+}

@@ -2,6 +2,7 @@ import { LIST_TYPES, MULTILINE_TYPES, RICH_TEXT_TYPES, filterBlockTypes } from "
 import { computeHiddenBlockIds, findParentIndex, getSubtreeRange, isBlockContentEmpty, isContainerBlock } from "../lib/blockTree.js";
 import { getCaretVisualEdge, isCaretAtEdge, isEntireContentSelected, placeCaretNearPoint, splitContentAtCaret } from "../lib/caret.js";
 import { toggleBold, toggleInlineCode, toggleItalic, toggleLink, toggleStrike, toggleUnderline } from "../RichTextInput.jsx";
+import { shortcutKey } from "../../../utils/shortcutKey";
 
 // 블록 안에서 글자를 편집하는 중 누른 키(Enter·Backspace·Tab·방향키·단축키 등)를 처리하는 핸들러 팩토리예요.
 // BlockEditor가 매 렌더마다 최신 상태·함수를 담은 ctx를 넘겨서 부르니, 반환된 핸들러는 예전에
@@ -9,6 +10,9 @@ import { toggleBold, toggleInlineCode, toggleItalic, toggleLink, toggleStrike, t
 export default function createBlockKeyDownHandler(ctx) {
   const {
     blockTypeOptions,
+    slashTypeOptions,
+    getColumnPosition,
+    isInsideColumn,
     blocks,
     convertBlock,
     deleteBlock,
@@ -45,7 +49,7 @@ export default function createBlockKeyDownHandler(ctx) {
 
     // 노션처럼 Ctrl+A를 처음 누르면 이 블록의 글자 전체를, 이미 전부 선택된(또는 빈) 상태에서 한 번
     // 더 누르면 페이지의 모든 블록을 선택해요.
-    if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "a") {
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && shortcutKey(e) === "a") {
       if (isEntireContentSelected(e.currentTarget)) {
         e.preventDefault();
         e.currentTarget.blur?.();
@@ -62,7 +66,7 @@ export default function createBlockKeyDownHandler(ctx) {
     //  - Ctrl+D: 이 블록(과 자식)을 복제.
     //  - Ctrl+Shift+↑/↓: 이 블록(과 자식)을 위/아래로 이동(커서는 그대로).
     if ((e.metaKey || e.ctrlKey) && !e.altKey) {
-      const k = e.key.toLowerCase();
+      const k = shortcutKey(e);
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         if (block.type === "TODO") {
@@ -110,7 +114,7 @@ export default function createBlockKeyDownHandler(ctx) {
     // 개념이 없어요. e.currentTarget이 곧 그 블록의 contentEditable div
     // 예요(RichTextInput이 그대로 넘겨준 onKeyDown이라).
     if (RICH_TEXT_TYPES.includes(block.type) && (e.metaKey || e.ctrlKey)) {
-      const key = e.key.toLowerCase();
+      const key = shortcutKey(e);
       if (key === "b") {
         e.preventDefault();
         toggleBold();
@@ -148,7 +152,7 @@ export default function createBlockKeyDownHandler(ctx) {
     // 써요. 글자 입력도 1초 단위로 묶여서 기록되니, 방금 Enter로 만든 블록도
     // 글자와 함께 차례로 되돌아가요. Ctrl+Shift+Z / Ctrl+Y는 다시 실행이에요.
     if ((e.metaKey || e.ctrlKey) && !e.altKey) {
-      const zKey = e.key.toLowerCase();
+      const zKey = shortcutKey(e);
       // stopPropagation: 되돌리기로 이 블록이 사라지면(예: 방금 붙여넣거나 Enter로 만든 블록) React가
       // 이벤트가 window에 닿기 전에 다시 그려서 포커스가 body로 빠져요. 그러면 window의 "편집 중이
       // 아닐 때" 되돌리기가 같은 키 입력에 한 번 더 실행돼 두 단계가 한꺼번에 되돌아가요.
@@ -183,7 +187,8 @@ export default function createBlockKeyDownHandler(ctx) {
     // 정확히 쳤다면 필터링된 목록 맨 위(= 0번)가 바로 그 타입이라 Enter만
     // 눌러도 곧장 적용돼요.
     if (isSlashOpen) {
-      const filtered = filterBlockTypes(blockTypeOptions, slashMenu.query);
+      // 열 안에서는 2열/3열을 고를 수 없어요(열 안에 열을 또 만들 수 없어요).
+      const filtered = filterBlockTypes(isInsideColumn?.(block.id) ? blockTypeOptions : (slashTypeOptions ?? blockTypeOptions), slashMenu.query);
 
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         if (filtered.length > 0) {
@@ -278,15 +283,17 @@ export default function createBlockKeyDownHandler(ctx) {
     if (e.key === "Tab") {
       if (isSlashOpen) setSlashMenu(null);
       e.preventDefault();
-      if (e.shiftKey) outdentBlock(block.id);
-      else indentBlock(block.id);
+      // 열 바로 안쪽의 블록은 열 밖으로 내어쓸 수 없어요.
+      if (e.shiftKey) {
+        if (!getColumnPosition?.(block.id)) outdentBlock(block.id);
+      } else indentBlock(block.id);
       return;
     }
 
     if (e.key === "Enter" && !e.shiftKey && block.type !== "CODE") {
       e.preventDefault();
 
-      const isEmpty = isBlockContentEmpty(block.content);
+      const isEmpty = isBlockContentEmpty(block.content, block.type);
 
       if (LIST_TYPES.includes(block.type) && isEmpty) {
         pushUndoSnapshot();
@@ -361,7 +368,7 @@ export default function createBlockKeyDownHandler(ctx) {
       e.key === "Backspace" &&
       block.type !== "CODE" &&
       !block.pageId &&
-      !isBlockContentEmpty(block.content) &&
+      !isBlockContentEmpty(block.content, block.type) &&
       isCaretAtEdge(e.currentTarget, "start")
     ) {
       e.preventDefault();
@@ -371,7 +378,7 @@ export default function createBlockKeyDownHandler(ctx) {
         focusBlock(block.id, "start");
         return;
       }
-      if ((block.indent || 0) > 0) {
+      if ((block.indent || 0) > 0 && !getColumnPosition?.(block.id)) {
         outdentBlock(block.id);
         return;
       }
@@ -386,7 +393,7 @@ export default function createBlockKeyDownHandler(ctx) {
     // 있던 그 줄은 그대로 남고 부모 밖으로 한 단 빠져나와요). 맨 위
     // 단(들여쓰기 0)까지 다 내어쓴 다음에야, 그다음 Backspace가 비로소
     // 그 블록 자체를 지워요(그리고 바로 앞 블록으로 커서가 이동).
-    if (e.key === "Backspace" && isBlockContentEmpty(block.content)) {
+    if (e.key === "Backspace" && isBlockContentEmpty(block.content, block.type)) {
       // 요청: "콜아웃/인용을 노션처럼" — 빈 콜아웃/인용에서 Backspace는 박스
       // 자체를 없애는 게 아니라 먼저 일반 텍스트로 바꿔요(안에 자식이 있어도
       // 사라지지 않아요). 텍스트가 된 다음 Backspace부터는 평소 규칙대로예요.
@@ -401,9 +408,17 @@ export default function createBlockKeyDownHandler(ctx) {
         return;
       }
 
-      if ((block.indent || 0) > 0) {
+      const columnPosition = getColumnPosition?.(block.id);
+
+      if ((block.indent || 0) > 0 && !columnPosition) {
         e.preventDefault();
         outdentBlock(block.id);
+        return;
+      }
+
+      // 열 안에 하나뿐인 빈 문단은 지우지 않아요(열은 늘 한 줄은 있어야 해요 — 열 자체는 ✕ 버튼으로 지워요).
+      if (columnPosition?.onlyChild) {
+        e.preventDefault();
         return;
       }
 

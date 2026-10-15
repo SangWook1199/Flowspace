@@ -15,6 +15,7 @@ CREATE TABLE users (
     bio VARCHAR(100) NULL,
     deleted_at DATETIME NULL,
     profile_file_id BIGINT NULL,
+    email_verified BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	UNIQUE(provider, provider_id)
@@ -126,9 +127,9 @@ CREATE TABLE task_statuses (
 
 INSERT INTO task_statuses (name, category, color)
 VALUES
-('TODO', 'TODO', 'GRAY'),
-('IN_PROGRESS', 'IN_PROGRESS', 'BLUE'),
-('DONE', 'DONE', 'GREEN');
+('할 일', 'TODO', 'PURPLE'),
+('진행 중', 'IN_PROGRESS', 'BLUE'),
+('완료', 'DONE', 'GREEN');
 
 CREATE TABLE workspace_task_statuses (
     workspace_id BIGINT NOT NULL,
@@ -209,7 +210,7 @@ CREATE TABLE blocks (
     image_file_id BIGINT NULL,
     parent_block_id BIGINT NULL,
     type ENUM('TEXT', 'H1', 'H2', 'H3', 'TODO', 'BULLET', 'NUMBERED',
-		'QUOTE', 'TOGGLE', 'CALLOUT', 'TASK', 'EVENT', 'SPRINT', 'DATABASE', 'IMAGE', 'FILE', 'DIVIDER', 'CODE') NOT NULL DEFAULT 'TEXT',
+		'QUOTE', 'TOGGLE', 'CALLOUT', 'TASK', 'EVENT', 'SPRINT', 'DATABASE', 'IMAGE', 'FILE', 'DIVIDER', 'CODE', 'COLUMN_LIST', 'COLUMN') NOT NULL DEFAULT 'TEXT',
     position DECIMAL(20,10) NOT NULL,
     content JSON NULL,
     created_by BIGINT NOT NULL,
@@ -417,6 +418,16 @@ CREATE TABLE password_reset_tokens (
     expires_at DATETIME NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_reset_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+-- 회원가입 이메일 인증 링크
+CREATE TABLE email_verification_tokens (
+    verification_token_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    token_hash VARCHAR(64) NOT NULL UNIQUE,
+    expires_at DATETIME NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_verification_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_notifications_user_created

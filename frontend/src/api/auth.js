@@ -3,6 +3,12 @@ import client from "./client";
 // 이메일 회원가입
 export const signup = (data) => client.post("/auth/signup", data);
 
+// 이메일 인증: 가입 메일 링크의 token으로 인증을 마쳐요.
+export const verifyEmail = (token) => client.post("/auth/email/verify", { token }, { skipAuth: true });
+
+// 인증 메일 다시 보내기(가입 여부와 상관없이 똑같이 성공으로 답해요).
+export const resendVerification = (email) => client.post("/auth/email/resend", { email }, { skipAuth: true });
+
 // 이메일 로그인
 export const login = (data) => client.post("/auth/login", data);
 

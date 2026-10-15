@@ -3,7 +3,8 @@
 ========================================================= */
 
 .kanbanPage {
-  padding: 28px;
+  /* 좌우 여백은 넓은 화면에서 100px이고, 화면이 줄면 조금씩 같이 줄어요(좁은 화면에서 보드가 찌그러지지 않게). */
+  padding: 28px clamp(12px, 7vw, 100px);
   background: #f8fafc;
   min-height: 100%;
   display: flex;
@@ -17,11 +18,13 @@
   display: flex;
   justify-content: space-between;
   align-items: end;
+  flex-wrap: wrap;
+  gap: 14px 20px;
 }
 
 .kanbanHeader h1 {
   margin: 0;
-  font-size: 32px;
+  font-size: clamp(26px, 4vw, 32px);
   font-weight: 700;
   color: #0f172a;
 }
@@ -36,6 +39,9 @@
   display: flex;
   align-items: center;
   gap: 10px;
+}
+.kanbanHeader__actions button {
+  white-space: nowrap; /* 버튼 글자가 세로로 꺾이지 않게 */
 }
 
 .completeSprintBtn {
@@ -135,7 +141,9 @@
 }
 
 .filterSearch {
-  width: 280px;
+  flex: 0 1 280px; /* 좁아지면 조금씩 줄어요 */
+  min-width: 160px;
+  box-sizing: border-box;
   height: 36px;
   padding: 0 10px;
   display: flex;
@@ -407,14 +415,15 @@
 /* ================= Column ================= */
 
 .kanbanColumn {
-  min-width: 320px;
-  max-width: 320px;
+  /* 아주 좁은 화면에선 컬럼이 화면보다 넓지 않게(다음 컬럼이 살짝 보여서 옆으로 밀어볼 수 있어요). */
+  min-width: min(320px, 86vw);
+  max-width: min(320px, 86vw);
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 16px;
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - 190px);
+  max-height: max(420px, calc(100vh - 190px));
   transition: opacity 0.15s;
 }
 
@@ -1299,10 +1308,11 @@
 }
 
 .statusModal {
-  width: 430px;
+  width: min(430px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
   background: #fff;
   border-radius: 18px;
-  overflow: hidden;
   box-shadow: 0 30px 60px rgba(15, 23, 42, 0.2);
 }
 
@@ -1723,4 +1733,53 @@
   min-height: 0;
   padding: 24px 22px 26px;
   background: transparent;
+}
+
+/* ================= 좁은 화면 ================= */
+
+@media (max-width: 640px) {
+  .kanbanPage {
+    padding-top: 18px;
+    gap: 16px;
+  }
+  /* 머리의 두 버튼은 이름 아래 한 줄로 꽉 차게 놓아요. */
+  .kanbanHeader__actions {
+    width: 100%;
+  }
+  .kanbanHeader__actions > button {
+    flex: 1;
+    justify-content: center;
+  }
+  .filterSearch {
+    flex: 1 1 100%;
+  }
+  .filterBar__right {
+    margin-left: 0;
+  }
+  /* 필터 패널은 화면 아래에서 올라오는 시트 모양으로 바꿔요(옆으로 540px이 안 들어가요). */
+  .filterPanel {
+    position: fixed;
+    top: auto;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    width: auto;
+    max-width: none;
+    height: min(420px, 70dvh);
+  }
+  .filterPanel__fields {
+    width: 132px;
+  }
+  .taskModalOverlay {
+    padding: 12px;
+  }
+  .taskModal {
+    max-height: calc(100dvh - 24px);
+  }
+  .taskModal > aside {
+    padding: 18px 16px 22px;
+  }
+  .statusModalHeader {
+    padding: 18px;
+  }
 }

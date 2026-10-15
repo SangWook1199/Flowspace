@@ -25,6 +25,12 @@ export const createBacklogTask = async (workspaceId, draft) => {
   return toTask(data);
 };
 
+// 작업 한 개를 서버 값으로 다시 받아요(저장 직전에 다른 사람이 바꾼 값을 알려고요).
+export const getTask = async (taskId) => {
+  const { data } = await client.get(`/tasks/${taskId}`);
+  return toTask(data);
+};
+
 // 작업 수정 (task는 화면의 최신 작업 객체 — 모든 값을 같이 보내요)
 export const updateTask = async (task) => {
   const { data } = await client.patch(`/tasks/${task.id}`, toTaskUpdateRequest(task));

@@ -4,6 +4,7 @@
 
 .login-page {
   min-height: 100vh;
+  min-height: 100dvh;
   background: #f5f7fb;
   display: flex;
   align-items: center;
@@ -181,6 +182,7 @@
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+  min-height: 100dvh;
   color: #64748b;
   font-size: 14px;
 }
@@ -704,6 +706,161 @@
   cursor: not-allowed;
 }
 
+/* 회원가입: 이용약관·개인정보 처리방침 보기 */
+.signup-terms-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #4f46e5;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.terms-modal {
+  width: 100%;
+  max-width: 560px;
+  max-height: min(680px, calc(100dvh - 32px));
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+  overflow: hidden;
+}
+
+.terms-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 22px 12px;
+}
+
+.terms-modal__head h2 {
+  margin: 0;
+  font-size: 19px;
+  color: #111827;
+}
+
+.terms-modal__close {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.terms-modal__close:hover {
+  background: #f1f5f9;
+}
+
+.terms-modal__tabs {
+  display: flex;
+  gap: 6px;
+  padding: 0 22px 12px;
+  border-bottom: 1px solid #eef1f6;
+}
+
+.terms-modal__tabs button {
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #fff;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.terms-modal__tabs button.active {
+  border-color: #c7d0ff;
+  background: #eef0ff;
+  color: #4338ca;
+}
+
+.terms-modal__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 22px 18px;
+  color: #475569;
+  font-size: 13.5px;
+  line-height: 1.7;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+.terms-modal__intro {
+  margin: 0 0 14px;
+  color: #334155;
+}
+
+.terms-modal__body h3 {
+  margin: 18px 0 6px;
+  font-size: 14px;
+  color: #111827;
+}
+
+.terms-modal__body p {
+  margin: 0 0 6px;
+}
+
+.terms-modal__body ul {
+  margin: 0 0 6px;
+  padding-left: 20px;
+}
+
+.terms-modal__meta {
+  margin-top: 20px;
+  padding-top: 12px;
+  border-top: 1px solid #eef1f6;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.terms-modal__meta p {
+  margin: 0 0 2px;
+}
+
+.terms-modal__actions {
+  display: flex;
+  gap: 10px;
+  padding: 14px 22px 20px;
+  border-top: 1px solid #eef1f6;
+}
+
+.terms-modal__actions button {
+  flex: 1;
+  height: 44px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@media (max-width: 480px) {
+  .terms-modal__head {
+    padding: 16px 16px 10px;
+  }
+  .terms-modal__tabs {
+    padding: 0 16px 10px;
+  }
+  .terms-modal__body {
+    padding: 14px 16px 16px;
+  }
+  .terms-modal__actions {
+    padding: 12px 16px 16px;
+  }
+}
+
 .signup-link button:disabled {
   color: #9ca3af;
   cursor: not-allowed;
@@ -711,38 +868,95 @@
 
 /* ==========================
    Responsive
+   1080px 이하: 한 줄 배치(폼만 보여주고 소개 카드는 숨겨요)
+   640px 이하: 여백·글자 크기를 폰에 맞춰요
 ========================== */
 
 @media (max-width: 1080px) {
   .login-container {
     grid-template-columns: 1fr;
+    max-width: 560px;
+    margin: 0 auto;
   }
 
+  /* 한 줄로 쌓이면 소개 카드는 폼 아래로 밀려 내려갈 뿐이라 숨겨요. */
   .preview-card {
-    order: -1;
+    display: none;
   }
 }
 
 @media (max-width: 640px) {
   .login-page {
-    padding: 16px;
+    padding: 16px 12px;
   }
 
-  .login-card,
-  .preview-card {
-    padding: 22px;
+  .login-card {
+    padding: 24px 20px;
     border-radius: 18px;
   }
 
-  .login-form h1 {
-    font-size: 28px;
+  .login-form {
+    margin-top: 24px;
   }
 
-  .preview-content h2 {
-    font-size: 22px;
+  .login-form h1 {
+    font-size: 26px;
+  }
+
+  .login-form > p {
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+
+  /* 16px 미만이면 아이폰이 입력칸을 눌렀을 때 화면을 확대해요. 그래서 터치 기기에서만 16px로 키우고, PC에서 창만 좁힐 땐 글자 크기를 그대로 둬요. */
+  @media (hover: none) and (pointer: coarse) {
+    .login-input input,
+    .social-link-input {
+      font-size: 16px;
+    }
+  }
+
+  .login-options {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+  }
+
+  .forgot-password {
+    padding: 8px 0;
+    font-size: 13px;
   }
 
   .social-buttons {
     flex-direction: column;
+  }
+
+  .social-slot {
+    min-height: 48px;
+  }
+
+  .signup-actions {
+    gap: 8px;
+  }
+
+  .signup-back {
+    width: 88px;
+  }
+
+  .social-link-modal {
+    padding: 22px 20px;
+  }
+}
+
+@media (max-width: 360px) {
+  .login-card {
+    padding: 20px 16px;
+  }
+
+  .login-input {
+    padding: 0 12px;
+  }
+
+  .signup-back {
+    width: 76px;
   }
 }

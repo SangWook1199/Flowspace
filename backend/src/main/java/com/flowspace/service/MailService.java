@@ -28,10 +28,31 @@ public class MailService {
     @Async
     public void sendPasswordReset(String to, String link, int validMinutes) {
 
+        String html = actionHtml("비밀번호 재설정",
+            "아래 버튼을 눌러 새 비밀번호를 정해 주세요. 링크는 %d분 동안만 쓸 수 있고, 한 번 쓰면 사라져요.".formatted(validMinutes),
+            "비밀번호 재설정하기", link, "비밀번호 재설정을 요청하지 않았다면 이 메일은 무시하셔도 돼요. 비밀번호는 바뀌지 않아요.");
+
+        deliver(to, "[Flowspace] 비밀번호 재설정 안내", html, "비밀번호 재설정", link);
+    }
+
+    @Async
+    public void sendEmailVerification(String to, String link, int validHours) {
+
+        String html = actionHtml("이메일 인증",
+            "Flowspace에 가입해 주셔서 고마워요. 아래 버튼을 눌러 이메일 인증을 마치면 로그인할 수 있어요. 링크는 %d시간 동안만 쓸 수 있어요."
+                .formatted(validHours),
+            "이메일 인증하기", link, "가입하지 않았다면 이 메일은 무시하셔도 돼요. 인증하지 않으면 계정을 쓸 수 없어요.");
+
+        deliver(to, "[Flowspace] 이메일 인증 안내", html, "이메일 인증", link);
+    }
+
+    // 메일 한 통을 보내요. 설정이 없거나 실패하면 로그만 남겨요.
+    private void deliver(String to, String subject, String html, String label, String link) {
+
         JavaMailSender sender = mailSenderProvider.getIfAvailable();
 
         if (sender == null || from == null || from.isBlank()) {
-            log.warn("메일 설정(spring.mail.*)이 없어 메일을 보내지 못했어요. 개발 중이면 아래 링크로 직접 들어가 보세요. to={}, link={}", to, link);
+            log.warn("메일 설정(spring.mail.*)이 없어 {} 메일을 보내지 못했어요. 개발 중이면 아래 링크로 직접 들어가 보세요. to={}, link={}", label, to, link);
             return;
         }
 
@@ -41,30 +62,31 @@ public class MailService {
 
             helper.setFrom(from, "Flowspace");
             helper.setTo(to);
-            helper.setSubject("[Flowspace] 비밀번호 재설정 안내");
-            helper.setText(passwordResetHtml(link, validMinutes), true);
+            helper.setSubject(subject);
+            helper.setText(html, true);
 
             sender.send(message);
-            log.info("비밀번호 재설정 메일을 보냈어요. to={}", to);
+            log.info("{} 메일을 보냈어요. to={}", label, to);
         } catch (Exception e) {
-            log.error("비밀번호 재설정 메일을 보내지 못했어요. to={}", to, e);
+            log.error("{} 메일을 보내지 못했어요. to={}", label, to, e);
         }
     }
 
-    private String passwordResetHtml(String link, int validMinutes) {
+    // 버튼 하나가 있는 안내 메일 본문
+    private String actionHtml(String title, String description, String buttonText, String link, String footer) {
 
         String href = HtmlUtils.htmlEscape(link);
 
         return """
             <div style="font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#1f2a3d">
-              <h2 style="margin:0 0 16px">비밀번호 재설정</h2>
-              <p style="line-height:1.6">아래 버튼을 눌러 새 비밀번호를 정해 주세요. 링크는 %d분 동안만 쓸 수 있고, 한 번 쓰면 사라져요.</p>
+              <h2 style="margin:0 0 16px">%s</h2>
+              <p style="line-height:1.6">%s</p>
               <p style="margin:24px 0">
-                <a href="%s" style="display:inline-block;padding:12px 20px;border-radius:8px;background:#2563eb;color:#fff;text-decoration:none;font-weight:600">비밀번호 재설정하기</a>
+                <a href="%s" style="display:inline-block;padding:12px 20px;border-radius:8px;background:#2563eb;color:#fff;text-decoration:none;font-weight:600">%s</a>
               </p>
               <p style="line-height:1.6;color:#64748b;font-size:13px">버튼이 안 눌리면 아래 주소를 브라우저에 붙여 넣어 주세요.<br>%s</p>
-              <p style="line-height:1.6;color:#64748b;font-size:13px">비밀번호 재설정을 요청하지 않았다면 이 메일은 무시하셔도 돼요. 비밀번호는 바뀌지 않아요.</p>
+              <p style="line-height:1.6;color:#64748b;font-size:13px">%s</p>
             </div>
-            """.formatted(validMinutes, href, href);
+            """.formatted(title, description, href, buttonText, href, footer);
     }
 }

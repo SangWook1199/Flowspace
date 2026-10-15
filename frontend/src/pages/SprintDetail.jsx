@@ -197,21 +197,25 @@ export default function SprintDetail() {
         <b>{sprint.name}</b>
       </div>
 
-      <SprintDetailHero
-        sprint={sprint}
-        onEdit={isBacklog ? undefined : () => navigate(`/sprints/${sprint.id}/edit`)}
-      />
+      {/* 상단 카드·지표·작업 표는 같은 폭 기준으로 한꺼번에 좁은 화면 모양으로 바뀌어요(sprint-detail.css의 @container detailbody).
+          모달과 아래 고정 버튼은 이 안에 넣지 않아요(컨테이너 안에서는 fixed 위치가 틀어져요). */}
+      <div className="detailBody">
+        <SprintDetailHero
+          sprint={sprint}
+          onEdit={isBacklog ? undefined : () => navigate(`/sprints/${sprint.id}/edit`)}
+        />
 
-      <SprintDetailMetrics isBacklog={isBacklog} tasks={tasks} />
+        <SprintDetailMetrics isBacklog={isBacklog} tasks={tasks} />
 
-      <SprintTaskTable
-        key={sprintId}
-        tasks={tasks}
-        onDeleteTasks={sprint.status === "COMPLETED" ? undefined : handleDeleteTasks}
-        onOpenTask={(task) => navigate(`/sprints/${sprint.id}/tasks?task=${task.id}`)}
-        onAdd={sprint.status === "COMPLETED" ? undefined : goTasks}
-        onImport={!isBacklog && sprint.status !== "COMPLETED" ? () => setImportOpen(true) : undefined}
-      />
+        <SprintTaskTable
+          key={sprintId}
+          tasks={tasks}
+          onDeleteTasks={sprint.status === "COMPLETED" ? undefined : handleDeleteTasks}
+          onOpenTask={(task) => navigate(`/sprints/${sprint.id}/tasks?task=${task.id}`)}
+          onAdd={sprint.status === "COMPLETED" ? undefined : goTasks}
+          onImport={!isBacklog && sprint.status !== "COMPLETED" ? () => setImportOpen(true) : undefined}
+        />
+      </div>
 
       {importOpen && (
         <ImportTasksModal

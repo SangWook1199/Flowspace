@@ -1,336 +1,369 @@
 /* ===========================
    Retrospective List
+   스프린트 목록(sprint-list.css)과 같은 모양/치수예요: 제목, 요약 카드, 필터 줄, 왼쪽 색 띠가 있는 카드.
+   카드 안의 배치는 화면 너비가 아니라 본문 너비(.retro-page 컨테이너 "retro")로 정해요.
 =========================== */
 
 .retro-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-
-  padding: 24px;
-  background: #f8fafc;
-  min-height: 100%;
-  box-sizing: border-box;
-
   width: 100%;
   max-width: 1800px;
   margin: 0 auto;
+  padding: 26px 30px 40px;
+  box-sizing: border-box;
+  min-width: 0;
+
+  /* fixed로 뜨는 요소가 이 페이지 안에 없어서 컨테이너로 잡아도 안전해요. */
+  container: retro / inline-size;
 }
 
 /* ---------- Header ---------- */
 
 .retro-header {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: flex-start;
+  margin-bottom: 20px;
 }
 
 .retro-header h1 {
-  margin: 0;
-  font-size: 32px;
-  font-weight: 700;
-  color: #111827;
+  margin: 0 0 8px;
+  font-size: 29px;
+  letter-spacing: -1.6px;
 }
 
 .retro-header p {
-  margin-top: 8px;
+  margin: 0;
+  color: #65758e;
   font-size: 14px;
-  color: #64748b;
 }
 
 /* ---------- Summary ---------- */
 
 .retro-summary {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 18px;
-}
-
-.summary-card {
-  display: flex;
-  align-items: center;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
-  padding: 20px;
-  background: #fff;
+  margin-bottom: 21px;
+}
+
+.retro-stat {
+  height: 92px;
   border: 1px solid #e5e7eb;
-  border-radius: 18px;
-}
-
-.summary-icon {
-  width: 54px;
-  height: 54px;
   border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: #fff;
+  padding: 18px;
+  position: relative;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
-.summary-icon.blue {
-  background: #eef2ff;
-  color: #4f6ef7;
-}
-.summary-icon.green {
-  background: #ecfdf5;
-  color: #16a34a;
-}
-.summary-icon.orange {
-  background: #fff7ed;
-  color: #ea580c;
-}
-.summary-icon.sky {
-  background: #eff6ff;
-  color: #2563eb;
+.retro-stat span {
+  position: absolute;
+  left: 18px;
+  top: 20px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
 }
 
-.summary-content span {
-  font-size: 13px;
-  color: #64748b;
-}
-
-.summary-content h2 {
-  margin: 4px 0;
-  font-size: 28px;
-  color: #111827;
-}
-
-.summary-content small {
-  font-size: 15px;
-}
-
-.summary-content p {
-  margin: 0;
+.retro-stat p {
+  margin: 0 0 9px 20px;
+  color: #6e7d93;
   font-size: 12px;
-  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* ---------- Toolbar ---------- */
+.retro-stat strong {
+  display: block;
+  margin-left: 20px;
+  font-size: 24px;
+  white-space: nowrap;
+}
+
+.retro-stat small {
+  margin-left: 2px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #44536b;
+}
+
+.retro-stat .blue {
+  background: #4f5cf6;
+}
+.retro-stat .green {
+  background: #34ba79;
+}
+.retro-stat .orange {
+  background: #f4a623;
+}
+.retro-stat .sky {
+  background: #27a5df;
+}
+
+/* ---------- Toolbar (스프린트 목록의 필터 줄과 같아요) ---------- */
 
 .retro-toolbar {
+  height: 58px;
+  border-top: 1px solid #e8edf4;
+  border-bottom: 1px solid #e8edf4;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 18px;
+  margin-bottom: 20px;
 }
 
 .retro-tabs {
   display: flex;
-  gap: 10px;
+  gap: 5px;
+  flex: none;
 }
 
 .retro-tabs button {
-  height: 40px;
-  padding: 0 16px;
-  border: none;
-  border-radius: 10px;
-  background: #eef2f7;
-  color: #64748b;
-  font-size: 14px;
+  height: 31px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #66758e;
+  font-size: 13px;
   cursor: pointer;
 }
 
 .retro-tabs .active {
-  background: #4f6ef7;
-  color: #fff;
+  background: #edf0ff;
+  color: #4e5cf4;
+  font-weight: 700;
 }
 
 .retro-search {
-  width: 240px;
-  height: 40px;
-  padding: 0 12px;
+  margin-left: auto;
+  height: 36px;
+  /* 좁아지면 검색창이 조금씩 줄어들어요(탭 아래로 갑자기 내려가지 않아요). */
+  flex: 0 1 250px;
+  min-width: 130px;
+  border: 1px solid #dfe6f0;
+  border-radius: 8px;
+  background: #fff;
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
+  padding: 0 10px;
+  color: #65758e;
+  box-sizing: border-box;
 }
 
 .retro-search input {
-  flex: 1;
-  border: none;
-  outline: none;
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
   background: transparent;
-  font-size: 14px;
+  font: 13px inherit;
 }
 
 /* ---------- List ---------- */
 
 .retro-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.retro-card {
   display: grid;
-  grid-template-columns: 72px 1fr 520px;
-  align-items: center;
-  gap: 28px;
-  padding: 24px 28px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 18px;
-  transition: 0.2s;
-  box-sizing: border-box;
-}
-
-.retro-card:hover {
-  border-color: #d7dce5;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
-}
-
-/* ---------- Icon ---------- */
-
-.retro-card__icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.retro-card__icon.latest {
-  background: #eef2ff;
-  color: #4f6ef7;
-}
-
-.retro-card__icon.done {
-  background: #f3f4f6;
-  color: #64748b;
-}
-
-.retro-card__icon.planned {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.retro-card__icon.progress {
-  background: #e0f2fe;
-  color: #0369a1;
-}
-
-/* ---------- Content ---------- */
-
-.retro-card__content {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-}
-
-.retro-card__header {
-  display: flex;
-  align-items: center;
   gap: 10px;
 }
 
-.retro-card__header h3 {
+.retro-list .retro-column__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 50px 0;
+  color: #718099;
+  font-size: 14px;
+  text-align: center;
+}
+
+.retro-list .retro-column__empty p {
   margin: 0;
-  font-size: 22px;
+}
+
+.retro-card {
+  min-height: 122px;
+  border: 1px solid #e5e7eb;
+  border-left: 5px solid #e5e7eb;
+  border-radius: 13px;
+  background: #fff;
+  display: grid;
+  /* 이름 칸이 남는 폭을 가져가고, 원형 완료율·숫자·열기는 오른쪽에 붙여요(숫자가 가운데로 떠 보이지 않게). */
+  grid-template-columns:
+    minmax(285px, 1fr) 76px minmax(0, 300px)
+    76px;
+  align-items: center;
+  gap: 28px;
+  padding: 16px 17px;
+  box-sizing: border-box;
+  min-width: 0;
+  transition:
+    box-shadow 0.15s,
+    border-color 0.15s;
+}
+
+.retro-card[role="link"] {
+  cursor: pointer;
+}
+
+.retro-card:hover {
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.07);
+}
+
+.retro-card:focus-visible {
+  outline: 2px solid #4f5cf6;
+  outline-offset: 2px;
+}
+
+.retro-card.latest {
+  border-left-color: #4f5cf6;
+}
+.retro-card.done {
+  border-left-color: #34ba79;
+}
+.retro-card.progress {
+  border-left-color: #22a7e4;
+}
+.retro-card.planned {
+  border-left-color: #f4a623;
+}
+
+/* ---------- Identity ---------- */
+
+.retro-card__identity {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  min-width: 0;
+}
+
+.retro-card__icon {
+  flex: none;
+  width: 62px;
+  height: 62px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+}
+
+.retro-card__icon.latest {
+  background: #f0efff;
+  color: #4f5cf6;
+}
+.retro-card__icon.done {
+  background: #e7f8ef;
+  color: #31b878;
+}
+.retro-card__icon.progress {
+  background: #e7f7ff;
+  color: #199bdb;
+}
+.retro-card__icon.planned {
+  background: #fff5e3;
+  color: #f2a321;
+}
+
+.retro-card__content {
+  min-width: 0;
+}
+
+/* 이름·설명·기간은 항상 한 줄이에요. 길면 "…"으로 줄여서 카드 높이가 들쭉날쭉해지지 않게 해요. */
+.retro-card__content h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0 0 7px;
+  font-size: 18px;
   color: #111827;
 }
 
-.retro-card__content p:first-of-type {
-  margin: 0;
-  font-size: 13px;
-  color: #64748b;
+.retro-card__name {
+  min-width: 0;
+  font-style: normal;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-
-.retro-card__description {
-  margin: 0;
-  font-size: 14px;
-  color: #475569;
-  line-height: 1.55;
-}
-
-.retro-card__tags {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.retro-card__tags span {
-  padding: 4px 10px;
-  background: #f1f5f9;
-  border-radius: 999px;
-  font-size: 12px;
-  color: #475569;
-}
-
-/* ---------- Status ---------- */
 
 .retro-status {
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
+  flex: none;
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: 9px;
+  font-size: 11px;
   font-weight: 600;
 }
 
 .retro-status.latest {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: #eeedff;
+  color: #4f5cf6;
 }
-
 .retro-status.done {
   background: #dcfce7;
   color: #166534;
 }
-
 .retro-status.planned {
   background: #fef3c7;
   color: #92400e;
 }
-
 .retro-status.progress {
   background: #e0f2fe;
   color: #0369a1;
 }
 
-/* ---------- Right ---------- */
-
-.retro-card__right {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 28px;
-  padding-left: 36px;
-  border-left: 1px solid #edf1f5;
-}
-
-/* ---------- Stats ---------- */
-
-.retro-card__stats {
-  display: grid;
-  grid-template-columns: 76px repeat(3, 72px);
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-}
-
-.stat-item {
-  text-align: center;
-}
-
-.stat-item strong {
-  display: block;
-  font-size: 28px;
-  font-weight: 700;
-  color: #111827;
-  line-height: 1;
-}
-
-.stat-item span {
-  display: block;
-  margin-top: 6px;
-  font-size: 12px;
-  color: #64748b;
+.retro-card__description {
+  margin: 0 0 9px;
+  font-size: 13px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* ---------- Circle ---------- */
+.retro-card__meta {
+  display: block;
+  color: #62728a;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.retro-card__meta svg {
+  margin-right: 5px;
+  vertical-align: -2px;
+}
+.retro-card__members {
+  margin-left: 10px;
+}
+
+.retro-card__tags {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.retro-card__tags span {
+  flex: none;
+  padding: 3px 9px;
+  background: #f1f5f9;
+  border-radius: 999px;
+  font-size: 11px;
+  color: #475569;
+}
+
+/* ---------- 완료율(원형) / 숫자 ---------- */
+
+.retro-ring {
+  display: flex;
+  justify-content: center;
+}
 
 .circle-progress {
+  flex: none;
   width: 76px;
   height: 76px;
   border-radius: 50%;
@@ -360,9 +393,36 @@
   color: #64748b;
 }
 
-/* ---------- Planned ---------- */
+.retro-numbers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+}
 
+.stat-item {
+  text-align: center;
+}
+
+.stat-item strong {
+  display: block;
+  font-size: 28px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1;
+}
+
+.stat-item span {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+/* 아직 회고가 없는 스프린트: 진행률·숫자 자리에 안내를 한 덩어리로 보여줘요. */
 .retro-card__planned {
+  grid-column: 2 / 4;
   text-align: center;
 }
 
@@ -379,42 +439,20 @@
   color: #92400e;
 }
 
-/* ---------- Actions ---------- */
-
-.retro-card__actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-}
+/* ---------- 열기 (스프린트 카드의 "상세보기 ›"와 같아요) ---------- */
 
 .retro-open-btn {
-  width: 84px;
-  height: 42px;
-  border: 1px solid #d8e2f0;
-  border-radius: 12px;
-  background: #fff;
-  color: #4f6ef7;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 700;
   white-space: nowrap;
-}
-
-.retro-open-btn:hover {
-  background: #f5f7ff;
-}
-
-.retro-more-btn {
-  width: 42px;
-  height: 42px;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   cursor: pointer;
+}
+
+.retro-open-btn:disabled {
+  cursor: default;
+  opacity: 0.4;
 }
 
 /* ---------- Footer ---------- */
@@ -423,79 +461,346 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 22px;
+  gap: 16px;
+  margin-top: 21px;
+  padding: 18px 20px;
   background: #fff;
   border: 1px solid #d9e0ff;
-  border-radius: 18px;
+  border-radius: 13px;
+}
+
+.retro-footer > div {
+  min-width: 0;
 }
 
 .retro-footer h4 {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .retro-footer p {
-  margin-top: 6px;
-  font-size: 14px;
+  margin: 6px 0 0;
+  font-size: 13px;
   color: #64748b;
 }
 
 .detail-btn {
-  height: 42px;
+  flex: none;
+  height: 38px;
   padding: 0 16px;
   border: 1px solid #d1d5db;
-  border-radius: 10px;
+  border-radius: 8px;
   background: #fff;
+  font-size: 13px;
   cursor: pointer;
 }
 
-/* ---------- Responsive ---------- */
+/* ---------- Responsive ----------
+   카드 폭 기준(스프린트 목록과 같은 기준이에요):
+   - 880px 이하: "열기" 버튼을 빼고 3칸
+   - 640px 이하(요약 카드가 2×2로 바뀌는 너비와 같아요): 위에 이름·설명·기간, 아래에 숫자 3개(원형 완료율은 숨겨요)
+   - 440px 이하: 한 칸으로 쌓기
+*/
 
-@media (min-width: 1600px) {
+@media (max-width: 860px) {
   .retro-page {
-    padding: 40px 48px;
+    padding: 22px 18px;
   }
 }
 
-@media (max-width: 1400px) {
-  .retro-summary {
-    grid-template-columns: repeat(2, 1fr);
+@media (max-width: 640px) {
+  .retro-page {
+    padding: 18px 14px 32px;
   }
 
+  .retro-header {
+    margin-bottom: 16px;
+  }
+
+  .retro-header h1 {
+    margin-bottom: 6px;
+    font-size: 24px;
+    letter-spacing: -1px;
+  }
+}
+
+/* iOS는 16px 미만 입력칸에 포커스하면 화면이 확대돼요. 터치 기기에서만 키워요. */
+@media (hover: none) and (pointer: coarse) {
+  .retro-search input {
+    font-size: 16px;
+  }
+}
+
+@container retro (max-width: 880px) {
   .retro-card {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) 76px minmax(0, 210px);
+    gap: 20px;
   }
 
-  .retro-card__right {
-    grid-template-columns: 1fr;
-    border-left: none;
-    border-top: 1px solid #eef2f7;
-    padding-left: 0;
-    padding-top: 20px;
-    gap: 18px;
+  .retro-card__identity {
+    gap: 12px;
   }
 
-  .retro-card__stats {
-    grid-template-columns: repeat(4, 1fr);
+  .retro-card__icon {
+    width: 52px;
+    height: 52px;
   }
 
-  .retro-card__actions {
-    justify-content: flex-end;
+  .retro-open-btn {
+    display: none;
+  }
+}
+
+@container retro (max-width: 640px) {
+  /* 요약 카드는 2×2로, 필터 줄은 탭 아래에 검색창이 한 줄로 내려와요. */
+  .retro-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .retro-stat {
+    height: auto;
+    padding: 12px;
+  }
+
+  .retro-stat span {
+    left: 12px;
+    top: 15px;
+  }
+
+  .retro-stat p {
+    margin: 0 0 6px 16px;
+    font-size: 11px;
+  }
+
+  .retro-stat strong {
+    margin-left: 16px;
+    font-size: 20px;
   }
 
   .retro-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 14px;
+    height: auto;
+    padding: 10px 0;
+    flex-wrap: wrap;
+  }
+
+  .retro-tabs {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .retro-tabs button {
+    flex: none;
+    height: 36px;
+    padding: 0 14px;
   }
 
   .retro-search {
-    width: 100%;
+    flex: 1 1 100%;
+    margin-left: 0;
+    height: 40px;
+  }
+}
+
+@container retro (max-width: 640px) {
+  /* 카드가 뚱뚱해지지 않게: 위에 이름·설명·기간, 아래에 완료율과 숫자 3개를 한 줄로 놓아요. */
+  .retro-card {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr);
+    gap: 12px 18px;
+    min-height: 0;
+    padding: 14px 16px;
   }
 
+  .retro-card__identity {
+    grid-column: 1 / -1;
+  }
+
+  .retro-card__icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 11px;
+  }
+
+  .retro-card__icon svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .retro-card__content h3 {
+    font-size: 16px;
+    margin-bottom: 4px;
+  }
+
+  .retro-card__description {
+    margin-bottom: 4px;
+  }
+
+  .retro-card__planned {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+
+  /* 이 너비부터는 원형 완료율을 숨기고 숫자 3개만 한 줄로 보여줘요(카드가 길어지지 않게). */
+  .retro-ring {
+    display: none;
+  }
+
+  .retro-numbers {
+    grid-column: 1 / -1;
+  }
+
+  .retro-numbers {
+    gap: 6px;
+  }
+
+  .stat-item strong {
+    font-size: 22px;
+  }
+
+  .stat-item span {
+    margin-top: 4px;
+    font-size: 11px;
+  }
+}
+
+@container retro (max-width: 520px) {
   .retro-footer {
     flex-direction: column;
     align-items: flex-start;
-    gap: 16px;
   }
+}
+
+@container retro (max-width: 440px) {
+  .retro-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 폰 세로 너비에서는 기간만 보여요(참여자 수는 한 줄에 안 들어가 중간에 잘려요). */
+  .retro-card__members {
+    display: none;
+  }
+}
+
+/* ---------- "회고는 어떻게 생성되나요?" 자세히 보기 창 ---------- */
+.retro-guide-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.retro-guide {
+  width: 100%;
+  max-width: 520px;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  padding: 22px 24px 20px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+.retro-guide__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.retro-guide__head h2 {
+  margin: 0;
+  font-size: 19px;
+  color: #111827;
+}
+
+.retro-guide__close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.retro-guide__close:hover {
+  background: #f1f5f9;
+}
+
+.retro-guide__steps {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.retro-guide__steps li {
+  display: flex;
+  gap: 12px;
+}
+
+.retro-guide__no {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #eef0ff;
+  color: #4338ca;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.retro-guide__steps h3 {
+  margin: 2px 0 4px;
+  font-size: 14.5px;
+  color: #111827;
+}
+
+.retro-guide__steps p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: #64748b;
+}
+
+.retro-guide__note {
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f8fafc;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #64748b;
+}
+
+.retro-guide__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.retro-guide__actions button {
+  height: 40px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 10px;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
 }

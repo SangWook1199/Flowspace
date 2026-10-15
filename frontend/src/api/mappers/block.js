@@ -47,6 +47,17 @@ export function toEditorComments(comments) {
   return out;
 }
 
+// 서버 블록들이 가리키는 하위 페이지 id를 모아요(없어진 페이지인지 가려내기 전에, 페이지 목록이 낡았는지 보려고요).
+export function findLinkedPageIds(items) {
+  const ids = new Set();
+  for (const item of items ?? []) {
+    if (item.type !== "TEXT") continue;
+    const pageId = parseEnvelope(item.content).pageId;
+    if (pageId != null) ids.add(pageId);
+  }
+  return ids;
+}
+
 // 서버 블록 목록을 에디터의 평평한 배열(indent 방식)로 바꿔요.
 // options.knownPageIds: 지금 존재하는 페이지 id 집합(없어진 페이지를 가리키는 링크는 풀어요)
 // options.databases: databaseId → 에디터 database 객체
@@ -98,6 +109,9 @@ function toEditorBlock(item, depth, { knownPageIds, databases }) {
     block.sprintId = item.sprintId ?? null;
   } else if (item.type === "DATABASE") {
     block.database = databases?.get(item.databaseId) ?? null;
+  } else if (item.type === "COLUMN") {
+    // 열의 폭 비율(없으면 균등). 열 묶음(COLUMN_LIST)은 저장할 값이 없어요.
+    block.width = typeof env.width === "number" && env.width > 0 ? env.width : null;
   }
 
   const comments = toEditorComments(item.comments);
@@ -141,6 +155,8 @@ const buildEnvelope = (block, ctx) => {
     }
   } else if (block.type === "CODE") {
     if (block.language) env.language = block.language;
+  } else if (block.type === "COLUMN") {
+    if (typeof block.width === "number" && block.width > 0) env.width = Math.round(block.width * 1000) / 1000;
   } else if (block.type === "IMAGE" || block.type === "FILE") {
     const image = block.image;
     if (image) {

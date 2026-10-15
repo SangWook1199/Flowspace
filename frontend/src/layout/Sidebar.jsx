@@ -9,6 +9,7 @@ import TrashPopover from "./TrashPopover";
 import WorkspaceIcon from "../components/common/WorkspaceIcon";
 import useDialog from "../context/useDialog";
 import usePinnedPages from "../hooks/usePinnedPages";
+import useAiStatus from "../hooks/useAiStatus";
 import { isAdminOrOwner } from "../utils/workspaceRole";
 
 // 페이지 줄을 드래그할 때 dataTransfer에 심는 커스텀 MIME이에요. Firefox는
@@ -56,10 +57,16 @@ export default function Sidebar({
   onEmptyTrash,
   onReorderTopLevelPages,
   onOpenSettings,
+  // 접으면 화면 왼쪽으로 사라져요(펼치는 버튼은 헤더에 있어요).
+  collapsed = false,
+  onCollapse,
 }) {
   const { confirm } = useDialog();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  // 스프린트가 없을 때만 "AI로 프로젝트 구성" 링크를 보여줘요(관리자이고 AI를 쓸 수 있을 때).
+  const { status: aiStatus } = useAiStatus();
+  const showAiLink = isAdminOrOwner(currentWorkspace?.role) && Boolean(aiStatus?.enabled);
 
   /* ---------- Workspace ---------- */
 
@@ -389,10 +396,28 @@ export default function Sidebar({
   };
 
   return (
-    <aside className={styles.sidebar}>
+    <aside
+      className={`${styles.sidebar}${collapsed ? " sidebarCollapsed" : ""}`}
+      aria-hidden={collapsed || undefined}
+      inert={collapsed || undefined}
+    >
+      {onCollapse && (
+        <button
+          type="button"
+          className="sidebarCollapseBtn"
+          onClick={onCollapse}
+          title="사이드바 접기"
+          aria-label="사이드바 접기"
+        >
+          <Icon name="PanelLeftClose" size={18} />
+        </button>
+      )}
+
       {/* ---------- Logo ---------- */}
 
-      <FlowSpaceLogo onClick={() => navigate("/")} />
+      {/* 로고는 누르는 버튼이 아니에요. 사이드바를 접었다 펼친 뒤 마우스를 그대로 두고 다시 누르면, 펼치기 버튼이 있던
+          자리(로고)가 눌려 대시보드로 가던 문제 때문이에요. 홈은 아래 메뉴의 "홈"으로 가요. */}
+      <FlowSpaceLogo />
 
       {/* ---------- Workspace Switcher ---------- */}
 
@@ -513,6 +538,13 @@ export default function Sidebar({
           <p>현재 스프린트</p>
 
           {sprintsReady && sprints.length === 0 && <p className="sidebarEmpty">아직 스프린트가 없어요.</p>}
+
+          {sprintsReady && sprints.length === 0 && showAiLink && (
+            <button type="button" className="sidebarAiLink" onClick={() => navigate("/sprints/ai")}>
+              <Icon name="Sparkles" size={16} />
+              <span>AI로 프로젝트 구성</span>
+            </button>
+          )}
 
           {sprints.slice(0, 3).map((sprint) => (
             <button

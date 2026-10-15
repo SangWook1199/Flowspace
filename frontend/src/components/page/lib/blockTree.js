@@ -3,7 +3,9 @@ import { stripHtml } from "../RichTextInput";
 // 블록 내용이 "비어있나"를 판정할 때, RICH_TEXT_TYPES 블록은 content가
 // 더 이상 순수 문자열이 아니라 HTML이라(예: 다 지웠는데 서식 태그만
 // 남는 경우) 태그를 걷어낸 실제 글자 기준으로 봐야 안전해요.
-export function isBlockContentEmpty(content) {
+// 코드 블록(CODE)은 HTML이 아니라 있는 그대로의 글자라서, "<div></div>" 같은 내용을 태그로 보고 비었다고 판단하면 안 돼요.
+export function isBlockContentEmpty(content, type) {
+  if (type === "CODE") return String(content ?? "").trim() === "";
   return stripHtml(content).trim() === "";
 }
 

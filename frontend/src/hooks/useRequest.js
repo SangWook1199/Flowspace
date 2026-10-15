@@ -6,13 +6,15 @@ import { getErrorMessage } from "../utils/apiError";
 // - fn은 Promise를 돌려주는 함수(보통 api 모듈 함수)예요.
 // - deps가 바뀌면 다시 불러오고, 늦게 도착한 옛 응답은 무시해요.
 // - enabled가 false면 부르지 않아요(워크스페이스 id가 아직 없을 때 등).
-export function useRequest(fn, deps = [], { enabled = true, initialData = null } = {}) {
+// - resetOnChange가 true면 deps가 바뀔 때 이전 데이터를 바로 비워요(워크스페이스를 바꿨는데 이전 워크스페이스 내용이 새 응답이 올 때까지 보이지 않게).
+export function useRequest(fn, deps = [], { enabled = true, initialData = null, resetOnChange = false } = {}) {
   const [data, setData] = useState(initialData);
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState(null);
 
   // 요청마다 번호를 매겨서, 번호가 최신이 아닌 응답은 버려요.
   const requestId = useRef(0);
+  const firstRun = useRef(true);
 
   // 최신 fn을 ref로 들고 있어서 deps에 fn을 넣지 않아도 돼요.
   const fnRef = useRef(fn);
@@ -47,6 +49,12 @@ export function useRequest(fn, deps = [], { enabled = true, initialData = null }
       setLoading(false);
       return;
     }
+
+    if (resetOnChange && !firstRun.current) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setData(initialData);
+    }
+    firstRun.current = false;
 
     run();
 

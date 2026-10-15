@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
+import { Sparkles } from "lucide-react";
 
 import SprintBanner from "../components/dashboard/SprintBanner";
 import MetricCard from "../components/dashboard/MetricCard";
@@ -14,8 +15,9 @@ import * as eventApi from "../api/events";
 import * as activityApi from "../api/activities";
 import { toActivity } from "../api/mappers";
 import { useRequest } from "../hooks/useRequest";
-import { todayKey, formatDateDots, formatDateWithWeekday, parseDateKey } from "../utils/date";
-import { pickCurrentSprint } from "../utils/sprintRange";
+import useAiStatus from "../hooks/useAiStatus";
+import { todayKey, addDays, formatDateDots, formatDateWithWeekday, parseDateKey } from "../utils/date";
+import { pickDashboardSprint } from "../utils/sprintRange";
 import { isEventOnDate, sortEventsByStart } from "../utils/calendarRange";
 import { htmlToText } from "../utils/sanitizeHtml";
 import {
@@ -65,14 +67,19 @@ export default function Dashboard() {
   const { user } = useAuth();
   const displayName = user?.nickname || user?.name || "회원";
   // 스프린트·작업·팀원은 서버에서 불러와 MainLayout(WorkspaceProvider)이 내려줘요.
-  const { workspaceId, sprints, sprintTasks, taskStatuses, members, pages, sprintDataLoading, sprintDataError, reloadSprintData } =
+  const { workspaceId, sprints, sprintTasks, taskStatuses, members, pages, sprintDataLoading, sprintDataError, reloadSprintData, canManageWorkspace } =
     useOutletContext();
+  const navigate = useNavigate();
+  // 스프린트가 하나도 없을 때 "AI로 프로젝트 구성하기"를 보여줘요(관리자이고 AI를 쓸 수 있을 때만).
+  const { status: aiStatus } = useAiStatus();
   // "오늘"은 처음 렌더링할 때 한 번만 정해요(테스트 때는 window.__TODAY__로 바꿀 수 있어요).
   const [today] = useState(todayKey);
+  // "오늘의 일정" 카드가 보여주는 날짜예요. < > 버튼으로 하루씩 옮기고, 처음엔 오늘이에요.
+  const [scheduleDate, setScheduleDate] = useState(today);
 
-  // 오늘이 기간에 들어가는 스프린트를 고르고, 없으면 가장 가까운 예정/최근 스프린트를 써요.
+  // 진행 중(ACTIVE)인 스프린트를 우선 고르고(완료한 스프린트는 기간이 남아 있어도 뒤로 밀려요), 없으면 가장 가까운 예정/최근 스프린트를 써요.
   // 스프린트가 하나도 없으면 null이라 배너와 "Day N" 문구를 그리지 않아요.
-  const currentSprint = useMemo(() => pickCurrentSprint(sprints, today), [sprints, today]);
+  const currentSprint = useMemo(() => pickDashboardSprint(sprints, today), [sprints, today]);
 
   const banner = useMemo(
     () =>
@@ -94,8 +101,8 @@ export default function Dashboard() {
       .filter(
         (task) =>
           task.sprintId !== null &&
-          task.startDate &&
-          today >= task.startDate &&
+          (task.startDate || task.dueDate) &&
+          today >= (task.startDate || task.dueDate) &&
           today <= (task.dueDate || task.startDate),
       )
       .map((task) => {
@@ -126,7 +133,7 @@ export default function Dashboard() {
   const { data: events, error: eventsError } = useRequest(
     () => eventApi.getEventsAround(workspaceId, base.getFullYear(), base.getMonth() + 1),
     [workspaceId, today],
-    { initialData: [] },
+    { initialData: [], resetOnChange: true },
   );
   const todaySchedule = useMemo(
     () =>
@@ -136,9 +143,32 @@ export default function Dashboard() {
     [events, today],
   );
 
+  // 일정 카드에서 다른 날을 보고 있을 때의 일정이에요. 보고 있는 날이 오늘과 같은 달이면 위에서 받은 일정을 그대로 쓰고,
+  // 다른 달로 넘어가면 그 달의 일정을 따로 불러와요(위 오늘 일정은 지표 카드의 "오늘 예정된 일정" 개수에 써야 해서 그대로 둬요).
+  const scheduleBase = parseDateKey(scheduleDate) ?? base;
+  const scheduleMonth = scheduleDate.slice(0, 7);
+  const sameMonthAsToday = scheduleMonth === today.slice(0, 7);
+  const { data: otherMonthEvents, error: otherMonthError } = useRequest(
+    () => eventApi.getEventsAround(workspaceId, scheduleBase.getFullYear(), scheduleBase.getMonth() + 1),
+    [workspaceId, scheduleMonth],
+    { initialData: [], resetOnChange: true, enabled: !sameMonthAsToday },
+  );
+  const scheduleEvents = sameMonthAsToday ? events : otherMonthEvents;
+  const scheduleError = sameMonthAsToday ? eventsError : otherMonthError;
+  const viewedSchedule = useMemo(
+    () =>
+      scheduleDate === today
+        ? todaySchedule
+        : sortEventsByStart((scheduleEvents ?? []).filter((event) => isEventOnDate(event, scheduleDate))).map((event) =>
+            toScheduleItem(event, scheduleDate),
+          ),
+    [scheduleEvents, scheduleDate, today, todaySchedule],
+  );
+
   // 최근 활동: 서버가 준 활동에 화면이 가진 작업·스프린트·페이지 이름을 붙여 문구를 만들어요.
   const { data: rawActivities, error: activitiesError } = useRequest(() => activityApi.getRecentActivities(workspaceId), [workspaceId], {
     initialData: [],
+    resetOnChange: true,
   });
   const activities = useMemo(() => {
     const lookup = {
@@ -183,6 +213,13 @@ export default function Dashboard() {
       {!banner && !sprintDataLoading && !sprintDataError && (
         <section className={styles.hero}>
           <p className={styles.heroEmpty}>아직 스프린트가 없어요. 스프린트를 만들면 진행 상황이 여기에 보여요.</p>
+          {canManageWorkspace && aiStatus?.enabled && (
+            <div className="aiEmptyActionWrap">
+              <button type="button" className="aiEmptyAction" onClick={() => navigate("/sprints/ai")}>
+                <Sparkles size={16} /> AI로 프로젝트 구성하기
+              </button>
+            </div>
+          )}
         </section>
       )}
 
@@ -210,9 +247,9 @@ export default function Dashboard() {
         </p>
       )}
 
-      {eventsError && (
+      {(eventsError || scheduleError) && (
         <p role="alert" style={{ color: "#ef4444", margin: "0 0 12px" }}>
-          오늘의 일정을 불러오지 못했어요. {eventsError}
+          일정을 불러오지 못했어요. {eventsError || scheduleError}
         </p>
       )}
 
@@ -229,7 +266,14 @@ export default function Dashboard() {
         </div>
 
         <div className={styles.scheduleSection}>
-          <CalendarCard events={todaySchedule} date={today} />
+          <CalendarCard
+            events={viewedSchedule}
+            date={scheduleDate}
+            today={today}
+            onPrev={() => setScheduleDate((d) => addDays(d, -1))}
+            onNext={() => setScheduleDate((d) => addDays(d, 1))}
+            onToday={() => setScheduleDate(today)}
+          />
         </div>
 
         <div className={styles.activitySection}>

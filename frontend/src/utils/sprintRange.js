@@ -71,3 +71,15 @@ export const pickCurrentSprint = (sprints, today) => {
   const recent = candidates.filter(({ info }) => info.phase === "after").sort((a, b) => (a.info.end < b.info.end ? 1 : -1))[0];
   return recent ? recent.sprint : null;
 };
+
+// 대시보드가 보여줄 스프린트를 골라요. 날짜만 보면 이미 "완료"한 스프린트도 기간이 안 끝났다는 이유로 "진행 중"으로 뽑혀서,
+// 스프린트의 상태(status)를 먼저 따라요: 진행 중(ACTIVE) → 계획됨 → 완료됨 순이에요. 같은 상태 안에서는 pickCurrentSprint 규칙을 써요
+// (진행 중 스프린트는 직접 시작한 거라 기간이 오늘과 안 맞아도 그걸 보여줘요). 백로그는 스프린트가 아니라서 뺐어요.
+export const pickDashboardSprint = (sprints, today) => {
+  const list = (sprints || []).filter((sprint) => sprint.status !== "BACKLOG");
+  const active = list.filter((sprint) => sprint.status === "ACTIVE");
+  const planned = list.filter((sprint) => sprint.status !== "ACTIVE" && sprint.status !== "COMPLETED");
+  const completed = list.filter((sprint) => sprint.status === "COMPLETED");
+
+  return pickCurrentSprint(active, today) ?? active[0] ?? pickCurrentSprint(planned, today) ?? pickCurrentSprint(completed, today) ?? null;
+};

@@ -28,6 +28,10 @@ public class SecurityConfig {
     @Value("${cors.allowed-origins:http://localhost:5173}")
     private String allowedOrigins;
 
+    // Swagger 문서와 그 로그인(/api/auth/token)을 열지 정해요. 운영에서는 springdoc.swagger-ui.enabled=false로 닫아요(application-prod.yaml).
+    @Value("${springdoc.swagger-ui.enabled:true}")
+    private boolean swaggerEnabled;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -67,29 +71,34 @@ public class SecurityConfig {
 
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(jwtAuthenticationEntryPoint))
 
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
+                .authorizeHttpRequests(auth -> {
+                    auth.requestMatchers(
                                 "/oauth2/**",
                                 "/api/auth/login",
                                 "/api/auth/signup",
-                                "/api/auth/token",
                                 "/api/auth/refresh",
                                 "/api/auth/google",
                                 "/api/auth/microsoft",
                                 "/api/auth/social/link",
                                 "/api/auth/password/forgot",
                                 "/api/auth/password/reset",
+                                "/api/auth/email/verify",
+                                "/api/auth/email/resend",
                                 // WebSocket 연결은 ?token= 으로 핸드셰이크에서 직접 검증해요(JwtHandshakeInterceptor).
                                 "/ws/**",
                                 // 서버 오류가 /error로 넘어갈 때 로그인 요구(401)로 바뀌어 원인이 가려지지 않게 열어둬요.
                                 "/error",
                                 // 업로드·기본 커버 이미지는 <img> 태그가 직접 불러와서 Authorization 헤더를 못 붙여요.
                                 "/uploads/**",
-                                "/covers/**",
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**")
-                        .permitAll()
-                        .anyRequest().authenticated())
+                                "/covers/**")
+                        .permitAll();
+
+                    if (swaggerEnabled) {
+                        auth.requestMatchers("/api/auth/token", "/swagger-ui/**", "/v3/api-docs/**").permitAll();
+                    }
+
+                    auth.anyRequest().authenticated();
+                })
 
                 // .oauth2Login(Customizer.withDefaults())
 

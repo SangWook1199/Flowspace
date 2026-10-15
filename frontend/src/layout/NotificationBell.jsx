@@ -148,7 +148,11 @@ export default function NotificationBell() {
             ) : visible.length === 0 ? (
               <p className="notiPanel__empty">
                 <Inbox size={26} />
-                {tab === "unread" ? "안 읽은 알림이 없어요." : "아직 알림이 없어요."}
+                {tab === "unread"
+                  ? hasNext
+                    ? "불러온 알림 중에는 안 읽은 게 없어요. 아래 더 보기로 이전 알림을 확인해 보세요."
+                    : "안 읽은 알림이 없어요."
+                  : "아직 알림이 없어요."}
               </p>
             ) : (
               visible.map((notification) => (
@@ -171,7 +175,7 @@ export default function NotificationBell() {
               ))
             )}
 
-            {hasNext && tab === "all" && (
+            {hasNext && (
               <button type="button" className="notiPanel__more" onClick={loadMore} disabled={loading}>
                 {loading ? "불러오는 중…" : loadMoreError ? "더 불러오지 못했어요. 다시 시도" : "더 보기"}
               </button>

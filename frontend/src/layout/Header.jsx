@@ -29,7 +29,7 @@ function HeaderAvatarContent({ member }) {
 // 있었는데, 페이지 폭을 넓히면서 헤더의 빈 공간을 채우려고 그
 // 자리로 옮겼어요(사이드바 그 자리엔 워크스페이스 설정 버튼이
 // 대신 들어감). 순서는 벨 다음, 프로필 앞이에요.
-export default function Header({ members = [], workspaceId }) {
+export default function Header({ members = [], workspaceId, sidebarCollapsed = false, onOpenSidebar }) {
   const { confirm } = useDialog();
   const onlineCount = members.filter((member) => member.online).length;
   const openMemberProfile = useMemberProfile();
@@ -107,7 +107,23 @@ export default function Header({ members = [], workspaceId }) {
 
   return (
     <header className={styles.header}>
-      <HeaderSearch workspaceId={workspaceId} />
+      <div className="headerLeft">
+        {/* 사이드바를 접으면 이 버튼으로 다시 펼쳐요. 사이드바 맨 위의 로고가 있던 자리라서, 펼친 뒤 마우스를 옮기지
+            않고 누르면 그 자리의 로고가 눌리는데, 사이드바의 로고는 눌러도 아무 일도 없어요(Sidebar.jsx). */}
+        {sidebarCollapsed && onOpenSidebar && (
+          <button
+            type="button"
+            className="sidebarOpenBtn"
+            onClick={onOpenSidebar}
+            title="사이드바 펼치기"
+            aria-label="사이드바 펼치기"
+          >
+            <Icons.PanelLeftOpen size={18} strokeWidth={1.9} />
+          </button>
+        )}
+
+        <HeaderSearch workspaceId={workspaceId} />
+      </div>
 
       <div className={styles.headerRight}>
         <NotificationBell />

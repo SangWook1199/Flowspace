@@ -5,6 +5,7 @@ import SprintCard from "../components/sprint/SprintCard";
 import SprintFilterBar from "../components/sprint/SprintFilterBar";
 import SprintHero from "../components/sprint/SprintHero";
 import BacklogCard from "../components/sprint/BacklogCard";
+import useAiStatus from "../hooks/useAiStatus";
 
 
 // 상단 요약 카드의 구성(라벨/색)이에요. 숫자는 여기 없고 sprints 데이터에서 상태별로 세서 채워요.
@@ -24,7 +25,9 @@ const GROUPS = [
 export default function SprintList() {
   const navigate = useNavigate();
   // 스프린트·백로그는 서버에서 불러와 MainLayout(WorkspaceProvider)이 내려줘요.
-  const { sprints, backlog, sprintDataLoading, sprintDataError, reloadSprintData } = useOutletContext();
+  const { sprints, backlog, sprintDataLoading, sprintDataError, reloadSprintData, canManageWorkspace } = useOutletContext();
+  // "AI로 구성" 버튼은 관리자이고 서버에서 AI 기능을 켜 둔 때만 보여줘요.
+  const { status: aiStatus } = useAiStatus();
   const [filter, setFilter] = useState("ALL");
   const [query, setQuery] = useState("");
 
@@ -94,6 +97,7 @@ export default function SprintList() {
       <SprintHero
         summary={summary}
         onCreate={() => navigate("/sprints/new")}
+        onCreateWithAi={canManageWorkspace && aiStatus?.enabled ? () => navigate("/sprints/ai") : undefined}
       />
 
       <SprintFilterBar

@@ -1,9 +1,10 @@
 import { getAccessToken } from "./token";
+import { API_BASE_URL } from "./env";
 
 // 알림을 실시간으로 받는 WebSocket 연결이에요. 서버 주소는 API 주소(VITE_API_BASE_URL)에서 뽑아요:
 // http → ws, https → wss, 끝의 /api는 떼고 /ws를 붙여요. (브라우저 WebSocket은 헤더를 못 실어서
 // 토큰은 주소의 ?token= 으로 보내요.)
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+const API_BASE = API_BASE_URL;
 
 const PING_INTERVAL_MS = 25000;
 const MAX_RETRY_DELAY_MS = 30000;

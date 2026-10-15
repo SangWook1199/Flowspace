@@ -1,11 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { deleteBlockImage, getPageDetail, isVersionConflict, syncBlocks, uploadBlockImage } from "../api/blocks";
+import { deleteBlockImage, getPageDetail, isInvalidBlockSync, isVersionConflict, syncBlocks, uploadBlockImage } from "../api/blocks";
 import { getDatabaseDetail } from "../api/databases";
 import { bindingFromLoaded, createBinding, syncDatabase } from "../api/databaseSync";
-import { collectServerImages, syncKey, toEditorBlocks, toEditorComments, toEditorDatabase, toSyncItems } from "../api/mappers";
+import {
+  collectServerImages,
+  findLinkedPageIds,
+  syncKey,
+  toEditorBlocks,
+  toEditorComments,
+  toEditorDatabase,
+  toSyncItems,
+} from "../api/mappers";
 import { commentStateFromServer, syncComments } from "../api/commentSync";
 import { findConflicts, mergeBlocks } from "../components/page/lib/blockMerge.js";
 import { normalizeBlockShape } from "../components/page/lib/blockFactory.js";
+import { normalizeColumns } from "../components/page/lib/blockColumns.js";
 import { normalizeIndents } from "../components/page/lib/blockTree.js";
 import { getErrorMessage } from "../utils/apiError";
 
@@ -35,7 +44,8 @@ const blockSig = (block, resolvePageId) => {
   const [item] = toSyncItems([{ ...block, indent: 0 }], { ...SIG_CTX, resolvePageId });
   if (!item) return "";
   const { clientId, blockId, parentClientId, ...rest } = item; // eslint-disable-line no-unused-vars
-  return JSON.stringify([rest, (block.comments ?? []).map((c) => [c.id, c.text])]);
+  // 댓글 id는 비교에서 빼요 — 내가 단 댓글은 서버에 저장되기 전후로 id가 달라서, 넣으면 같은 댓글인데도 "고쳤다"로 보여요.
+  return JSON.stringify([rest, (block.comments ?? []).map((c) => c.text)]);
 };
 
 // 페이지 하나의 블록을 서버에서 불러오고(GET /pages/{id}/detail), 고칠 때마다 통째로 맞춰요(PUT /pages/{id}/blocks).
@@ -47,7 +57,7 @@ const blockSig = (block, resolvePageId) => {
 // - saveState: "saved" | "saving" | "error". 실패하면 retry로 다시 보낼 수 있어요.
 // - pageIdMap: 임시 페이지 id → 서버가 만든 실제 id. 하위 페이지 링크를 저장할 때 실제 id로 바꿔서 보내요.
 // 에디터의 블록 id는 그대로 두고, 서버가 준 블록 id는 idMap에만 기억해요(블록 id를 바꾸면 에디터 상태가 꼬여요).
-export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) {
+export function usePageBlocks(pageId, { getKnownPageIds, refreshKnownPageIds, pageIdMap = {} } = {}) {
   const [load, setLoad] = useState({ status: "loading", error: null, blocks: null });
   const [saveState, setSaveState] = useState("saved");
   const [saveError, setSaveError] = useState(null);
@@ -74,19 +84,45 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
   const running = useRef(false);
   const again = useRef(false);
   const dirty = useRef(false);
+  // 고칠 때마다 올라가는 번호예요. 저장하는 동안 새로 고친 내용이 있는지(저장이 끝나도 dirty를 내리면 안 되는지) 가려요.
+  const editVersion = useRef(0);
   const loaded = useRef(false);
   const requestId = useRef(0);
   // 서버가 마지막으로 알려준 페이지 버전 — 저장할 때 보내서 "그 사이 다른 멤버가 저장했는지" 서버가 가려요.
   const pageVersion = useRef(null);
   const conflictRetries = useRef(0);
   const conflictTimer = useRef(null);
+  // 내 저장이 서버 블록 id 대응을 바꿀 때마다 올라가요. 받아오는 사이에 저장이 끝났는지(받아온 내용이 이미 낡았는지) 가려요.
+  const saveSeq = useRef(0);
 
   const pageIdMapRef = useRef(pageIdMap);
   const getKnownPageIdsRef = useRef(getKnownPageIds);
+  const refreshKnownPageIdsRef = useRef(refreshKnownPageIds);
   useEffect(() => {
     pageIdMapRef.current = pageIdMap;
     getKnownPageIdsRef.current = getKnownPageIds;
+    refreshKnownPageIdsRef.current = refreshKnownPageIds;
   });
+
+  // "없어진 페이지를 가리키는 링크"를 풀기 위한 페이지 id 집합이에요. 다른 멤버가 방금 만든 하위 페이지는
+  // 내 페이지 목록에 아직 없을 수 있어서, 모르는 id가 보이면 목록을 먼저 새로 받아서 다시 확인해요
+  // (그냥 풀어버리면 내 다음 저장이 서버의 링크를 지워요). 새로 받지 못하면 링크를 풀지 않고 그대로 둬요.
+  const resolveKnownPageIds = async (serverBlocks) => {
+    const known = getKnownPageIdsRef.current?.();
+    if (!known) return undefined;
+
+    const linked = findLinkedPageIds(serverBlocks);
+    if (![...linked].some((id) => !known.has(id))) return known;
+
+    const refresh = refreshKnownPageIdsRef.current;
+    if (!refresh) return known;
+
+    try {
+      return (await refresh()) ?? known;
+    } catch {
+      return undefined;
+    }
+  };
 
   const ctx = () => ({
     idMap: idMap.current,
@@ -108,11 +144,14 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
 
       // 데이터베이스 블록은 열·행·셀을 따로 받아와요. 하나라도 못 받으면 저장할 때 그 블록이 지워지니 페이지 전체를 실패로 봐요.
       const databaseIds = detail.blocks.filter((b) => b.type === "DATABASE" && b.databaseId != null).map((b) => b.databaseId);
-      const details = await Promise.all(databaseIds.map(getDatabaseDetail));
+      const [details, knownPageIds] = await Promise.all([
+        Promise.all(databaseIds.map(getDatabaseDetail)),
+        resolveKnownPageIds(detail.blocks),
+      ]);
       if (id !== requestId.current) return;
 
       const databases = new Map(databaseIds.map((dbId, i) => [dbId, toEditorDatabase(details[i])]));
-      const mapped = toEditorBlocks(detail.blocks, { knownPageIds: getKnownPageIdsRef.current?.(), databases });
+      const mapped = toEditorBlocks(detail.blocks, { knownPageIds, databases });
       const blocks = mapped.length > 0 ? mapped : blankBlocks();
 
       idMap.current = new Map(mapped.map((b) => [String(b.id), b.id]));
@@ -210,6 +249,7 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
         bindings.current.set(cid, binding);
         idMap.current.set(cid, made.blockId);
         dbBlockIds.current.add(made.blockId);
+        saveSeq.current += 1;
         result.created = true;
       }
 
@@ -230,6 +270,7 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
     if (!loaded.current || !apply) return;
 
     const request = requestId.current;
+    const seqAtStart = saveSeq.current;
     const detail = await getPageDetail(pageId);
 
     // 다른 멤버가 새로 만든 데이터베이스 블록은 내용도 같이 받아와요(안 받으면 내 다음 저장이 그 블록을 지워요).
@@ -239,7 +280,10 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
     const newDatabases = detail.blocks.filter(
       (b) => b.type === "DATABASE" && b.databaseId != null && !serverToEditor.has(b.blockId),
     );
-    const databaseDetails = await Promise.all(newDatabases.map((b) => getDatabaseDetail(b.databaseId)));
+    const [databaseDetails, knownPageIds] = await Promise.all([
+      Promise.all(newDatabases.map((b) => getDatabaseDetail(b.databaseId))),
+      resolveKnownPageIds(detail.blocks),
+    ]);
 
     if (request !== requestId.current || !loaded.current) return;
 
@@ -273,7 +317,7 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
     const databases = new Map(
       newDatabases.map((b, i) => [b.databaseId, toEditorDatabase(databaseDetails[i])]),
     );
-    const remoteBlocks = toEditorBlocks(items, { knownPageIds: getKnownPageIdsRef.current?.(), databases })
+    const remoteBlocks = toEditorBlocks(items, { knownPageIds, databases })
       .map(normalizeBlockShape)
       .filter(Boolean);
 
@@ -282,7 +326,18 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
 
     // 에디터가 넣을 때 들여쓰기를 바로잡으니(normalizeIndents) 여기서도 똑같이 해 두고,
     // 결과가 내 화면과 내용상 같으면 아무 것도 하지 않아요(같은 내용을 계속 다시 넣는 일을 막아요).
-    const merged = normalizeIndents(mergeBlocks({ base: baseBlocks.current, local, remote: remoteBlocks, sig }));
+    // 열 구조도 같이 바로잡아요 — 다른 멤버가 같은 열 묶음의 열을 지우거나 더하면 병합 결과가 "열 1개짜리 묶음"·"빈 열"이 될 수 있어요.
+    const newBlockId = () => {
+      maxId += 1;
+      used.add(String(maxId));
+      return maxId;
+    };
+    const merged = normalizeIndents(
+      normalizeColumns(
+        normalizeIndents(mergeBlocks({ base: baseBlocks.current, local, remote: remoteBlocks, sig })),
+        newBlockId,
+      ),
+    );
     const sameAsLocal =
       merged.length === local.length &&
       merged.every((block, i) => {
@@ -293,6 +348,21 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
 
     // 이 시점의 서버 버전까지 합쳤으니, 다음 저장은 이 버전을 기준으로 보내요.
     pageVersion.current = detail.version ?? pageVersion.current;
+
+    // 다른 멤버가 지운 블록의 서버 id를 잊어요. 안 잊으면 내가 그 블록을 고쳐서 남겨 둔 경우(병합에서 내 것이 이겨요)
+    // 다음 저장이 "서버에 없는 블록 id"를 보내서 서버가 거절하고, 그 뒤로 저장이 계속 실패해요. 잊으면 새 블록으로 다시 만들어져요.
+    // 받아오는 사이에 내 저장이 끝났으면 이 응답은 낡은 거라(방금 만든 블록이 없어요) 건너뛰어요.
+    if (saveSeq.current === seqAtStart) {
+      const serverIds = new Set(detail.blocks.map((b) => b.blockId));
+      for (const [editorKey, serverId] of [...idMap.current]) {
+        if (serverIds.has(serverId)) continue;
+        idMap.current.delete(editorKey);
+        dbBlockIds.current.delete(serverId);
+        commentState.current.delete(editorKey);
+        synced.current.delete(editorKey);
+        bindings.current.delete(editorKey);
+      }
+    }
 
     // 같은 블록을 서로 다르게 고쳤다면 내 것이 이기는데, 상대가 고친 내용이 덮이니 알려줘요.
     const conflicts = findConflicts({ base: baseBlocks.current, local, remote: remoteBlocks, sig });
@@ -404,6 +474,7 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
         }
 
         const snapshot = latest.current;
+        const savedVersion = editVersion.current;
         const items = toSyncItems(snapshot, ctx());
         const key = syncKey(items);
 
@@ -424,10 +495,17 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
               again.current = true;
               continue;
             }
+            // 서버에 없는 블록 id를 보냈어요(다른 멤버가 그 블록을 막 지웠어요) — 다시 받아와서 id를 바로잡고 한 번 더 해요.
+            if (isInvalidBlockSync(err) && conflictRetries.current < MAX_CONFLICT_RETRIES) {
+              conflictRetries.current += 1;
+              again.current = true;
+              continue;
+            }
             throw err;
           }
 
           const results = saved.results;
+          saveSeq.current += 1;
           pageVersion.current = saved.version ?? pageVersion.current;
           conflictRetries.current = 0;
           // 서버가 돌려준 블록 id로 새로 만들어요(목록에서 빠진 블록은 서버에서 지워졌으니 같이 잊어요).
@@ -444,7 +522,8 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
 
         await syncComments(commentState.current, snapshot, idMap.current);
         await reconcileImages(snapshot);
-        if (!again.current && !dbResult.pending) dirty.current = false;
+        // 저장하는 동안 새로 고친 내용이 있으면(타이머만 걸려 있어도) 아직 안 보낸 변경이 있는 거예요 — dirty를 내리지 않아요.
+        if (!again.current && !dbResult.pending && editVersion.current === savedVersion) dirty.current = false;
       } while (again.current);
 
       setSaveState("saved");
@@ -461,6 +540,7 @@ export function usePageBlocks(pageId, { getKnownPageIds, pageIdMap = {} } = {}) 
   const schedule = useCallback(() => {
     if (!loaded.current) return;
     dirty.current = true;
+    editVersion.current += 1;
     clearTimeout(timer.current);
     timer.current = setTimeout(flush, BLOCK_SAVE_DELAY_MS);
   }, [flush]);

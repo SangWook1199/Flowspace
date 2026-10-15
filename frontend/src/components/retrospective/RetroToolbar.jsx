@@ -19,7 +19,9 @@ export default function RetroToolbar({
         {tabs.map((item) => (
           <button
             key={item.value}
+            type="button"
             className={tab === item.value ? "active" : ""}
+            aria-pressed={tab === item.value}
             onClick={() => onTabChange(item.value)}
           >
             {item.label}
@@ -27,15 +29,16 @@ export default function RetroToolbar({
         ))}
       </div>
 
-      <div className="retro-search">
-        <Search size={16} />
+      <label className="retro-search">
+        <Search size={17} />
         <input
           type="text"
-          placeholder="Sprint 회고 검색"
+          aria-label="회고 검색"
+          placeholder="회고 검색..."
           value={keyword}
           onChange={(e) => onKeywordChange(e.target.value)}
         />
-      </div>
+      </label>
     </section>
   );
 }

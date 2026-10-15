@@ -48,7 +48,9 @@ export function AuthProvider({ children }) {
 
         const status = err.response?.status;
 
-        if (status === 401 || status === 403) {
+        // refreshUnavailable: 토큰 재발급을 시도했는데 네트워크 끊김·서버 5xx로 확인을 못 한 경우예요.
+        // 로그인이 풀린 게 아니니까 토큰은 지우지 않고 "다시 시도"로 이어지게 해요.
+        if ((status === 401 && !err.refreshUnavailable) || status === 403) {
           // 토큰이 만료됐거나 유효하지 않다고 서버가 확실히 말해준 경우에만
           // 조용히 로그아웃 상태로 정리해요. (401은 refresh까지 시도해보고도
           // 안 된 뒤에 여기로 와요.)
@@ -112,15 +114,9 @@ export function AuthProvider({ children }) {
     return data;
   }, []);
 
-  // beforeLogin: 가입이 끝난 뒤, 화면이 로그인 상태로 바뀌기 전에 한 번 실행해요(가입 성공 안내 등).
-  // 로그인 상태가 되면 가입 화면이 바로 홈으로 넘어가 버려서, 안내는 그 전에 끝내야 해요.
-  const signup = useCallback(async (payload, { beforeLogin } = {}) => {
+  // 회원가입: 인증 메일을 보내고 끝나요. 이메일 인증을 마쳐야 로그인할 수 있어서 여기서는 로그인 상태로 만들지 않아요.
+  const signup = useCallback(async (payload) => {
     const { data } = await authApi.signup(payload);
-    bootId.current++;
-    saveTokens(data, { remember: true });
-    await beforeLogin?.(data);
-    setUser(toUser(data.user));
-    setAuthError(false);
     return data;
   }, []);
 

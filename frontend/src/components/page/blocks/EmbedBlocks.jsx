@@ -66,7 +66,7 @@ export function TaskEmbed({ taskId, tasks, onChange, onToggleSubtask }) {
       <button
         type="button"
         className="embed-task-card__link"
-        onClick={() => navigate(`/sprints/${task.sprintId ?? "backlog"}/tasks`)}
+        onClick={() => navigate(`/sprints/${task.sprintId ?? "backlog"}/tasks?task=${task.id}`)}
         title="태스크로 이동"
       >
         <span className={`embed-priority embed-priority--${priorityClass}`}>

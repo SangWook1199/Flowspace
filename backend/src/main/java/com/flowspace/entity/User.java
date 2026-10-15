@@ -37,6 +37,11 @@ public class User extends BaseEntity {
     @Column(name = "provider_id", length = 255)
     private String providerId;
 
+    // 이메일 인증을 마쳤는지. 이메일로 가입한 계정은 인증 링크를 눌러야 true가 되고, 소셜 로그인 계정은 처음부터 true예요.
+    @Column(name = "email_verified", nullable = false)
+    @Builder.Default
+    private boolean emailVerified = true;
+
     // 마지막으로 접속해 있던 시각 (WebSocket 연결이 열리거나 마지막 연결이 닫힐 때 PresenceService가 갱신해요)
     @Column(name = "last_active_at")
     private LocalDateTime lastActiveAt;
@@ -89,6 +94,24 @@ public class User extends BaseEntity {
 
     public boolean isWithdrawn() {
         return deletedAt != null;
+    }
+
+    // 이메일 인증 완료
+    public void verifyEmail() {
+        this.emailVerified = true;
+    }
+
+    // 인증하지 않은 가입을 같은 이메일로 다시 할 때: 새로 입력한 닉네임과 비밀번호로 바꿔요.
+    public void restartSignup(String nickname, String encodedPassword) {
+        this.nickname = nickname;
+        this.password = encodedPassword;
+    }
+
+    // 인증하지 않은 가입 계정을 소셜 로그인으로 넘겨받을 때: 소셜 계정이 이메일 주인임을 보여주니 인증으로 보고,
+    // 가입 때 정한 비밀번호(주인이 아닌 사람이 정했을 수 있어요)는 지워요.
+    public void claimBySocialLogin() {
+        this.emailVerified = true;
+        this.password = null;
     }
 
     // 비밀번호 변경 (암호화된 값을 받아요)

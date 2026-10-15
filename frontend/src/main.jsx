@@ -16,5 +16,6 @@ import "./styles/retrospective-detail.css";
 import "./styles/workspace-create.css";
 import "./styles/auth.css";
 import "./styles/dialog.css";
+import "./styles/ai-project.css";
 
 createRoot(document.getElementById("root")).render(<App />);

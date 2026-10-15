@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, Fragment } from "react";
+import { useEffect, useMemo, useRef, useState, Fragment } from "react";
 import { CircleCheck, Plus } from "lucide-react";
 import { Link, useNavigate, useOutletContext } from "react-router-dom";
 
@@ -118,6 +118,7 @@ function KanbanBoard({ activeSprint }) {
     saveStatus: saveStatusOnServer,
     deleteStatus: deleteStatusOnServer,
     reorderStatuses,
+    canManageWorkspace = false,
   } = useOutletContext();
   const auth = useAuth();
   const { confirm, notify } = useDialog();
@@ -147,6 +148,37 @@ function KanbanBoard({ activeSprint }) {
     });
   // 오래된 완료 작업을 펼쳐 둔 완료 컬럼들(화면에서만 기억해요).
   const [foldOpenIds, setFoldOpenIds] = useState([]);
+
+  // 마우스 휠 스크롤: 카드가 넘쳐서 스크롤되는 컬럼의 카드 목록 위에서는 그 목록이 위아래로 스크롤되고,
+  // 그 밖의 보드 위(컬럼 머리·아래 버튼·컬럼 사이 빈 곳·카드가 적은 컬럼)에서는 보드가 좌우로 스크롤돼요.
+  // 보드 밖에서는 페이지가 위아래로 스크롤돼요. 보드가 좌우로 더 갈 곳이 없으면(맨 끝이거나 컬럼이 다 보이면) 막지 않아서
+  // 페이지가 스크롤돼요. 트랙패드 좌우 스와이프·Shift+휠·Ctrl+휠은 브라우저 기본 동작 그대로예요.
+  // preventDefault가 필요해서 React의 onWheel(passive)이 아니라 직접 등록해요.
+  const boardRef = useRef(null);
+  useEffect(() => {
+    const board = boardRef.current;
+    if (!board) return undefined;
+
+    const onWheel = (e) => {
+      if (e.ctrlKey || e.shiftKey || e.defaultPrevented) return;
+      if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+
+      // 스크롤되는 카드 목록 위면 목록이 위아래로 스크롤되게 기본 동작에 맡겨요.
+      const list = e.target instanceof Element ? e.target.closest(".columnBody") : null;
+      if (list && list.scrollHeight > list.clientHeight) return;
+
+      const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? board.clientHeight : 1;
+      const delta = e.deltaY * unit;
+      const max = board.scrollWidth - board.clientWidth;
+      if (!delta || max <= 0) return;
+      if ((delta < 0 && board.scrollLeft <= 0) || (delta > 0 && board.scrollLeft >= max - 1)) return;
+      board.scrollLeft += delta;
+      e.preventDefault();
+    };
+
+    board.addEventListener("wheel", onWheel, { passive: false });
+    return () => board.removeEventListener("wheel", onWheel);
+  }, []);
 
   // 컬럼 아래의 "작업 추가": 그 컬럼에 새 작업을 만들어요(담당자는 비워 두고, 기간은 스프린트 기간).
   // 성공하면 true를 돌려줘요 — 실패하면 컬럼이 입력을 그대로 둬요(안내는 createTask가 띄워요).
@@ -436,15 +468,24 @@ function KanbanBoard({ activeSprint }) {
 
   // 컬럼(상태) 만들기/고치기/지우기 — 서버 저장과 목록 갱신은 공용 데이터(useSprintData)가 해요.
   // 새 상태는 맨 끝에 붙어요. 만들기에 성공하면 모달을 닫고, 실패하면 안내만 뜨고 모달은 그대로예요.
+  // 같은 이름의 컬럼이 두 번 만들어지지 않게, 서버 응답을 기다리는 동안 다시 눌러도 무시해요.
+  const creatingStatus = useRef(false);
   const createStatus = async (data) => {
-    const ok = await createStatusOnServer(data);
-    if (ok) setCreateOpen(false);
+    if (creatingStatus.current) return;
+    creatingStatus.current = true;
+
+    try {
+      const ok = await createStatusOnServer(data);
+      if (ok) setCreateOpen(false);
+    } finally {
+      creatingStatus.current = false;
+    }
   };
 
   // 이름/카테고리/색을 바꿔요. 기본 상태를 고치면 서버가 이 워크스페이스 전용 새 상태로 바꿔 끼우고 작업도 옮겨줘요.
   const saveStatus = (data) => saveStatusOnServer(data);
 
-  // 상태를 지울 땐 그 상태의 작업을 모달에서 고른 상태로 옮겨요(서버가 해줘요).
+  // 상태를 지울 땐 그 상태의 작업을 모달에서 고른 상태로 옮겨요(서버가 해줘요). 관리자 이상만 지울 수 있어요.
   const deleteStatus = (data) => deleteStatusOnServer(data);
 
   return (
@@ -482,6 +523,7 @@ function KanbanBoard({ activeSprint }) {
           (이미 처리됐거나 해당 없는 쪽은 각자 조용히 무시해서 중복 호출이어도 안전해요). */}
       <section
         className="kanbanBoard"
+        ref={boardRef}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
@@ -499,7 +541,7 @@ function KanbanBoard({ activeSprint }) {
               status={status}
               statuses={statuses}
               onStatusSave={saveStatus}
-              onStatusDelete={deleteStatus}
+              onStatusDelete={canManageWorkspace ? deleteStatus : undefined}
               tasks={shownTasks.filter((task) => task.statusId === status.id)}
               totalCount={tasks.filter((task) => task.statusId === status.id).length}
               collapsed={collapsedIds.includes(status.id)}

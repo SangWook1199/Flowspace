@@ -2,6 +2,7 @@ import { ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import styles from "../../styles/classes";
 import { getAvatarTone } from "../../utils/avatarColor";
+import AvatarFace from "../common/AvatarFace";
 
 export default function ActivityCard({ activities = [] }) {
   const navigate = useNavigate();
@@ -23,7 +24,7 @@ export default function ActivityCard({ activities = [] }) {
         {activities.map((item) => (
           <div key={item.id} className={styles.activityItem}>
             <div className={`${styles.avatar} ${styles[getAvatarTone(item.userId)]}`}>
-              {item.initial}
+              <AvatarFace src={item.profileImageUrl} fallback={item.initial} />
             </div>
 
             <div className={styles.activityContent}>
