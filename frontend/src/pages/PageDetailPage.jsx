@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { Camera, ChevronRight, ImagePlus, Smile, X } from "lucide-react";
 
@@ -41,6 +41,49 @@ const COVER_GROUPS = [
     ],
   },
 ];
+
+// 페이지 제목 입력칸이에요. 한 줄짜리 input은 긴 제목이 오른쪽에서 잘려서(특히 폰) 보이지 않아서,
+// 글자 수에 맞춰 높이가 늘어나는 textarea로 바꿨어요. 줄바꿈(Enter)은 넣지 않아요 — 제목은 한 문장이에요.
+function PageTitleField({ value, onChange }) {
+  const ref = useRef(null);
+
+  // 내용이 바뀌거나 칸 너비가 바뀌면(창 크기·사이드바) 줄 수가 달라지니 높이를 다시 맞춰요.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+
+    const fit = () => {
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
+    };
+    fit();
+
+    if (typeof ResizeObserver === "undefined") return undefined;
+    let width = el.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (el.clientWidth === width) return; // 높이만 바뀐 경우(우리가 한 조정)는 무시해요.
+      width = el.clientWidth;
+      fit();
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      className="page-detail__title"
+      rows={1}
+      value={value}
+      placeholder="제목 없음"
+      aria-label="페이지 제목"
+      onChange={(e) => onChange(e.target.value.replace(/\r?\n/g, " "))}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.preventDefault();
+      }}
+    />
+  );
+}
 
 export default function PageDetailPage() {
   // 제목·아이콘·커버는 WorkspaceProvider의 페이지 목록(MainLayout의 Outlet context)에서 읽고,
@@ -348,12 +391,7 @@ export default function PageDetailPage() {
             {iconPickerPanel}
           </div>
 
-          <input
-            className="page-detail__title"
-            value={page.title}
-            placeholder="제목 없음"
-            onChange={(e) => updatePage({ title: e.target.value })}
-          />
+          <PageTitleField value={page.title} onChange={(title) => updatePage({ title })} />
         </div>
 
         <PageBlocks

@@ -105,6 +105,11 @@ public class SprintService {
         validateMember(workspace, user);
         validateSprintDate(request.startDate(), request.endDate());
 
+        // 완료된 스프린트를 처음부터 만들 수는 없어요(완료는 진행 중인 스프린트를 끝낼 때만 — 회고가 만들어져요).
+        if (request.status() == SprintStatus.COMPLETED) {
+            throw new FlowSpaceException(ErrorCode.INVALID_SPRINT_STATUS_CHANGE);
+        }
+
         // 진행 중인 스프린트는 워크스페이스에서 하나만 둬요(칸반도 그 스프린트 하나를 보여줘요).
         if (request.status() == SprintStatus.ACTIVE) {
             validateNoActiveSprint(workspace);
@@ -190,6 +195,11 @@ public class SprintService {
 
         validateMember(sprint.getWorkspace(), user);
 
+        // 계획 → 진행 중 → 완료 순서로만 바꿀 수 있어요(완료된 스프린트를 되살리거나, 시작 없이 완료하면 회고·Task 정리가 어긋나요).
+        if (request.status() != sprint.getStatus() && !isAllowedStatusChange(sprint.getStatus(), request.status())) {
+            throw new FlowSpaceException(ErrorCode.INVALID_SPRINT_STATUS_CHANGE);
+        }
+
         // 이미 진행 중인 다른 스프린트가 있으면 시작할 수 없어요.
         if (request.status() == SprintStatus.ACTIVE && sprint.getStatus() != SprintStatus.ACTIVE) {
             validateNoActiveSprint(sprint.getWorkspace());
@@ -216,6 +226,12 @@ public class SprintService {
         notifySprintStatus(sprint, before, user);
 
         return toSprintResponse(sprint);
+    }
+
+    private boolean isAllowedStatusChange(SprintStatus from, SprintStatus to) {
+
+        return (from == SprintStatus.PLANNING && to == SprintStatus.ACTIVE)
+            || (from == SprintStatus.ACTIVE && to == SprintStatus.COMPLETED);
     }
 
     // 스프린트 시작/완료를 워크스페이스 멤버에게 알림

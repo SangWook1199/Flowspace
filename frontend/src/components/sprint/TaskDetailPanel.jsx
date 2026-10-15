@@ -111,7 +111,8 @@ export default function TaskDetailPanel({
     <aside className={styles.detailPanel}>
       <header>
         <div>
-          <small>{task.code ?? task.id}</small>
+          <h2>작업 상세</h2>
+          <small className={styles.panelCode}>{task.code ?? task.id}</small>
         </div>
         <button type="button" className={styles.close} onClick={onClose} aria-label="닫기">
           <X size={20} />

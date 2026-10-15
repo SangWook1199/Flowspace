@@ -849,3 +849,109 @@
   color: #1f2a44;
   font-weight: 600;
 }
+
+/* =====================================================
+   좁은 화면 보강 (폰·태블릿)
+===================================================== */
+
+/* 그리드 칸이 안쪽 내용(긴 제목 등) 때문에 화면 밖으로 밀리지 않게 해요. */
+.aiPreview {
+  grid-template-columns: minmax(0, 1fr);
+}
+.aiSprint {
+  min-width: 0;
+  container: aisp / inline-size;
+}
+.aiDateRange input {
+  flex: 1 1 0;
+}
+
+/* 입력 폼: 기간 두 칸이 좁아지면 위아래로 쌓아요. */
+@media (max-width: 480px) {
+  .aiForm .dateFields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .aiForm .dateFields > i {
+    display: none;
+  }
+  .aiForm .dateFields span {
+    margin-bottom: 6px;
+  }
+}
+
+/* 초안 미리보기: 스프린트 카드 폭이 좁으면 작업 표를 카드 모양으로 쌓아요(가로 스크롤 없이). */
+@container aisp (max-width: 760px) {
+  .aiTaskScroll {
+    overflow-x: visible;
+  }
+  .aiTaskTable {
+    min-width: 0;
+    gap: 0;
+  }
+  .aiTaskHead {
+    display: none;
+  }
+  .aiTaskRow {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 36px;
+    gap: 8px;
+    padding: 12px 0;
+  }
+  .aiTaskRow > .aiTaskTitle {
+    grid-column: 1 / 3;
+    grid-row: 1;
+  }
+  .aiTaskRow > button.aiIconButton {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .aiTaskRow > select:nth-of-type(1) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .aiTaskRow > select:nth-of-type(2) {
+    grid-column: 2 / 4;
+    grid-row: 2;
+  }
+  .aiTaskRow > .aiDateRange {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    display: flex;
+  }
+}
+@container aisp (max-width: 520px) {
+  .aiSprint > header {
+    flex-wrap: wrap;
+  }
+  .aiSprint > header .aiSprintName {
+    flex: 1 1 0;
+  }
+  .aiSprint > header .aiIconButton {
+    order: 2;
+  }
+  .aiSprint > header .aiDateRange {
+    order: 3;
+    flex: 1 1 100%;
+    display: flex;
+  }
+}
+@media (max-width: 520px) {
+  .aiSprint {
+    padding: 14px;
+  }
+  .aiFormBody {
+    padding: 20px 14px 12px;
+  }
+  .aiPage h1 {
+    font-size: 22px;
+  }
+}
+
+/* 터치 기기에서 입력창 글자가 16px 미만이면 iOS가 화면을 확대해요. */
+@media (hover: none) and (pointer: coarse) {
+  .aiPage input,
+  .aiPage select,
+  .aiPage textarea {
+    font-size: 16px;
+  }
+}

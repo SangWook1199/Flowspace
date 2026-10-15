@@ -18,6 +18,10 @@ export const syncBlocks = async (pageId, blocks, baseVersion = null) => {
 export const isVersionConflict = (err) =>
   err?.response?.status === 409 && err?.response?.data?.code === "PAGE_VERSION_CONFLICT";
 
+// 서버에 없는 블록 id를 보냈거나 블록 목록이 맞지 않아서 거절된 경우(다른 멤버가 그 블록을 막 지웠을 수 있어요)
+export const isInvalidBlockSync = (err) =>
+  err?.response?.status === 400 && err?.response?.data?.code === "INVALID_BLOCK_SYNC";
+
 // 블록 이미지·파일 업로드 (한 블록에 파일 하나, 다시 올리면 교체돼요)
 export const uploadBlockImage = async (blockId, file) => {
   const form = new FormData();

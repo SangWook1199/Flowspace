@@ -203,9 +203,10 @@ public class NotificationService {
 
     // ---------- 공통 ----------
 
-    // 작업 알림을 누르면 가는 화면: 스프린트에 속한 작업이면 그 스프린트의 작업 화면, 아니면 칸반
+    // 작업 알림을 누르면 가는 화면: 그 작업이 있는 스프린트(스프린트가 없으면 백로그)의 작업 화면이고, ?task=로 그 작업 상세를 열어줘요.
     public static String taskLink(Task task) {
-        return task.getSprint() == null ? "/kanban" : "/sprints/" + task.getSprint().getSprintId() + "/tasks";
+        String owner = task.getSprint() == null ? "backlog" : String.valueOf(task.getSprint().getSprintId());
+        return "/sprints/" + owner + "/tasks?task=" + task.getTaskId();
     }
 
     // 커밋된 뒤에 보내요(롤백된 알림이 화면에 뜨지 않게). 트랜잭션 밖이면 바로 보내요.

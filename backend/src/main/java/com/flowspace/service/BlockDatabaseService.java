@@ -1,7 +1,11 @@
 package com.flowspace.service;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Service;
@@ -159,7 +163,8 @@ public class BlockDatabaseService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.USER_NOT_FOUND));
 
-        Page page = pageRepository.findByPageIdAndIsDeletedFalse(pageId)
+        // 블록 저장과 같은 방식으로 페이지를 잠그고 읽어요 — 다른 멤버의 저장과 겹쳐도 버전이 어긋나지 않게요.
+        Page page = pageRepository.findActiveForUpdate(pageId)
             .orElseThrow(() -> new FlowSpaceException(ErrorCode.PAGE_NOT_FOUND));
 
         workspaceMemberRepository.findByWorkspaceAndUser(page.getWorkspace(), user)
@@ -178,6 +183,10 @@ public class BlockDatabaseService {
         BlockDatabase database = BlockDatabase.builder().block(block).title(title).viewType(viewType).build();
 
         blockDatabaseRepository.save(database);
+
+        // 블록이 하나 늘었으니 페이지 버전을 올려요 — 안 올리면 다른 멤버가 이 블록이 없는 옛 버전을 기준으로 저장해서
+        // 방금 만든 데이터베이스가 서버에서 지워져요.
+        page.bumpVersion();
 
         // 표(TABLE)는 속성 유형도 행 페이지도 없는 단순한 텍스트 칸이라, 이름 없는 텍스트 열 3개 · 행 3개로 시작해요.
         if (viewType == DatabaseViewType.TABLE) {
@@ -623,8 +632,35 @@ public class BlockDatabaseService {
         // 행 = 페이지라서, 행을 지우면 연결된 페이지(안의 내용까지)도 같이
         // 소프트 삭제해요 — 페이지 쪽 삭제만 하고 행을 남겨두면 "삭제된
         // 페이지를 가리키는 고아 행"이 생겨서요.
+        // 하위 페이지도 같은 시각으로 휴지통에 보내요(휴지통에서 복원할 때 함께 삭제된 묶음으로 같이 돌아와요).
         if (row.getPage() != null) {
-            row.getPage().delete();
+
+            LocalDateTime deletedAt = LocalDateTime.now();
+
+            List<Page> trashed = new ArrayList<>();
+            trashed.add(row.getPage());
+
+            for (int i = 0; i < trashed.size(); i++) {
+                trashed.addAll(pageRepository.findByParentPageAndIsDeletedFalse(trashed.get(i)));
+            }
+
+            Set<Long> trashedIds = new HashSet<>();
+            for (Page target : trashed) {
+                trashedIds.add(target.getPageId());
+            }
+
+            for (Page target : trashed) {
+
+                target.delete(deletedAt);
+
+                // 다른 데이터베이스에서 이 페이지(또는 하위 페이지)를 가리키던 행도 같이 지워요
+                // (그 데이터베이스가 함께 휴지통으로 가는 페이지 안에 있으면 그대로 둬요).
+                List<BlockDatabaseRow> pointing = rowRepository.findByPage(target).stream()
+                    .filter(other -> !other.getRowId().equals(row.getRowId()))
+                    .filter(other -> !trashedIds.contains(other.getDatabase().getBlock().getPage().getPageId()))
+                    .toList();
+                rowRepository.deleteAll(pointing);
+            }
         }
 
         rowRepository.delete(row);

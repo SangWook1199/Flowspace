@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { RICH_TEXT_TYPES } from "../lib/blockTypes.js";
 import { computeHiddenBlockIds, expandSelectionWithSubtrees } from "../lib/blockTree.js";
 import { BLOCKS_CLIPBOARD_TYPE, blocksToPlainText, blocksToClipboardJson } from "../lib/blockClipboard.js";
+import { isColumnStructure } from "../lib/blockColumns.js";
 import { getOwnedPageIds, createEmptyBlock } from "../lib/blockFactory.js";
 import { shortcutKey } from "../../../utils/shortcutKey";
 
@@ -213,7 +214,8 @@ export default function useBlockSelectionShortcuts({ blocks, editorRef, inputRef
       if (!focusOnControl && !e.metaKey && !e.ctrlKey && !e.altKey && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
         e.preventDefault();
         const hidden = computeHiddenBlockIds(blocks);
-        const visible = blocks.filter((b) => !hidden.has(b.id)).map((b) => b.id);
+        // 열 묶음·열 블록은 화면에 한 줄로 그려지지 않아서 ↑↓로 고를 대상이 아니에요(고르면 아무것도 안 보이는데 지워져요).
+        const visible = blocks.filter((b) => !hidden.has(b.id) && !isColumnStructure(b)).map((b) => b.id);
         const picked = visible.filter((id) => selectedBlockIds.has(id));
         if (picked.length === 0) return;
         const down = e.key === "ArrowDown";

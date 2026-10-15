@@ -22,6 +22,14 @@ export const parseDateKey = (value) => {
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
+// 날짜 키에 days일을 더한(음수면 뺀) 날짜 키. 달·해가 넘어가는 것도 Date가 맞춰줘요. 잘못된 값이면 그대로 돌려줘요.
+export const addDays = (key, days) => {
+  const d = parseDateKey(key);
+  if (!d) return key;
+  d.setDate(d.getDate() + days);
+  return toDateKey(d);
+};
+
 // 두 날짜 키 사이의 일 수(b - a). 서머타임에도 안 틀리게 반올림해요. 하나라도 잘못되면 null.
 export const diffDays = (a, b) => {
   const da = parseDateKey(a);

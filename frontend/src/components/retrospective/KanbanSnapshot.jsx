@@ -11,7 +11,7 @@ export default function KanbanSnapshot({ columns = [] }) {
 
       <div
         className="retro-kanban"
-        style={{ gridTemplateColumns: `repeat(${Math.max(columns.length, 1)}, minmax(0, 1fr))` }}
+        style={{ "--cols": Math.max(columns.length, 1) }}
       >
         {columns.length === 0 && (
           <div className="retro-column__empty">

@@ -10,6 +10,9 @@ import { shortcutKey } from "../../../utils/shortcutKey";
 export default function createBlockKeyDownHandler(ctx) {
   const {
     blockTypeOptions,
+    slashTypeOptions,
+    getColumnPosition,
+    isInsideColumn,
     blocks,
     convertBlock,
     deleteBlock,
@@ -184,7 +187,8 @@ export default function createBlockKeyDownHandler(ctx) {
     // 정확히 쳤다면 필터링된 목록 맨 위(= 0번)가 바로 그 타입이라 Enter만
     // 눌러도 곧장 적용돼요.
     if (isSlashOpen) {
-      const filtered = filterBlockTypes(blockTypeOptions, slashMenu.query);
+      // 열 안에서는 2열/3열을 고를 수 없어요(열 안에 열을 또 만들 수 없어요).
+      const filtered = filterBlockTypes(isInsideColumn?.(block.id) ? blockTypeOptions : (slashTypeOptions ?? blockTypeOptions), slashMenu.query);
 
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         if (filtered.length > 0) {
@@ -279,8 +283,10 @@ export default function createBlockKeyDownHandler(ctx) {
     if (e.key === "Tab") {
       if (isSlashOpen) setSlashMenu(null);
       e.preventDefault();
-      if (e.shiftKey) outdentBlock(block.id);
-      else indentBlock(block.id);
+      // 열 바로 안쪽의 블록은 열 밖으로 내어쓸 수 없어요.
+      if (e.shiftKey) {
+        if (!getColumnPosition?.(block.id)) outdentBlock(block.id);
+      } else indentBlock(block.id);
       return;
     }
 
@@ -372,7 +378,7 @@ export default function createBlockKeyDownHandler(ctx) {
         focusBlock(block.id, "start");
         return;
       }
-      if ((block.indent || 0) > 0) {
+      if ((block.indent || 0) > 0 && !getColumnPosition?.(block.id)) {
         outdentBlock(block.id);
         return;
       }
@@ -402,9 +408,17 @@ export default function createBlockKeyDownHandler(ctx) {
         return;
       }
 
-      if ((block.indent || 0) > 0) {
+      const columnPosition = getColumnPosition?.(block.id);
+
+      if ((block.indent || 0) > 0 && !columnPosition) {
         e.preventDefault();
         outdentBlock(block.id);
+        return;
+      }
+
+      // 열 안에 하나뿐인 빈 문단은 지우지 않아요(열은 늘 한 줄은 있어야 해요 — 열 자체는 ✕ 버튼으로 지워요).
+      if (columnPosition?.onlyChild) {
+        e.preventDefault();
         return;
       }
 

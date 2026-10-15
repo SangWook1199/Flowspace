@@ -1,0 +1,30 @@
+# 운영(배포) 서버 전용 설정이에요. 서버를 켤 때 SPRING_PROFILES_ACTIVE=secret,prod 로 함께 켜요.
+# 값이 환경 변수로 들어와야 하는 항목은 기본값을 일부러 안 뒀어요 — 빠뜨리면 서버가 켜지면서 바로 알려줘요.
+
+# Swagger 문서와 API 목록을 닫아요(공개하면 API 구조가 그대로 보여요).
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+# 메일 링크가 가리킬 프런트 주소 (예: https://flowspace.example.com)
+app:
+  frontend-url: ${APP_FRONTEND_URL}
+
+# 브라우저가 API를 부를 수 있는 프런트 주소 (여러 개면 쉼표로, 끝에 / 없이)
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
+# 업로드 파일이 쌓이는 폴더 — 서버를 다시 배포해도 지워지지 않는 위치여야 해요.
+file:
+  upload-dir: ${UPLOAD_DIR:/var/flowspace/uploads}
+
+# 리버스 프록시(nginx 등) 뒤에서 실제 접속자 주소·https 여부를 알 수 있게 해요.
+server:
+  forward-headers-strategy: framework
+
+# 배포 서버에 Ollama(AI)가 없으면 꺼둬요. 있으면 FLOWSPACE_AI_ENABLED=true 로 켤 수 있어요.
+flowspace:
+  ai:
+    enabled: ${FLOWSPACE_AI_ENABLED:false}

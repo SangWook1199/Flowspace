@@ -1,6 +1,7 @@
 import { CalendarDays, CheckCircle2, ClipboardCheck, Target, Users } from "lucide-react";
 import styles from "../../styles/classes";
 import { getAvatarTone } from "../../utils/avatarColor";
+import AvatarFace from "../common/AvatarFace";
 
 // `import * as Icons`로 전체 아이콘을 끌어오면 번들이 커지고, 오타 난 이름이면 undefined라 렌더링이 죽어요.
 // 그래서 KPI에 쓰는 아이콘만 명시적으로 모아두고, 모르는 이름이 오면 기본 아이콘으로 대체해요.
@@ -31,8 +32,9 @@ export default function MetricCard({ item }) {
             <div
               key={m.id}
               className={`${styles.avatar} ${styles[getAvatarTone(m.id)]}`}
+              title={m.name}
             >
-              {m.initial}
+              <AvatarFace src={m.profileImageUrl} fallback={m.initial} />
             </div>
           ))}
         </div>

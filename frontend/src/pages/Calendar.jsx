@@ -10,6 +10,7 @@ import EventDetail from "../components/calendar/EventDetail";
 
 import * as eventApi from "../api/events";
 import { useCalendarEvents } from "../hooks/useCalendarEvents";
+import useMediaQuery from "../hooks/useMediaQuery";
 import { toDateKey, todayKey, parseDateKey, inclusiveDays } from "../utils/date";
 import { isCalendarSprint, pickInitialSprint } from "../utils/calendarSprint";
 import { isEventOnDate, sortEventsByStart } from "../utils/calendarRange";
@@ -176,7 +177,11 @@ function CalendarBody() {
 
   const mainRef = useRef(null);
   const [view, setView] = useState(loadView);
-  const [railOpen, setRailOpen] = useState(() => typeof window === "undefined" || window.innerWidth >= 1200);
+  // 왼쪽 레일(미니 달력·스프린트·표시 설정)은 창이 1200px 이상이면 기본으로 열려 있고, 그보다 좁으면 닫혀 있어요.
+  // 창 크기를 바꾸면 이 기본값을 따라가고, 사용자가 직접 열거나 닫은 뒤에는 그 선택을 유지해요.
+  const wideScreen = useMediaQuery("(min-width: 1200px)");
+  const [railChoice, setRailChoice] = useState(null); // null이면 창 크기를 따라가요
+  const railOpen = railChoice ?? wideScreen;
   // 날짜를 누르면 그 칸 옆에 상세 패널이 떠요.
   const [detailOpen, setDetailOpen] = useState(false);
   // 열려 있는 창: { type: "create" } | { type: "detail", id } | { type: "edit", id }
@@ -321,7 +326,7 @@ function CalendarBody() {
   };
 
   // 팝오버의 작업을 누르면 작업 페이지로 가서 그 작업이 선택된 채로 열려요.
-  const openTask = (task) => navigate(`/sprints/${task.sprintId}/tasks?task=${task.id}`);
+  const openTask = (task) => navigate(`/sprints/${task.sprintId ?? "backlog"}/tasks?task=${task.id}`);
 
   return (
     <div className="calendarPage">
@@ -351,7 +356,7 @@ function CalendarBody() {
             today={today}
             sprint={sprint}
             railOpen={railOpen}
-            onToggleRail={() => setRailOpen((prev) => !prev)}
+            onToggleRail={() => setRailChoice(!railOpen)}
             onPrevMonth={() => moveMonth(-1)}
             onNextMonth={() => moveMonth(1)}
             onToday={goToday}

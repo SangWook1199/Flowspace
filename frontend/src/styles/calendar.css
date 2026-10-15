@@ -9,7 +9,7 @@
   width: 100%;
   max-width: 1800px;
   margin: 0 auto;
-  padding: 24px 28px;
+  padding: 24px clamp(12px, 2.2vw, 28px);
   background: #f8fafc;
   min-height: 100%;
   box-sizing: border-box;
@@ -447,8 +447,9 @@
 
 .calendarToolbar {
   display: flex;
+  flex-wrap: wrap; /* 좁아지면 스프린트 표시가 다음 줄로 내려가요(글자가 세로로 꺾이지 않게) */
   align-items: center;
-  gap: 10px;
+  gap: 8px 10px;
   padding: 14px 20px;
   border-bottom: 1px solid #eff1f4;
 }
@@ -459,9 +460,13 @@
   font-weight: 700;
   letter-spacing: -0.03em;
   color: #1f2328;
+  white-space: nowrap;
 }
 
 .sprintTag {
+  max-width: 100%;
+  box-sizing: border-box;
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -1352,8 +1357,13 @@
 }
 
 @media (max-width: 520px) {
+  /* 날짜 칸이 아이콘만 남지 않게, 시각 칸을 아래 줄로 내려서 날짜 칸을 넓게 써요. */
   .evmRow {
-    grid-template-columns: 48px minmax(0, 1fr) 118px;
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .evmRow > :nth-child(3) {
+    grid-column: 2;
   }
 
   .evmQuick,
@@ -1521,6 +1531,15 @@
   .calendarRail {
     border-right: 0;
     border-bottom: 1px solid #e6e8ec;
+  }
+
+  /* 폰에서는 레일을 열어도 미니 달력(옆의 큰 달력과 같은 내용)은 빼서 짧게 해요. */
+  .calendarRail .miniMonth {
+    display: none;
+  }
+
+  .calendarToolbar {
+    padding: 12px 14px;
   }
 }
 

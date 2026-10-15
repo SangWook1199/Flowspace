@@ -30,8 +30,12 @@ export const buildSprintBanner = (sprint, today, goalDesc = "") => {
     status = "";
   }
 
-  // 데이터에서 이미 완료 처리된 스프린트는 "완료"로 보여줘요(아직 시작 전이라는 날짜와 모순되는 경우는 날짜를 따라요).
-  if (sprint.status === "COMPLETED" && info.phase !== "before") status = "완료";
+  // 데이터에서 이미 완료 처리된 스프린트는 기간이 남았어도 "진행 중"이 아니라 "최근 스프린트 · 완료"로 보여줘요(아직 시작 전이라는 날짜와 모순되는 경우는 날짜를 따라요).
+  if (sprint.status === "COMPLETED" && info.phase !== "before") {
+    label = "최근 스프린트";
+    status = "완료";
+    remain = "종료됨";
+  }
 
   return {
     id: sprint.id,
@@ -57,6 +61,7 @@ export const buildSprintDayLabel = (sprint, today) => {
 
   const info = getSprintPhase(sprint, today);
 
+  if (sprint.status === "COMPLETED" && info.phase !== "before") return `${sprint.name} · 완료`;
   if (info.phase === "during") return `${sprint.name} · Day ${info.passedDays}`;
   if (info.phase === "before") return `${sprint.name} · D-${info.daysUntilStart}`;
   if (info.phase === "after") return `${sprint.name} · 종료`;

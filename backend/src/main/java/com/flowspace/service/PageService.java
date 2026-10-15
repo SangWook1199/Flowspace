@@ -193,7 +193,13 @@ public class PageService {
         // 삭제 시각을 덮어쓰지 않아요(복원할 때 함께 삭제된 묶음을 구분하기 위해서예요).
         LocalDateTime deletedAt = LocalDateTime.now();
 
-        for (Page target : collectSubtree(page)) {
+        List<Page> subtree = collectSubtree(page);
+        Set<Long> subtreeIds = new HashSet<>();
+        for (Page target : subtree) {
+            subtreeIds.add(target.getPageId());
+        }
+
+        for (Page target : subtree) {
 
             if (target.getIsDeleted()) {
                 continue;
@@ -205,7 +211,12 @@ public class PageService {
             // 이 페이지를 가리키는 행이 있으면 같이 지워줘요 — 안 그러면 삭제된
             // 페이지를 계속 가리키는 고아 행이 남아요(셀은 FK ON DELETE CASCADE로
             // 같이 정리돼요).
-            blockDatabaseRowRepository.deleteAll(blockDatabaseRowRepository.findByPage(target));
+            // 단, 그 데이터베이스가 지금 함께 휴지통으로 가는 페이지들 안에 있으면 지우지 않아요 —
+            // 데이터베이스 블록과 행이 그대로 남아 있어야 복원했을 때 표가 온전히 돌아와요.
+            List<BlockDatabaseRow> orphanRows = blockDatabaseRowRepository.findByPage(target).stream()
+                .filter(row -> !subtreeIds.contains(row.getDatabase().getBlock().getPage().getPageId()))
+                .toList();
+            blockDatabaseRowRepository.deleteAll(orphanRows);
         }
     }
 

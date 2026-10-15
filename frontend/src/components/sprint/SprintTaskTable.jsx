@@ -12,6 +12,8 @@ import { useState } from "react";
 
 import { formatDateDots, percentOf } from "../../utils/date";
 import { useMemberProfile } from "../../context/MemberProfileContext";
+import AvatarFace from "../common/AvatarFace";
+import { getAvatarTone } from "../../utils/avatarColor";
 
 // tasks는 공용 작업 모델(assignees 객체 배열, startDate/dueDate, subtasks {text, checked})에
 // 상태 카테고리 status("TODO" | "IN_PROGRESS" | "DONE")를 얹은 모양이에요.
@@ -176,7 +178,7 @@ function TaskGroup({ task, open, onToggle, onOpen, selectable = false, checked =
             return (
               <span
                 key={`${name}-${index}`}
-                className={`assigneeAvatar${assigneeId != null ? " memberAvatarLink" : ""}`}
+                className={`assigneeAvatar${assigneeId != null ? ` ${getAvatarTone(assigneeId)} memberAvatarLink` : ""}`}
                 title={name}
                 role={assigneeId != null ? "button" : undefined}
                 tabIndex={assigneeId != null ? 0 : undefined}
@@ -193,7 +195,11 @@ function TaskGroup({ task, open, onToggle, onOpen, selectable = false, checked =
                   }
                 }}
               >
-                {typeof assignee === "string" ? assignee[0] : (assignee?.initial ?? name?.[0])}
+                {typeof assignee === "string" ? (
+                  assignee[0]
+                ) : (
+                  <AvatarFace src={assignee?.profileImageUrl} fallback={assignee?.initial ?? name?.[0]} />
+                )}
               </span>
             );
           })}
@@ -252,8 +258,8 @@ function TaskGroup({ task, open, onToggle, onOpen, selectable = false, checked =
               {/* 하위 작업 담당자 — 작업에 배치된 담당자 중 한 명이에요. */}
               <div className="assigneeStack">
                 {owner && (
-                  <span className="assigneeAvatar" title={owner.name}>
-                    {owner.initial ?? owner.name?.[0]}
+                  <span className={`assigneeAvatar ${getAvatarTone(owner.id)}`} title={owner.name}>
+                    <AvatarFace src={owner.profileImageUrl} fallback={owner.initial ?? owner.name?.[0]} />
                   </span>
                 )}
               </div>

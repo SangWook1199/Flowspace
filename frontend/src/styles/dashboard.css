@@ -341,6 +341,7 @@
 
 .memberStack {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   margin-top: auto;
   padding-top: 10px;
@@ -359,6 +360,11 @@
 .scheduleSection,
 .activitySection {
   min-width: 0;
+}
+
+/* 오늘의 작업 카드는 자기 폭을 재요(좁으면 담당자 칸을 접는 규칙이 아래 @container work에 있어요). */
+.workSection {
+  container: work / inline-size;
 }
 
 /* ================= Panel ================= */
@@ -550,47 +556,49 @@
 /* ===== Column Width ===== */
 /* 1=우선순위 2=작업 제목 3=상태 4=담당 5=마감 6=(빈 칸) */
 
+/* 제목 칸(2번)은 너비를 따로 주지 않아요. 나머지 칸이 필요한 만큼만 쓰고 남는 자리를 전부 제목이 가져가요. */
+
 .taskTable th:nth-child(1),
 .taskTable td:nth-child(1) {
-  width: 82px;
-}
-
-.taskTable th:nth-child(2),
-.taskTable td:nth-child(2) {
-  width: 28%;
+  width: 72px;
 }
 
 .taskTable th:nth-child(3),
 .taskTable td:nth-child(3) {
-  width: 130px;
+  width: 96px;
   text-align: center;
 }
 
 .taskTable th:nth-child(4),
 .taskTable td:nth-child(4) {
-  width: 160px;
+  width: 108px;
   text-align: center;
 }
 
 .taskTable th:nth-child(5),
 .taskTable td:nth-child(5) {
-  width: 110px;
+  width: 104px;
 }
 
 .taskTable th:last-child,
 .taskTable td:last-child {
-  width: 36px;
-  text-align: center;
+  width: 12px;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.taskTable th {
+  white-space: nowrap;
 }
 
 /* ===== Title ===== */
 
+/* 제목은 자르지 않고 줄바꿈해서 끝까지 보여줘요(칸이 좁으면 두 줄이 돼요). */
 .taskTitle {
   font-weight: 400;
   color: #111827;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 /* ===== Priority ===== */
@@ -682,6 +690,13 @@
   box-shadow: 0 0 0 2px #fff;
 }
 
+.assignee img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 .assigneeMore {
   width: 30px;
   height: 30px;
@@ -743,6 +758,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 16px;
   font-weight: 600;
@@ -750,9 +766,64 @@
 }
 
 .calendarDate button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
   border: none;
+  border-radius: 8px;
   background: none;
+  color: #64748b;
   cursor: pointer;
+}
+
+.calendarDate button:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.calendarDate span {
+  min-width: 118px;
+  text-align: center;
+}
+
+/* 헤더 오른쪽: "오늘"(다른 날을 보고 있을 때만) + "전체 보기" */
+.calendarHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.calendarToday {
+  height: 26px;
+  margin: -4px 0; /* 버튼이 생겨도 헤더 높이가 변하지 않게(아래 날짜가 안 움직여요) */
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  background: #eef2ff;
+  color: #4338ca;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.calendarToday:hover {
+  background: #e0e7ff;
+}
+
+/* 터치 화면에서는 누르기 쉽게 버튼을 키워요. */
+@media (hover: none) and (pointer: coarse) {
+  .calendarDate button {
+    width: 36px;
+    height: 36px;
+  }
+
+  .calendarToday {
+    height: 30px;
+    margin: -6px 0;
+  }
 }
 
 .timeline {
@@ -838,6 +909,7 @@
   width: 34px;
   height: 34px;
   border-radius: 50%;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -865,6 +937,24 @@
   color: #475569;
 }
 
+.avatar.orange {
+  background: #ffe8d2;
+  color: #c1630b;
+}
+
+.avatar.pink {
+  background: #fce7f3;
+  color: #be185d;
+}
+
+/* 프로필 사진이 있으면 동그라미 안을 꽉 채워요(AvatarFace). */
+.avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 .activityContent p {
   margin: 0 0 4px;
   line-height: 1.35;
@@ -876,39 +966,319 @@
   font-size: 11px;
 }
 
-/* ================= Responsive ================= */
+/* 필터 탭은 줄이 모자라면 줄바꿈되게 줄어들 수 있어야 해요(위의 flex-shrink: 0은 카드 직속 칸용이에요). */
+.dashboardMain .taskToolbar .taskFilter {
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+/* 긴 이름·제목이 카드 밖으로 밀고 나가지 않게 해요. */
+.activityContent,
+.timelineCard {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ================= Responsive =================
+   1280px 이하: 3열 → 한 열, KPI 2열
+    900px 이하: 여백 조정(이때부터 사이드바가 오버레이라 본문이 넓어져요)
+    768px 이하: 배너·카드 높이 자동
+    640px 이하: 작업 표 → 카드 목록, 폰에 맞는 여백·글자 크기
+    360px 이하: KPI 1열
+   그리고 3열일 때 작업 카드가 좁아지면(@container work) 담당자 칸을 접어서 제목에 자리를 줘요. */
 
 @media (max-width: 1280px) {
   .dashboardMain {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .kpis {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* 3열 배치(1281px 이상)에서 오늘의 작업 카드가 600px보다 좁아지면 담당자 칸을 숨겨요(제목이 잘리지 않게).
+   한 열일 때와 폰 폭(카드 목록이 담당자를 보여줘요)은 건드리지 않아요. */
+@media (min-width: 1281px) {
+  @container work (max-width: 600px) {
+    .taskTable th:nth-child(4),
+    .taskTable td:nth-child(4) {
+      display: none;
+    }
+  }
+}
+
+@media (max-width: 900px) {
+  .content {
+    padding: 24px;
   }
 }
 
 @media (max-width: 768px) {
   .content {
-    padding: 18px;
+    padding: 18px 16px;
   }
 
   .welcome {
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .welcome h1 {
+    font-size: 26px;
+    letter-spacing: -0.6px;
+  }
+
+  .welcome p {
+    margin-top: 6px;
+    font-size: 14px;
+  }
+
+  .welcomeInfo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 10px;
+    text-align: left;
+  }
+
+  .welcomeInfo span {
+    margin-top: 0;
+  }
+
+  /* 배너: 목표가 진행률 아래로 내려가요. */
+  .hero {
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .heroContent {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    min-height: 0;
+  }
+
+  .heroLeft {
+    padding-right: 0;
+  }
+
+  .heroTitle {
+    flex-wrap: wrap;
+    gap: 8px 10px;
+  }
+
+  .heroTitle h2 {
+    font-size: 26px;
+  }
+
+  .heroDate {
+    flex-wrap: wrap;
+  }
+
+  .heroGoal {
+    padding: 14px 0 0;
+    border-left: 0;
+    border-top: 1px solid rgba(99, 102, 241, 0.16);
+  }
+
+  .goalTitle {
+    margin: 8px 0;
+  }
+
+  .goalTitle h4 {
+    font-size: 16px;
   }
 
   .kpis {
-    grid-template-columns: 1fr;
+    gap: 12px;
+    margin: 14px 0 18px;
   }
 
-  .heroTop {
-    grid-template-columns: 1fr;
+  /* 한 열이 되면 카드를 고정 높이로 두지 않고, 길면 카드 안에서만 스크롤해요. */
+  .dashboardMain {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
   }
 
-  .goal {
-    border: none;
+  .dashboardMain .panel {
+    height: auto;
+    min-height: 180px;
+    max-height: 520px;
+  }
+}
+
+@media (max-width: 640px) {
+  .content {
+    padding: 14px 12px;
+  }
+
+  .welcome h1 {
+    font-size: 22px;
+  }
+
+  .hero {
+    padding: 16px;
+  }
+
+  .heroTitle h2 {
+    font-size: 22px;
+  }
+
+  .metricCard {
+    min-height: 0;
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .metricHeader {
+    margin-bottom: 6px;
+  }
+
+  .metricIcon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+  }
+
+  .metricBody h3 {
+    font-size: 22px;
+  }
+
+  .memberStack {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .memberStack .avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .panel {
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .panelHeader {
+    margin-bottom: 12px;
+  }
+
+  .more {
+    padding: 8px 0 8px 8px;
+  }
+
+  /* 필터 탭 아래에 검색칸이 한 줄로 와요. 16px 미만이면 iOS가 입력창을 눌렀을 때 화면을 확대해요. */
+  .taskFilter {
+    margin-bottom: 8px;
+  }
+
+  .taskFilter button {
+    padding: 9px 14px;
+    font-size: 13px;
+  }
+
+  .taskSearch {
+    flex: 1 1 100%;
+    width: 100%;
+    height: 40px;
+    margin-bottom: 12px;
+  }
+
+  /* 16px 미만이면 아이폰이 입력칸을 눌렀을 때 화면을 확대해요. 그래서 터치 기기에서만 16px로 키우고, PC에서 창만 좁힐 땐 글자 크기를 그대로 둬요. */
+  @media (hover: none) and (pointer: coarse) {
+    .taskSearch input {
+      font-size: 16px;
+    }
+  }
+}
+
+/* 폰 폭에서는 표 대신 카드 목록으로 바꿔요(위 줄: 우선순위·제목, 아래 줄: 상태·담당자·마감). */
+@media (max-width: 640px) {
+  /* 작업 표 → 카드 목록: 위 줄(우선순위·제목), 아래 줄(상태·담당자·마감). 머리글(정렬)은 숨겨요. */
+  .taskTable,
+  .taskTable tbody {
+    display: block;
+  }
+
+  .taskTable thead {
+    display: none;
+  }
+
+  .taskTable tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "pri title title"
+      "status assg due";
+    align-items: center;
+    gap: 8px 10px;
+    padding: 12px 2px;
+    border-top: 1px solid #eef2f7;
+  }
+
+  .taskTable tr:first-child {
+    border-top: 0;
+  }
+
+  .taskTable td {
     padding: 0;
-    margin-top: 10px;
+    border-top: 0;
+  }
+
+  /* 위쪽 표용 열 너비·가운데 정렬을 되돌려요(같은 우선순위라 뒤에 있는 쪽이 이겨요). */
+  .taskTable td:nth-child(n) {
+    width: auto;
+    text-align: left;
+  }
+
+  .taskTable td:nth-child(1) {
+    grid-area: pri;
+  }
+
+  .taskTable td:nth-child(2) {
+    grid-area: title;
+    /* 좁은 화면에서는 제목을 한 줄로 자르지 않고 줄바꿈해서 다 보여줘요. */
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.4;
+  }
+
+  .taskTable td:nth-child(3) {
+    grid-area: status;
+  }
+
+  .taskTable td:nth-child(4) {
+    grid-area: assg;
+  }
+
+  .taskTable td:nth-child(5) {
+    grid-area: due;
+    color: #64748b;
+    font-size: 12px;
+    text-align: right;
+  }
+
+  .taskTable td:nth-child(6) {
+    display: none;
+  }
+
+  .taskTable td:nth-child(4) .assigneeGroup {
+    justify-content: flex-start;
+  }
+
+  /* 비어 있을 때 안내 문구 한 칸은 줄 전체를 써요. */
+  .taskTable td[colspan] {
+    display: block;
+    grid-area: auto;
+    grid-column: 1 / -1;
+    text-align: center;
+  }
+}
+
+@media (max-width: 360px) {
+  .kpis {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

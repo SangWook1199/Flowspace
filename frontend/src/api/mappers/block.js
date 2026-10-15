@@ -109,6 +109,9 @@ function toEditorBlock(item, depth, { knownPageIds, databases }) {
     block.sprintId = item.sprintId ?? null;
   } else if (item.type === "DATABASE") {
     block.database = databases?.get(item.databaseId) ?? null;
+  } else if (item.type === "COLUMN") {
+    // 열의 폭 비율(없으면 균등). 열 묶음(COLUMN_LIST)은 저장할 값이 없어요.
+    block.width = typeof env.width === "number" && env.width > 0 ? env.width : null;
   }
 
   const comments = toEditorComments(item.comments);
@@ -152,6 +155,8 @@ const buildEnvelope = (block, ctx) => {
     }
   } else if (block.type === "CODE") {
     if (block.language) env.language = block.language;
+  } else if (block.type === "COLUMN") {
+    if (typeof block.width === "number" && block.width > 0) env.width = Math.round(block.width * 1000) / 1000;
   } else if (block.type === "IMAGE" || block.type === "FILE") {
     const image = block.image;
     if (image) {

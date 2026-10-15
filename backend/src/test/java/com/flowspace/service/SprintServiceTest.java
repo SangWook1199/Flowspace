@@ -166,6 +166,33 @@ class SprintServiceTest {
     }
 
     @Test
+    @DisplayName("완료된 스프린트는 다시 진행 중으로 되돌릴 수 없다")
+    void completedSprintCannotBeReactivated() {
+        memberWithRole(WorkspaceRole.MEMBER);
+        sprint.updateStatus(SprintStatus.COMPLETED);
+
+        FlowSpaceException e = assertThrows(FlowSpaceException.class,
+            () -> sprintService.updateStatus(10L, new SprintStatusUpdateRequest(SprintStatus.ACTIVE), "a@a.com"));
+
+        assertEquals(ErrorCode.INVALID_SPRINT_STATUS_CHANGE, e.getErrorCode());
+        assertEquals(SprintStatus.COMPLETED, sprint.getStatus());
+    }
+
+    @Test
+    @DisplayName("시작하지 않은 스프린트는 바로 완료할 수 없다")
+    void planningSprintCannotBeCompletedDirectly() {
+        memberWithRole(WorkspaceRole.MEMBER);
+        sprint.updateStatus(SprintStatus.PLANNING);
+
+        FlowSpaceException e = assertThrows(FlowSpaceException.class,
+            () -> sprintService.updateStatus(10L, new SprintStatusUpdateRequest(SprintStatus.COMPLETED), "a@a.com"));
+
+        assertEquals(ErrorCode.INVALID_SPRINT_STATUS_CHANGE, e.getErrorCode());
+        assertEquals(SprintStatus.PLANNING, sprint.getStatus());
+        verify(retrospectiveRepository, never()).save(any(Retrospective.class));
+    }
+
+    @Test
     @DisplayName("이미 회고가 있는 스프린트는 다시 완료할 수 없다")
     void alreadyHasRetrospective() {
         memberWithRole(WorkspaceRole.MEMBER);

@@ -6,16 +6,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.Comparator;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Stream;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -44,8 +44,8 @@ public class FileService {
 
     // 올릴 수 없는 확장자예요. 업로드한 파일은 /uploads 주소에서 그대로 열리는데, 브라우저가 HTML·SVG·스크립트를 열면
     // 그 안의 코드가 이 서비스의 주소에서 실행될 수 있어서 처음부터 받지 않아요.
-    private static final Set<String> BLOCKED_EXTENSIONS = Set.of("html", "htm", "xhtml", "shtml", "svg", "svgz", "xml",
-        "xsl", "xslt", "js", "mjs", "jsp", "php", "asp", "aspx", "swf");
+    private static final Set<String> BLOCKED_EXTENSIONS = Set.of("html", "htm", "xhtml", "xht", "shtml", "svg", "svgz",
+        "xml", "xsl", "xslt", "rdf", "atom", "rss", "xul", "mml", "mathml", "js", "mjs", "jsp", "php", "asp", "aspx", "swf");
 
     // 이미지로 올릴 수 있는 확장자예요(SVG는 스크립트를 담을 수 있어서 제외해요).
     private static final Set<String> IMAGE_EXTENSIONS = Set.of("png", "jpg", "jpeg", "gif", "webp", "bmp", "avif");
@@ -247,19 +247,15 @@ public class FileService {
     public List<CoverResponse> getCoverGallery() {
 
         try {
-            Resource resource = new ClassPathResource("static/covers");
-            Path path = resource.getFile().toPath();
+            // jar로 실행하면 static/covers가 파일 폴더가 아니라 jar 안에 있어서 getFile()이 실패해요 — 클래스패스 패턴으로 읽어요.
+            Resource[] resources = new PathMatchingResourcePatternResolver().getResources("classpath:static/covers/*");
 
-            try (Stream<Path> files = Files.list(path)) {
+            return Arrays.stream(resources).map(Resource::getFilename)
+                .filter(fileName -> fileName != null && fileName.lastIndexOf('.') > 0).sorted().map(fileName -> {
+                    String name = fileName.substring(0, fileName.lastIndexOf('.'));
 
-                return files.filter(Files::isRegularFile).sorted(Comparator.comparing(p -> p.getFileName().toString()))
-                    .map(file -> {
-                        String fileName = file.getFileName().toString();
-                        String name = fileName.substring(0, fileName.lastIndexOf('.'));
-
-                        return new CoverResponse(name, "/covers/" + fileName);
-                    }).toList();
-            }
+                    return new CoverResponse(name, "/covers/" + fileName);
+                }).toList();
 
         } catch (IOException e) {
             throw new FlowSpaceException(ErrorCode.FILE_NOT_FOUND);

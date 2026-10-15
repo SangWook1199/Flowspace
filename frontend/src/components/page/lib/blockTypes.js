@@ -1,4 +1,4 @@
-import { ChevronRight, FileText, Heading1, Heading2, Heading3, Lightbulb, CheckSquare, List, ListOrdered, Quote, Minus, Code2, Image as ImageIcon, Table2, Database as DatabaseIcon, ListChecks, CalendarClock, File as FileIcon, Paperclip, Flag } from "lucide-react";
+import { ChevronRight, FileText, Heading1, Heading2, Heading3, Lightbulb, CheckSquare, List, ListOrdered, Quote, Minus, Code2, Image as ImageIcon, Table2, Database as DatabaseIcon, ListChecks, CalendarClock, File as FileIcon, Paperclip, Flag, Columns2, Columns3 } from "lucide-react";
 
 // blocks.type ENUM(TEXT/H1/H2/TODO/BULLET/NUMBERED/QUOTE/TASK/EVENT/
 // DATABASE/IMAGE/DIVIDER/CODE) 그대로. 노션에는 없는 TASK/EVENT가 있는
@@ -58,6 +58,11 @@ export const BLOCK_TYPES = [
   { type: "CHILD_PAGE", label: "하위 페이지", icon: FileIcon, desc: "새 하위 페이지 만들기", aliases: ["page", "페이지", "childpage", "하위페이지", "subpage"] },
   { type: "DIVIDER", label: "구분선", icon: Minus, desc: "시각적으로 섹션 구분", aliases: ["divider", "구분선", "hr", "line"] },
   { type: "CODE", label: "코드", icon: Code2, desc: "코드 스니펫 작성", aliases: ["code", "코드"] },
+  // 노션의 "/2c", "/3c"와 같은 자리예요. 메뉴 전용 키(COLUMNS_2/COLUMNS_3)고, 실제로 저장되는 type은
+  // COLUMN_LIST(열 묶음) + COLUMN(열)이에요 — 구조는 lib/blockColumns.js 참고. 열 안에서는 열을 또 만들 수 없어서
+  // (노션도 같아요) 열 안의 슬래시 메뉴에는 나오지 않아요.
+  { type: "COLUMNS_2", label: "2열", icon: Columns2, desc: "블록을 나란히 놓는 2개의 열", aliases: ["2c", "2column", "2columns", "column", "columns", "열", "2열", "두열", "단"] },
+  { type: "COLUMNS_3", label: "3열", icon: Columns3, desc: "블록을 나란히 놓는 3개의 열", aliases: ["3c", "3column", "3columns", "3열", "세열"] },
   { type: "IMAGE", label: "이미지", icon: ImageIcon, desc: "이미지 업로드", aliases: ["image", "이미지", "img", "picture"] },
   // 노션의 "/file"과 같은 자리예요 — 업로드하거나 링크로 임베드한 파일을
   // 아이콘+파일명+용량 한 줄 카드로 보여줘요(아래 BlockFile). 이미지
@@ -121,10 +126,11 @@ export function blockIsBoardDatabase(block) {
 
 // 코드 블록은 항상 회색 배경 + 문법 색이라 배경색·글자색을 따로 못 골라요(노션도 코드 블록엔 색 메뉴가 없어요).
 export function blockCanHaveBackground(block) {
-  return !blockIsBoardDatabase(block) && block.type !== "CODE";
+  return !blockIsBoardDatabase(block) && block.type !== "CODE" && block.type !== "COLUMN_LIST" && block.type !== "COLUMN";
 }
 
 export function blockCanHaveTextColor(block) {
+  if (block.type === "COLUMN_LIST" || block.type === "COLUMN") return false;
   const isPageLink = !!block.pageId;
   const isEmbed =
     block.type === "DATABASE" ||

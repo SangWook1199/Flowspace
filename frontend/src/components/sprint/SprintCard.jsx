@@ -31,7 +31,8 @@ export default function SprintCard({ sprint, onNavigate }) {
         </div>
         <div>
           <h2>
-            {sprint.name} <span>{SPRINT_STATUS_LABEL[sprint.status] ?? sprint.status}</span>
+            <em className="sprintName" title={sprint.name}>{sprint.name}</em>
+            <span>{SPRINT_STATUS_LABEL[sprint.status] ?? sprint.status}</span>
           </h2>
           <p>{sprint.goal}</p>
           <small>

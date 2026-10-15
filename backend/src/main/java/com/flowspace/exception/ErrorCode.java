@@ -46,6 +46,7 @@ public enum ErrorCode {
     INVALID_SPRINT_DATE(HttpStatus.BAD_REQUEST, "종료일은 시작일보다 빠를 수 없습니다."),
     SPRINT_ALREADY_ACTIVE(HttpStatus.CONFLICT, "이미 진행 중인 스프린트가 있어요. 먼저 완료한 뒤 시작해 주세요."),
     RETROSPECTIVE_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 회고가 생성된 스프린트입니다."),
+    INVALID_SPRINT_STATUS_CHANGE(HttpStatus.BAD_REQUEST, "스프린트 상태를 이렇게 바꿀 수 없습니다. (계획 → 진행 중 → 완료 순서로만 바꿀 수 있어요)"),
 
     // Task
     TASK_STATUS_NOT_FOUND(HttpStatus.NOT_FOUND, "Task 상태를 찾을 수 없습니다."),

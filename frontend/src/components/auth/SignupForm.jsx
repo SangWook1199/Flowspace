@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { User, Mail, Lock, Eye, EyeOff, X } from "lucide-react";
 
 import SocialLogin from "./SocialLogin";
+import TermsModal from "./TermsModal";
 import { useAuth } from "../../context/useAuth";
 import * as authApi from "../../api/auth";
 import { getInitial } from "../../utils/initial";
@@ -42,6 +43,8 @@ export default function SignupForm() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  // 약관 보기 창: null(닫힘) | "terms" | "privacy"
+  const [termsTab, setTermsTab] = useState(null);
 
   const updateField = (key, value) => {
     // 입력을 고치기 시작하면 이전 시도의 오류(예: 이메일 중복)는 더 이상
@@ -422,9 +425,29 @@ export default function SignupForm() {
                 checked={form.agree}
                 onChange={(e) => updateField("agree", e.target.checked)}
               />
-              이용약관 및 개인정보 처리방침에 동의합니다.
+              <span>
+                <button type="button" className="signup-terms-link" onClick={(e) => { e.preventDefault(); setTermsTab("terms"); }}>
+                  이용약관
+                </button>{" "}
+                및{" "}
+                <button type="button" className="signup-terms-link" onClick={(e) => { e.preventDefault(); setTermsTab("privacy"); }}>
+                  개인정보 처리방침
+                </button>
+                에 동의합니다.
+              </span>
             </label>
           </div>
+
+          {termsTab && (
+            <TermsModal
+              initialTab={termsTab}
+              onClose={() => setTermsTab(null)}
+              onAgree={() => {
+                updateField("agree", true);
+                setTermsTab(null);
+              }}
+            />
+          )}
 
           {error && (
             <p className="login-error" role="alert">

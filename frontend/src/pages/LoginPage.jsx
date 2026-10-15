@@ -3,6 +3,7 @@ import { useState } from "react";
 import FlowSpaceLogo from "../components/common/FlowSpaceLogo";
 import LoginForm from "../components/auth/LoginForm";
 import PreviewCarousel from "../components/auth/PreviewCarousel";
+import useMediaQuery from "../hooks/useMediaQuery";
 import "../styles/auth.css";
 
 // 소개 이미지
@@ -11,8 +12,13 @@ import calendar from "../assets/login/calendar-summary.png";
 import kanban from "../assets/login/kanban-summary.png";
 import document from "../assets/login/document-summary.png";
 
+// 로그인 폼 아래로 소개 카드가 내려가는 폭(auth.css의 1080px)과 같아야 해요.
+const HIDE_PREVIEW_QUERY = "(max-width: 1080px)";
+
 export default function LoginPage() {
   const [current, setCurrent] = useState(0);
+  // 한 줄로 쌓이는 폭에서는 소개 카드를 그리지 않아요(숨겨도 이미지를 계속 내려받으니까요).
+  const hidePreview = useMediaQuery(HIDE_PREVIEW_QUERY);
 
   const previews = [
     {
@@ -49,13 +55,15 @@ export default function LoginPage() {
         </section>
 
         {/* 오른쪽 소개 카드 */}
-        <section className="preview-card">
-          <PreviewCarousel
-            items={previews}
-            current={current}
-            onChange={setCurrent}
-          />
-        </section>
+        {!hidePreview && (
+          <section className="preview-card">
+            <PreviewCarousel
+              items={previews}
+              current={current}
+              onChange={setCurrent}
+            />
+          </section>
+        )}
       </div>
     </main>
   );

@@ -11,6 +11,7 @@ import { percentOf } from "../utils/date";
 import RetroSummaryCard from "../components/retrospective/RetroSummaryCard";
 import RetroToolbar from "../components/retrospective/RetroToolbar";
 import RetroCard from "../components/retrospective/RetroCard";
+import RetroGuideModal from "../components/retrospective/RetroGuideModal";
 
 // 요약 카드 값을 목록에서 계산해요. 계획(planned) 상태처럼 수치가 아직 없는(null) 회고는 평균/합계에서 빼요.
 const buildSummary = (meta, list) => {
@@ -37,6 +38,7 @@ export default function RetrospectiveList() {
   const { workspaceId } = useOutletContext();
   const [tab, setTab] = useState("all");
   const [keyword, setKeyword] = useState("");
+  const [guideOpen, setGuideOpen] = useState(false);
 
   // 회고 목록은 서버에서 받아요. 워크스페이스를 바꾸면 다시 받아요.
   const {
@@ -144,8 +146,12 @@ export default function RetrospectiveList() {
           </p>
         </div>
 
-        <button className="detail-btn">자세히 보기</button>
+        <button type="button" className="detail-btn" onClick={() => setGuideOpen(true)}>
+          자세히 보기
+        </button>
       </section>
+
+      {guideOpen && <RetroGuideModal onClose={() => setGuideOpen(false)} />}
     </main>
   );
 }

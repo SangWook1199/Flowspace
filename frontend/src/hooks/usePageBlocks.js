@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { deleteBlockImage, getPageDetail, isVersionConflict, syncBlocks, uploadBlockImage } from "../api/blocks";
+import { deleteBlockImage, getPageDetail, isInvalidBlockSync, isVersionConflict, syncBlocks, uploadBlockImage } from "../api/blocks";
 import { getDatabaseDetail } from "../api/databases";
 import { bindingFromLoaded, createBinding, syncDatabase } from "../api/databaseSync";
 import {
@@ -14,6 +14,7 @@ import {
 import { commentStateFromServer, syncComments } from "../api/commentSync";
 import { findConflicts, mergeBlocks } from "../components/page/lib/blockMerge.js";
 import { normalizeBlockShape } from "../components/page/lib/blockFactory.js";
+import { normalizeColumns } from "../components/page/lib/blockColumns.js";
 import { normalizeIndents } from "../components/page/lib/blockTree.js";
 import { getErrorMessage } from "../utils/apiError";
 
@@ -91,6 +92,8 @@ export function usePageBlocks(pageId, { getKnownPageIds, refreshKnownPageIds, pa
   const pageVersion = useRef(null);
   const conflictRetries = useRef(0);
   const conflictTimer = useRef(null);
+  // 내 저장이 서버 블록 id 대응을 바꿀 때마다 올라가요. 받아오는 사이에 저장이 끝났는지(받아온 내용이 이미 낡았는지) 가려요.
+  const saveSeq = useRef(0);
 
   const pageIdMapRef = useRef(pageIdMap);
   const getKnownPageIdsRef = useRef(getKnownPageIds);
@@ -246,6 +249,7 @@ export function usePageBlocks(pageId, { getKnownPageIds, refreshKnownPageIds, pa
         bindings.current.set(cid, binding);
         idMap.current.set(cid, made.blockId);
         dbBlockIds.current.add(made.blockId);
+        saveSeq.current += 1;
         result.created = true;
       }
 
@@ -266,6 +270,7 @@ export function usePageBlocks(pageId, { getKnownPageIds, refreshKnownPageIds, pa
     if (!loaded.current || !apply) return;
 
     const request = requestId.current;
+    const seqAtStart = saveSeq.current;
     const detail = await getPageDetail(pageId);
 
     // 다른 멤버가 새로 만든 데이터베이스 블록은 내용도 같이 받아와요(안 받으면 내 다음 저장이 그 블록을 지워요).
@@ -321,7 +326,18 @@ export function usePageBlocks(pageId, { getKnownPageIds, refreshKnownPageIds, pa
 
     // 에디터가 넣을 때 들여쓰기를 바로잡으니(normalizeIndents) 여기서도 똑같이 해 두고,
     // 결과가 내 화면과 내용상 같으면 아무 것도 하지 않아요(같은 내용을 계속 다시 넣는 일을 막아요).
-    const merged = normalizeIndents(mergeBlocks({ base: baseBlocks.current, local, remote: remoteBlocks, sig }));
+    // 열 구조도 같이 바로잡아요 — 다른 멤버가 같은 열 묶음의 열을 지우거나 더하면 병합 결과가 "열 1개짜리 묶음"·"빈 열"이 될 수 있어요.
+    const newBlockId = () => {
+      maxId += 1;
+      used.add(String(maxId));
+      return maxId;
+    };
+    const merged = normalizeIndents(
+      normalizeColumns(
+        normalizeIndents(mergeBlocks({ base: baseBlocks.current, local, remote: remoteBlocks, sig })),
+        newBlockId,
+      ),
+    );
     const sameAsLocal =
       merged.length === local.length &&
       merged.every((block, i) => {
@@ -332,6 +348,21 @@ export function usePageBlocks(pageId, { getKnownPageIds, refreshKnownPageIds, pa
 
     // 이 시점의 서버 버전까지 합쳤으니, 다음 저장은 이 버전을 기준으로 보내요.
     pageVersion.current = detail.version ?? pageVersion.current;
+
+    // 다른 멤버가 지운 블록의 서버 id를 잊어요. 안 잊으면 내가 그 블록을 고쳐서 남겨 둔 경우(병합에서 내 것이 이겨요)
+    // 다음 저장이 "서버에 없는 블록 id"를 보내서 서버가 거절하고, 그 뒤로 저장이 계속 실패해요. 잊으면 새 블록으로 다시 만들어져요.
+    // 받아오는 사이에 내 저장이 끝났으면 이 응답은 낡은 거라(방금 만든 블록이 없어요) 건너뛰어요.
+    if (saveSeq.current === seqAtStart) {
+      const serverIds = new Set(detail.blocks.map((b) => b.blockId));
+      for (const [editorKey, serverId] of [...idMap.current]) {
+        if (serverIds.has(serverId)) continue;
+        idMap.current.delete(editorKey);
+        dbBlockIds.current.delete(serverId);
+        commentState.current.delete(editorKey);
+        synced.current.delete(editorKey);
+        bindings.current.delete(editorKey);
+      }
+    }
 
     // 같은 블록을 서로 다르게 고쳤다면 내 것이 이기는데, 상대가 고친 내용이 덮이니 알려줘요.
     const conflicts = findConflicts({ base: baseBlocks.current, local, remote: remoteBlocks, sig });
@@ -464,10 +495,17 @@ export function usePageBlocks(pageId, { getKnownPageIds, refreshKnownPageIds, pa
               again.current = true;
               continue;
             }
+            // 서버에 없는 블록 id를 보냈어요(다른 멤버가 그 블록을 막 지웠어요) — 다시 받아와서 id를 바로잡고 한 번 더 해요.
+            if (isInvalidBlockSync(err) && conflictRetries.current < MAX_CONFLICT_RETRIES) {
+              conflictRetries.current += 1;
+              again.current = true;
+              continue;
+            }
             throw err;
           }
 
           const results = saved.results;
+          saveSeq.current += 1;
           pageVersion.current = saved.version ?? pageVersion.current;
           conflictRetries.current = 0;
           // 서버가 돌려준 블록 id로 새로 만들어요(목록에서 빠진 블록은 서버에서 지워졌으니 같이 잊어요).

@@ -389,3 +389,15 @@
   cursor: default;
   opacity: 0.6;
 }
+
+/* 폰: 알림창이 종 위치 기준으로 왼쪽 화면 밖으로 밀리지 않게 화면 가로폭에 맞춰 펼쳐요. */
+@media (max-width: 560px) {
+  .notiPanel {
+    position: fixed;
+    top: 78px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-height: calc(100dvh - 90px);
+  }
+}

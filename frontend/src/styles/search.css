@@ -139,3 +139,28 @@
 .headerSearch__title--task {
   font-weight: 400;
 }
+
+/* 좁은 화면: 검색창은 헤더 남는 폭을 채우고(최대 430px), 결과 목록은 화면 가로폭에 맞춰 펼쳐져요. */
+@media (max-width: 900px) {
+  .headerSearch {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 430px;
+  }
+}
+@media (max-width: 560px) {
+  .headerSearch__panel {
+    position: fixed;
+    top: 78px;
+    left: 12px;
+    right: 12px;
+    max-height: calc(100dvh - 90px);
+  }
+}
+/* 터치 기기에서 16px 미만이면 iOS가 입력창을 확대해요. */
+@media (hover: none) and (pointer: coarse) {
+  .headerSearch__box input {
+    font-size: 16px;
+  }
+}
