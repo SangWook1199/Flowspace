@@ -26,13 +26,14 @@
    글자는 칼럼 왼쪽에 붙고 칼럼이 넓을수록 오른쪽에 빈 공간만 커져서
    "안 쏠렸는데도 쏠려 보이는" 것처럼 느껴져요. 그래서 max-width를
    1200px에서 900px(노션 정도의 읽기 좋은 문서 폭)로, 이후 요청으로
-   700px를 거쳐 지금은 800px로 줄였어요 — 칼럼
+   700px, 800px를 거쳐 지금은 1000px로 넓혔어요(800px는 풀화면에서 너무
+   좁아 보여서요) — 칼럼
    자체가 좁아지니 빈 공간도 같이 줄고, 남는 여백이 양옆에 더 고르게
    나뉘어서 실제로 가운데 있는 것처럼 보여요. 표처럼 800px보다
    넓어져야 하는 내용은 .db-table-scroll의 가로 스크롤이 따로 처리해요. */
 .page-detail__container {
   width: 100%;
-  max-width: 800px;
+  max-width: 1100px;
   margin: 0 auto;
   /* 좌우 패딩을 30px에서 56px로 늘렸어요 — 블록 왼쪽의 드래그
      핸들(.block-left-actions)이 호버 판정을 넓히려고 .block-row를
@@ -805,7 +806,9 @@
 }
 
 /* 키보드(↑/↓)로 블록을 옮기는 중엔 호버 핸들을 숨겨요(BlockEditor의 is-keyboard-nav). 메뉴가 열린 행은 예외예요. */
-.block-editor.is-keyboard-nav .block-row:hover:not(.menu-open) .block-left-actions {
+.block-editor.is-keyboard-nav
+  .block-row:hover:not(.menu-open)
+  .block-left-actions {
   opacity: 0;
   pointer-events: none;
 }
@@ -1168,16 +1171,36 @@
   color: transparent;
 }
 
-.tok-com { color: #9b9a97; }
-.tok-kw { color: #ad1a72; }
-.tok-str { color: #448361; }
-.tok-num { color: #d9730d; }
-.tok-lit { color: #d9730d; }
-.tok-fn { color: #0b6e99; }
-.tok-type { color: #9065b0; }
-.tok-prop { color: #0b6e99; }
-.tok-attr { color: #9065b0; }
-.tok-tag { color: #d44c47; }
+.tok-com {
+  color: #9b9a97;
+}
+.tok-kw {
+  color: #ad1a72;
+}
+.tok-str {
+  color: #448361;
+}
+.tok-num {
+  color: #d9730d;
+}
+.tok-lit {
+  color: #d9730d;
+}
+.tok-fn {
+  color: #0b6e99;
+}
+.tok-type {
+  color: #9065b0;
+}
+.tok-prop {
+  color: #0b6e99;
+}
+.tok-attr {
+  color: #9065b0;
+}
+.tok-tag {
+  color: #d44c47;
+}
 
 .block-input--todo.checked {
   color: #a1abbd;
@@ -1354,7 +1377,9 @@ span.block-number {
 
 /* 자식이 있으면 제목 줄 아래 여백을 줄여서, 제목과 첫 자식 사이가 너무
    벌어져 보이지 않게 해요. */
-.block-container--callout:has(> .block-container__children) > .block-row .block-body--callout {
+.block-container--callout:has(> .block-container__children)
+  > .block-row
+  .block-body--callout {
   padding-bottom: 2px;
 }
 
@@ -2027,7 +2052,9 @@ span.block-number {
   background: rgba(17, 26, 47, 0.35);
   cursor: ew-resize;
   opacity: 0;
-  transition: opacity 0.15s ease, background 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease;
 }
 
 .block-image-resize-handle--left {
@@ -3083,13 +3110,27 @@ span.block-number {
 
 /* 옵션 관리 팝오버의 색 스와치(클릭하면 순서대로 색이 바뀜) */
 
-.db-dot--red { background: #e65353; }
-.db-dot--orange { background: #ff971d; }
-.db-dot--green { background: #24b974; }
-.db-dot--blue { background: #2769ed; }
-.db-dot--purple { background: #8b5cf6; }
-.db-dot--pink { background: #e6499a; }
-.db-dot--gray { background: #8a97ab; }
+.db-dot--red {
+  background: #e65353;
+}
+.db-dot--orange {
+  background: #ff971d;
+}
+.db-dot--green {
+  background: #24b974;
+}
+.db-dot--blue {
+  background: #2769ed;
+}
+.db-dot--purple {
+  background: #8b5cf6;
+}
+.db-dot--pink {
+  background: #e6499a;
+}
+.db-dot--gray {
+  background: #8a97ab;
+}
 
 /* SELECT 셀 — 네이티브 <select>는 옵션에 색을 입힐 수 없어서, 클릭하면
    뜨는 커스텀 팝오버(검색 + 기존 옵션 + 새로 만들기)로 바꿨어요. */
@@ -3273,7 +3314,10 @@ span.block-number {
   display: grid;
   place-items: center;
   opacity: 0;
-  transition: opacity 0.12s ease, background 0.12s ease, color 0.12s ease;
+  transition:
+    opacity 0.12s ease,
+    background 0.12s ease,
+    color 0.12s ease;
 }
 
 .db-add-col-zone:hover .db-add-col-trigger,
@@ -3476,7 +3520,10 @@ span.block-number {
   display: grid;
   place-items: center;
   opacity: 0;
-  transition: opacity 0.12s ease, background 0.12s ease, color 0.12s ease;
+  transition:
+    opacity 0.12s ease,
+    background 0.12s ease,
+    color 0.12s ease;
 }
 
 .db-row-handle-btn:hover {
@@ -3632,13 +3679,27 @@ span.block-number {
   color: #fff;
 }
 
-.db-avatar--blue { background: #2769ed; }
-.db-avatar--green { background: #24b974; }
-.db-avatar--purple { background: #8b5cf6; }
-.db-avatar--gray { background: #8a97ab; }
-.db-avatar--red { background: #e65353; }
-.db-avatar--orange { background: #ff971d; }
-.db-avatar--pink { background: #e6499a; }
+.db-avatar--blue {
+  background: #2769ed;
+}
+.db-avatar--green {
+  background: #24b974;
+}
+.db-avatar--purple {
+  background: #8b5cf6;
+}
+.db-avatar--gray {
+  background: #8a97ab;
+}
+.db-avatar--red {
+  background: #e65353;
+}
+.db-avatar--orange {
+  background: #ff971d;
+}
+.db-avatar--pink {
+  background: #e6499a;
+}
 
 /* URL/이메일/전화번호 셀 — 값이 있으면 바로 열 수 있는 아이콘 버튼을
    input 옆에 같이 보여줘요. */
@@ -3915,24 +3976,69 @@ span.block-number {
 }
 
 /* 인라인 색(RichTextInput의 <span data-c / data-bg>) */
-.block-editor [data-c="gray"] { color: #9b9a97; }
-.block-editor [data-bg="gray"] { background-color: #f1f1ef; border-radius: 3px; }
-.block-editor [data-c="brown"] { color: #8a5a3b; }
-.block-editor [data-bg="brown"] { background-color: #f4eeee; border-radius: 3px; }
-.block-editor [data-c="orange"] { color: #d9730d; }
-.block-editor [data-bg="orange"] { background-color: #faebdd; border-radius: 3px; }
-.block-editor [data-c="yellow"] { color: #cb912f; }
-.block-editor [data-bg="yellow"] { background-color: #fbf3db; border-radius: 3px; }
-.block-editor [data-c="green"] { color: #448361; }
-.block-editor [data-bg="green"] { background-color: #edf3ec; border-radius: 3px; }
-.block-editor [data-c="blue"] { color: #337ea9; }
-.block-editor [data-bg="blue"] { background-color: #e7f3f8; border-radius: 3px; }
-.block-editor [data-c="purple"] { color: #9065b0; }
-.block-editor [data-bg="purple"] { background-color: #f6f3f9; border-radius: 3px; }
-.block-editor [data-c="pink"] { color: #c14c8a; }
-.block-editor [data-bg="pink"] { background-color: #faf1f5; border-radius: 3px; }
-.block-editor [data-c="red"] { color: #d44c47; }
-.block-editor [data-bg="red"] { background-color: #fdebec; border-radius: 3px; }
+.block-editor [data-c="gray"] {
+  color: #9b9a97;
+}
+.block-editor [data-bg="gray"] {
+  background-color: #f1f1ef;
+  border-radius: 3px;
+}
+.block-editor [data-c="brown"] {
+  color: #8a5a3b;
+}
+.block-editor [data-bg="brown"] {
+  background-color: #f4eeee;
+  border-radius: 3px;
+}
+.block-editor [data-c="orange"] {
+  color: #d9730d;
+}
+.block-editor [data-bg="orange"] {
+  background-color: #faebdd;
+  border-radius: 3px;
+}
+.block-editor [data-c="yellow"] {
+  color: #cb912f;
+}
+.block-editor [data-bg="yellow"] {
+  background-color: #fbf3db;
+  border-radius: 3px;
+}
+.block-editor [data-c="green"] {
+  color: #448361;
+}
+.block-editor [data-bg="green"] {
+  background-color: #edf3ec;
+  border-radius: 3px;
+}
+.block-editor [data-c="blue"] {
+  color: #337ea9;
+}
+.block-editor [data-bg="blue"] {
+  background-color: #e7f3f8;
+  border-radius: 3px;
+}
+.block-editor [data-c="purple"] {
+  color: #9065b0;
+}
+.block-editor [data-bg="purple"] {
+  background-color: #f6f3f9;
+  border-radius: 3px;
+}
+.block-editor [data-c="pink"] {
+  color: #c14c8a;
+}
+.block-editor [data-bg="pink"] {
+  background-color: #faf1f5;
+  border-radius: 3px;
+}
+.block-editor [data-c="red"] {
+  color: #d44c47;
+}
+.block-editor [data-bg="red"] {
+  background-color: #fdebec;
+  border-radius: 3px;
+}
 
 /* 비어 있는(자식 없는) 펼쳐진 토글의 안내 줄 */
 .block-toggle-empty {
@@ -4001,10 +4107,18 @@ span.block-number {
 .block-row {
   --remote-color: #385ceb;
 }
-.block-row.remote-tone-green { --remote-color: #118365; }
-.block-row.remote-tone-purple { --remote-color: #7c4ec4; }
-.block-row.remote-tone-orange { --remote-color: #c1630b; }
-.block-row.remote-tone-pink { --remote-color: #c2417a; }
+.block-row.remote-tone-green {
+  --remote-color: #118365;
+}
+.block-row.remote-tone-purple {
+  --remote-color: #7c4ec4;
+}
+.block-row.remote-tone-orange {
+  --remote-color: #c1630b;
+}
+.block-row.remote-tone-pink {
+  --remote-color: #c2417a;
+}
 .block-row.has-remote-editor::after {
   content: "";
   position: absolute;
