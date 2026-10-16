@@ -14,6 +14,7 @@ import com.flowspace.dto.ai.AiApplyResponse;
 import com.flowspace.dto.ai.AiDraft;
 import com.flowspace.entity.Event;
 import com.flowspace.entity.Sprint;
+import com.flowspace.entity.SubTask;
 import com.flowspace.entity.Task;
 import com.flowspace.entity.TaskAssignee;
 import com.flowspace.entity.TaskStatus;
@@ -31,6 +32,7 @@ import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.repository.EventRepository;
 import com.flowspace.repository.SprintRepository;
+import com.flowspace.repository.SubTaskRepository;
 import com.flowspace.repository.TaskAssigneeRepository;
 import com.flowspace.repository.TaskRepository;
 import com.flowspace.repository.UserRepository;
@@ -63,6 +65,7 @@ public class AiProjectApplyService {
     private final SprintRepository sprintRepository;
     private final TaskRepository taskRepository;
     private final TaskAssigneeRepository taskAssigneeRepository;
+    private final SubTaskRepository subTaskRepository;
     private final EventRepository eventRepository;
 
     private final ActivityService activityService;
@@ -129,6 +132,8 @@ public class AiProjectApplyService {
                     taskAssigneeRepository
                         .save(TaskAssignee.builder().task(task).user(members.get(draftTask.assigneeUserId())).build());
                 }
+
+                saveSubtasks(task, draftTask.subtasks());
             }
 
             // 스프린트 생성 기록은 남겨요(작업은 개수가 많아서 하나씩 기록하지 않아요).
@@ -145,6 +150,23 @@ public class AiProjectApplyService {
         }
 
         return new AiApplyResponse(sprintIds.size(), taskCount, draftEvents.size(), sprintIds);
+    }
+
+    // 작업의 하위 작업을 적은 순서대로 만들어요(담당자 없이, 미완료로 시작해요).
+    private void saveSubtasks(Task task, List<String> contents) {
+
+        if (contents == null || contents.isEmpty()) {
+            return;
+        }
+
+        List<SubTask> subtasks = new ArrayList<>();
+        int position = 0;
+
+        for (String content : contents) {
+            subtasks.add(SubTask.builder().task(task).content(content.strip()).position(position++).build());
+        }
+
+        subTaskRepository.saveAll(subtasks);
     }
 
     // 새 작업이 놓일 상태예요. 할 일(TODO) 분류 중 가장 앞의 것을 쓰고, 없으면 맨 앞 상태를 써요.

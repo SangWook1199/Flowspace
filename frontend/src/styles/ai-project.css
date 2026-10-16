@@ -619,6 +619,43 @@
   resize: vertical;
   line-height: 1.5;
 }
+.aiSubtaskList {
+  display: grid;
+  gap: 4px;
+  margin-top: 4px;
+}
+.aiSubtaskItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 30px;
+  gap: 4px;
+  align-items: center;
+}
+.aiSubtaskItem input {
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+.aiSubtaskItem .aiIconButton {
+  width: 30px;
+  height: 30px;
+}
+.aiSubtaskAdd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 30px;
+  border: 1px dashed #c3cde0;
+  border-radius: 8px;
+  background: transparent;
+  color: #5a6a85;
+  font-size: 12px;
+  cursor: pointer;
+}
+.aiSubtaskAdd:hover {
+  background: #f3f6fb;
+}
 .aiPriority.HIGH {
   border-color: #f3b4b4;
   background: #fff5f5;

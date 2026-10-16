@@ -10,12 +10,14 @@ export default function AiProgress({ job, error, onCancel, onRecheck }) {
   const retrying = job.attempt > 1;
   const progress = queued ? null : job.progress;
   const checking = progress?.phase === "CHECKING";
+  const subtasking = progress?.phase === "SUBTASKS";
+  const settled = checking || subtasking;
 
   return (
     <section className="aiProgress" role="status" aria-live="polite">
       <LoaderCircle className="aiSpinner" size={44} />
 
-      <h2>{queued ? "차례를 기다리고 있어요" : retrying ? "초안을 다시 다듬고 있어요" : "AI가 초안을 만들고 있어요"}</h2>
+      <h2>{queued ? "차례를 기다리고 있어요" : subtasking ? "하위 작업을 만들고 있어요" : retrying ? "초안을 다시 다듬고 있어요" : "AI가 초안을 만들고 있어요"}</h2>
 
       {!queued && (
         <div className="aiMeterBlock">
@@ -33,16 +35,16 @@ export default function AiProgress({ job, error, onCancel, onRecheck }) {
         </div>
       )}
 
-      <p className="aiProgressMessage">{progressMessage(job, progress, checking, queued)}</p>
+      <p className="aiProgressMessage">{progressMessage(job, progress, checking, subtasking, queued)}</p>
 
       {progress && progress.recentTasks.length > 0 && (
         <div className="aiTaskFeed">
           <p className="aiTaskFeedTitle">
-            {checking ? "만든 작업" : "방금 만든 작업"} <span>총 {progress.taskCount}개</span>
+            {subtasking ? "하위 작업을 만드는 작업" : checking ? "만든 작업" : "방금 만든 작업"} <span>총 {progress.taskCount}개</span>
           </p>
           <ul>
             {[...progress.recentTasks].reverse().map((title, index) => (
-              <li key={`${progress.taskCount - index}-${title}`} className={index === 0 && !checking ? "aiTaskNew" : ""}>
+              <li key={`${progress.taskCount - index}-${title}`} className={index === 0 && !settled ? "aiTaskNew" : ""}>
                 <Check size={14} />
                 <span>{title}</span>
               </li>
@@ -89,9 +91,13 @@ export default function AiProgress({ job, error, onCancel, onRecheck }) {
 }
 
 // 지금 무엇을 하고 있는지 한 줄로 알려줘요.
-function progressMessage(job, progress, checking, queued) {
+function progressMessage(job, progress, checking, subtasking, queued) {
   if (queued) return job.message;
   if (!progress) return "AI가 첫 응답을 준비하고 있어요. 처음에는 모델을 불러오느라 시간이 걸릴 수 있어요.";
+  if (subtasking) {
+    const where = `${progress.sprintIndex}/${progress.sprintCount}번째 스프린트`;
+    return progress.sprintName ? `${where} “${progress.sprintName}”의 작업을 잘게 나누고 있어요.` : `${where}의 작업을 잘게 나누고 있어요.`;
+  }
   if (checking) return "초안을 다 받았어요. 날짜와 담당자를 계산하고 빠진 곳이 없는지 확인하고 있어요.";
 
   const where = `${progress.sprintIndex}/${progress.sprintCount}번째 스프린트`;

@@ -200,9 +200,9 @@ public class SprintService {
             throw new FlowSpaceException(ErrorCode.INVALID_SPRINT_STATUS_CHANGE);
         }
 
-        // 이미 진행 중인 다른 스프린트가 있으면 시작할 수 없어요.
+        // 이미 진행 중인 다른 스프린트가 있으면 그 스프린트는 계획됨으로 돌려요(진행 중인 스프린트는 항상 하나만 둬요).
         if (request.status() == SprintStatus.ACTIVE && sprint.getStatus() != SprintStatus.ACTIVE) {
-            validateNoActiveSprint(sprint.getWorkspace());
+            pauseOtherActiveSprints(sprint);
         }
 
         if (request.status() == SprintStatus.COMPLETED && sprint.getStatus() != SprintStatus.COMPLETED) {
@@ -307,7 +307,18 @@ public class SprintService {
         return SprintResponse.from(sprint, progress, taskCount, completedTaskCount);
     }
 
-    // 진행 중인 스프린트가 이미 있으면 막아요
+    // 새로 시작하는 스프린트 말고 진행 중이던 스프린트를 계획됨으로 되돌려요(작업은 그대로 그 스프린트에 남아요).
+    private void pauseOtherActiveSprints(Sprint starting) {
+
+        for (Sprint other : sprintRepository.findByWorkspaceAndStatusOrderByStartDateDesc(starting.getWorkspace(),
+            SprintStatus.ACTIVE)) {
+            if (!other.getSprintId().equals(starting.getSprintId())) {
+                other.updateStatus(SprintStatus.PLANNING);
+            }
+        }
+    }
+
+    // 진행 중인 스프린트가 이미 있으면 막아요(스프린트를 처음 만들 때만 써요)
     private void validateNoActiveSprint(Workspace workspace) {
 
         if (sprintRepository.existsByWorkspaceAndStatus(workspace, SprintStatus.ACTIVE)) {

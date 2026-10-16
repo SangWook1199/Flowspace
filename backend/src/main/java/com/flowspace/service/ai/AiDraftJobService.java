@@ -40,6 +40,7 @@ public class AiDraftJobService {
     private final AiProperties properties;
     private final AiModelClient modelClient;
     private final AiDraftGenerator generator;
+    private final AiSubtaskWriter subtaskWriter;
     private final AiDraftJobRegistry registry;
     private final AiProjectApplyService applyService;
 
@@ -102,8 +103,10 @@ public class AiDraftJobService {
             throw new FlowSpaceException(ErrorCode.AI_UNAVAILABLE);
         }
 
-        AiDraftJob job = registry.submit(workspaceId, user.getUserId(), running -> generator.generate(request,
-            nicknames, context, new AiDraftGenerator.Listener() {
+        // 초안을 만든 뒤, 작업마다 기본적인 하위 작업을 붙여요(하위 작업을 못 만들어도 기본 항목으로 채워서 초안은 성공해요).
+        AiDraftJob job = registry.submit(workspaceId, user.getUserId(), running -> {
+
+            AiDraft generated = generator.generate(request, nicknames, context, new AiDraftGenerator.Listener() {
 
                 @Override
                 public boolean isCancelled() {
@@ -119,7 +122,21 @@ public class AiDraftJobService {
                 public void onProgress(AiProgressInfo progress) {
                     running.onProgress(progress);
                 }
-            }));
+            });
+
+            return subtaskWriter.addSubtasks(generated, request.topic(), new AiSubtaskWriter.Listener() {
+
+                @Override
+                public boolean isCancelled() {
+                    return running.isCancelRequested();
+                }
+
+                @Override
+                public void onProgress(AiProgressInfo progress) {
+                    running.onProgress(progress);
+                }
+            });
+        });
 
         return toResponse(job);
     }

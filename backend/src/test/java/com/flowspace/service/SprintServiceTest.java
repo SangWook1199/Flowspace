@@ -179,6 +179,36 @@ class SprintServiceTest {
     }
 
     @Test
+    @DisplayName("다른 스프린트가 진행 중일 때 시작하면 그 스프린트는 계획됨으로 돌아가고 새 스프린트가 진행 중이 된다")
+    void startingSprintPausesOtherActiveSprint() {
+        memberWithRole(WorkspaceRole.MEMBER);
+        sprint.updateStatus(SprintStatus.PLANNING);
+
+        Sprint running = Sprint.builder().sprintId(11L).workspace(workspace).createdBy(user).name("스프린트 0")
+            .startDate(LocalDate.now()).endDate(LocalDate.now().plusDays(7)).status(SprintStatus.ACTIVE).build();
+        when(sprintRepository.findByWorkspaceAndStatusOrderByStartDateDesc(workspace, SprintStatus.ACTIVE))
+            .thenReturn(List.of(running));
+
+        sprintService.updateStatus(10L, new SprintStatusUpdateRequest(SprintStatus.ACTIVE), "a@a.com");
+
+        assertEquals(SprintStatus.ACTIVE, sprint.getStatus());
+        assertEquals(SprintStatus.PLANNING, running.getStatus());
+    }
+
+    @Test
+    @DisplayName("진행 중인 스프린트가 없으면 그대로 시작한다")
+    void startingSprintWithoutOtherActive() {
+        memberWithRole(WorkspaceRole.MEMBER);
+        sprint.updateStatus(SprintStatus.PLANNING);
+        when(sprintRepository.findByWorkspaceAndStatusOrderByStartDateDesc(workspace, SprintStatus.ACTIVE))
+            .thenReturn(List.of());
+
+        sprintService.updateStatus(10L, new SprintStatusUpdateRequest(SprintStatus.ACTIVE), "a@a.com");
+
+        assertEquals(SprintStatus.ACTIVE, sprint.getStatus());
+    }
+
+    @Test
     @DisplayName("시작하지 않은 스프린트는 바로 완료할 수 없다")
     void planningSprintCannotBeCompletedDirectly() {
         memberWithRole(WorkspaceRole.MEMBER);

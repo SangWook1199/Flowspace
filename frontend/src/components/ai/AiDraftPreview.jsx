@@ -1,19 +1,23 @@
 import { useEffect, useState } from "react";
-import { CalendarDays, Info, Trash2 } from "lucide-react";
+import { CalendarDays, Info, Plus, Trash2, X } from "lucide-react";
 
 import FormActions from "../sprint/FormActions";
 
 import useDialog from "../../context/useDialog";
 import {
+  AI_LIMITS,
+  addSubtask,
   countDraft,
   isRangeInvalid,
   removeEvent,
   removeSprint,
+  removeSubtask,
   removeTask,
   toApplyBody,
   toEditableDraft,
   updateEvent,
   updateSprint,
+  updateSubtask,
   updateTask,
   validateDraft,
 } from "../../utils/aiDraft";
@@ -49,7 +53,7 @@ export default function AiDraftPreview({ initialDraft, members, onApply, onDisca
 
     const ok = await confirm({
       title: "스프린트 만들기",
-      message: `스프린트 ${counts.sprints}개, 작업 ${counts.tasks}개, 일정 ${counts.events}개를 만들어요.\n만든 뒤에는 한 번에 되돌릴 수 없고, 스프린트마다 지워야 해요.`,
+      message: `스프린트 ${counts.sprints}개, 작업 ${counts.tasks}개(하위 작업 ${counts.subtasks}개), 일정 ${counts.events}개를 만들어요.\n만든 뒤에는 한 번에 되돌릴 수 없고, 스프린트마다 지워야 해요.`,
       confirmLabel: "만들기",
     });
     if (!ok) return;
@@ -103,6 +107,9 @@ export default function AiDraftPreview({ initialDraft, members, onApply, onDisca
         </span>
         <span>
           작업 <b>{counts.tasks}</b>개
+        </span>
+        <span>
+          하위 작업 <b>{counts.subtasks}</b>개
         </span>
         <span>
           일정 <b>{counts.events}</b>개
@@ -170,6 +177,34 @@ export default function AiDraftPreview({ initialDraft, members, onApply, onDisca
                         aria-label="작업 설명"
                         onChange={(e) => setDraft(updateTask(draft, sprint.key, task.key, { description: e.target.value }))}
                       />
+                    </details>
+                    <details>
+                      <summary>하위 작업 {(task.subtasks ?? []).length}개</summary>
+                      <div className="aiSubtaskList">
+                        {(task.subtasks ?? []).map((subtask) => (
+                          <div className="aiSubtaskItem" key={subtask.key}>
+                            <input
+                              maxLength={AI_LIMITS.MAX_SUBTASK_LENGTH}
+                              value={subtask.content}
+                              aria-label="하위 작업"
+                              onChange={(e) => setDraft(updateSubtask(draft, sprint.key, task.key, subtask.key, e.target.value))}
+                            />
+                            <button
+                              type="button"
+                              className="aiIconButton"
+                              aria-label="하위 작업 지우기"
+                              onClick={() => setDraft(removeSubtask(draft, sprint.key, task.key, subtask.key))}
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                        {(task.subtasks ?? []).length < AI_LIMITS.MAX_SUBTASKS && (
+                          <button type="button" className="aiSubtaskAdd" onClick={() => setDraft(addSubtask(draft, sprint.key, task.key))}>
+                            <Plus size={13} /> 하위 작업 추가
+                          </button>
+                        )}
+                      </div>
                     </details>
                   </div>
 

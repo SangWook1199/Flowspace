@@ -10,7 +10,7 @@ import useDialog from "../context/useDialog";
 export default function SprintDetail() {
   const { sprintId } = useParams();
   const navigate = useNavigate();
-  const { confirm, notify } = useDialog();
+  const { confirm } = useDialog();
   // 스프린트·작업·칸반 상태는 서버에서 불러와 MainLayout(WorkspaceProvider)이 내려줘요.
   // 칸반/스프린트 작업 목록과 같은 데이터라 어디서 고치든 여기도 따라와요.
   const {
@@ -143,14 +143,16 @@ export default function SprintDetail() {
   };
 
   const handleStart = async () => {
-    // 진행 중인 스프린트는 하나만 둘 수 있어요(칸반도 그 스프린트를 보여줘요).
+    // 진행 중인 스프린트는 하나만 둘 수 있어요(칸반도 그 스프린트를 보여줘요). 이미 있으면 안내한 뒤 그 스프린트를 계획됨으로 돌려요.
     const otherActive = sprints.find((item) => item.status === "ACTIVE" && item.id !== sprint.id);
-    if (otherActive) {
-      notify(`“${otherActive.name}” 스프린트가 진행 중이에요.\n먼저 완료한 뒤 시작해 주세요.`);
-      return;
-    }
 
-    const ok = await confirm({ title: "스프린트 시작", message: `“${sprint.name}” 스프린트를 시작할까요?`, confirmLabel: "시작" });
+    const ok = await confirm({
+      title: "스프린트 시작",
+      message: otherActive
+        ? `진행 중인 “${otherActive.name}” 스프린트는 계획됨으로 바뀌어요.\n“${sprint.name}” 스프린트를 진행 중으로 시작할까요?\n(작업은 각 스프린트에 그대로 남아요.)`
+        : `“${sprint.name}” 스프린트를 시작할까요?`,
+      confirmLabel: "시작",
+    });
     if (!ok) return;
 
     setBusy(true);
