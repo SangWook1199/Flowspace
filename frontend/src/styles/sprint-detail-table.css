@@ -90,18 +90,9 @@
   padding: 0 8px;
   font-size: 13px;
 }
-.subtaskName i {
-  width: 16px;
-  height: 16px;
-  border: 2px solid #28ba74;
-  border-radius: 50%;
-  color: #28ba74;
-  font-style: normal;
-  font-size: 10px;
-  display: inline-grid;
-  vertical-align: middle;
-  margin-right: 11px;
-  place-items: center;
+.subtaskName.done {
+  color: #8a97ab;
+  text-decoration: line-through;
 }
 .subtaskCheck {
   display: none;
@@ -112,15 +103,6 @@
 }
 .subtask .assigneeStack {
   justify-self: center; /* 작업 줄의 담당자와 같은 가운데 정렬 */
-}
-/* 체크 표시는 글자(✓) 대신 CSS로 그려서 동그라미 정중앙에 와요. */
-.subtaskName i::after {
-  content: "";
-  width: 4px;
-  height: 8px;
-  border: solid currentColor;
-  border-width: 0 2px 2px 0;
-  transform: translate(0, -1px) rotate(45deg);
 }
 .taskRow .assignee,
 .taskRow em,
