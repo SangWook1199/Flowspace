@@ -247,13 +247,8 @@ function TaskGroup({ task, open, onToggle, onOpen, selectable = false, checked =
               <span />
               <span />
 
-              <span className="subtaskName">
-                <i
-                  aria-hidden="true"
-                  style={known && !done ? { borderColor: "#cbd5e1", color: "transparent" } : undefined}
-                />
-                {text}
-              </span>
+              {/* 완료한 하위 작업은 동그라미 대신 작업 목록처럼 제목에 취소선을 그어요. */}
+              <span className={`subtaskName${done ? " done" : ""}`}>{text}</span>
 
               {/* 하위 작업 담당자 — 작업에 배치된 담당자 중 한 명이에요. */}
               <div className="assigneeStack">
