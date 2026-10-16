@@ -15,6 +15,10 @@ public final class AiDraftLimits {
     // 작업 하나의 기간은 평일 기준 최대 5일이에요.
     public static final int MAX_TASK_DAYS = 5;
 
+    // 작업 하나에 붙는 하위 작업의 수와 하위 작업 한 줄의 글자 수예요(DB 컬럼 길이 300과 같아요).
+    public static final int MAX_SUBTASKS_PER_TASK = 8;
+    public static final int MAX_SUBTASK_CONTENT = 300;
+
     private AiDraftLimits() {
     }
 }

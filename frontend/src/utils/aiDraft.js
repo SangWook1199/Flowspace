@@ -1,7 +1,7 @@
 import { diffDays, parseDateKey, toDateKey, todayKey } from "./date";
 
 // 서버(AiDraftLimits)와 같은 한도예요. 넘기면 서버가 거절해서 미리 막아요.
-export const AI_LIMITS = { MAX_SPRINTS: 12, MAX_EVENTS: 20, MAX_FIXED_EVENTS: 20 };
+export const AI_LIMITS = { MAX_SPRINTS: 12, MAX_EVENTS: 20, MAX_FIXED_EVENTS: 20, MAX_SUBTASKS: 8, MAX_SUBTASK_LENGTH: 300 };
 
 // 기본 기간(주)과 스프린트 길이 선택지
 const DEFAULT_PERIOD_WEEKS = 6;
@@ -144,6 +144,7 @@ export function toEditableDraft(draft) {
         key: newKey(),
         description: task.description ?? "",
         assigneeUserId: task.assigneeUserId ?? null,
+        subtasks: (task.subtasks ?? []).map((content) => ({ key: newKey(), content })),
       })),
     })),
     events: (draft?.events ?? []).map((event) => ({ ...event, key: newKey() })),
@@ -165,6 +166,7 @@ export function toApplyBody(draft) {
         assigneeUserId: task.assigneeUserId ?? null,
         startDate: task.startDate,
         endDate: task.endDate,
+        subtasks: (task.subtasks ?? []).map((subtask) => subtask.content.trim()).filter(Boolean),
       })),
     })),
     events: draft.events.map((event) => ({ title: event.title.trim(), date: event.date })),
@@ -174,6 +176,10 @@ export function toApplyBody(draft) {
 export const countDraft = (draft) => ({
   sprints: draft.sprints.length,
   tasks: draft.sprints.reduce((sum, sprint) => sum + sprint.tasks.length, 0),
+  subtasks: draft.sprints.reduce(
+    (sum, sprint) => sum + sprint.tasks.reduce((inner, task) => inner + (task.subtasks ?? []).filter((subtask) => subtask.content.trim()).length, 0),
+    0,
+  ),
   events: draft.events.length,
 });
 
@@ -190,6 +196,9 @@ export function validateDraft(draft) {
     for (const task of sprint.tasks) {
       if (!task.title.trim()) return `'${sprint.name}'에 제목이 비어 있는 작업이 있어요.`;
       if (isRangeInvalid(task.startDate, task.endDate)) return `'${task.title}'의 기간(시작일·종료일)을 확인해주세요.`;
+      if ((task.subtasks ?? []).some((subtask) => subtask.content.trim().length > AI_LIMITS.MAX_SUBTASK_LENGTH)) {
+        return `'${task.title}'의 하위 작업은 ${AI_LIMITS.MAX_SUBTASK_LENGTH}자 이하로 적어 주세요.`;
+      }
     }
   }
 
@@ -212,6 +221,25 @@ export const updateTask = (draft, sprintKey, taskKey, patch) =>
 
 export const removeTask = (draft, sprintKey, taskKey) =>
   updateSprint(draft, sprintKey, { tasks: draft.sprints.find((sprint) => sprint.key === sprintKey).tasks.filter((task) => task.key !== taskKey) });
+
+const findTask = (draft, sprintKey, taskKey) => draft.sprints.find((sprint) => sprint.key === sprintKey).tasks.find((task) => task.key === taskKey);
+
+// 하위 작업(작업 안의 {key, content} 목록) 추가·수정·삭제. 한 작업에 AI_LIMITS.MAX_SUBTASKS개까지 둘 수 있어요.
+export const addSubtask = (draft, sprintKey, taskKey) => {
+  const subtasks = findTask(draft, sprintKey, taskKey).subtasks ?? [];
+  if (subtasks.length >= AI_LIMITS.MAX_SUBTASKS) return draft;
+  return updateTask(draft, sprintKey, taskKey, { subtasks: [...subtasks, { key: newKey(), content: "" }] });
+};
+
+export const updateSubtask = (draft, sprintKey, taskKey, subtaskKey, content) =>
+  updateTask(draft, sprintKey, taskKey, {
+    subtasks: (findTask(draft, sprintKey, taskKey).subtasks ?? []).map((subtask) => (subtask.key === subtaskKey ? { ...subtask, content } : subtask)),
+  });
+
+export const removeSubtask = (draft, sprintKey, taskKey, subtaskKey) =>
+  updateTask(draft, sprintKey, taskKey, {
+    subtasks: (findTask(draft, sprintKey, taskKey).subtasks ?? []).filter((subtask) => subtask.key !== subtaskKey),
+  });
 
 export const updateEvent = (draft, eventKey, patch) => ({ ...draft, events: mapAt(draft.events, eventKey, patch) });
 

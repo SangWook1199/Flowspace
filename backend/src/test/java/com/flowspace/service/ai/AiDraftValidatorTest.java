@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 
 import com.flowspace.dto.ai.AiDraft;
 import com.flowspace.dto.ai.AiDraftContext;
+import com.flowspace.dto.ai.AiDraftLimits;
 import com.flowspace.dto.ai.AiRawDraft;
 import com.flowspace.entity.enums.TaskPriority;
 import com.flowspace.exception.ErrorCode;
@@ -891,5 +892,52 @@ class AiDraftValidatorTest {
             () -> validator.validateForApply(new AiDraft(List.of(), List.of()), Set.of(1L)));
 
         assertEquals(ErrorCode.AI_DRAFT_INVALID, e.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("하위 작업이 있는 최종본도 통과한다")
+    void applyAcceptsSubtasks() {
+        AiDraft draft = draftWithSubtasks(List.of("화면 구성", "API 연결"));
+
+        assertDoesNotThrow(() -> validator.validateForApply(draft, Set.of(1L)));
+    }
+
+    @Test
+    @DisplayName("하위 작업이 너무 많으면 거절한다")
+    void applyRejectsTooManySubtasks() {
+        AiDraft draft = draftWithSubtasks(java.util.Collections.nCopies(AiDraftLimits.MAX_SUBTASKS_PER_TASK + 1, "단계"));
+
+        FlowSpaceException e = assertThrows(FlowSpaceException.class, () -> validator.validateForApply(draft, Set.of(1L)));
+
+        assertEquals(ErrorCode.AI_DRAFT_INVALID, e.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("비어 있거나 너무 긴 하위 작업이 있으면 거절한다")
+    void applyRejectsBadSubtaskText() {
+        AiDraft blank = draftWithSubtasks(List.of("화면 구성", "  "));
+        AiDraft tooLong = draftWithSubtasks(List.of("가".repeat(AiDraftLimits.MAX_SUBTASK_CONTENT + 1)));
+
+        assertEquals(ErrorCode.AI_DRAFT_INVALID,
+            assertThrows(FlowSpaceException.class, () -> validator.validateForApply(blank, Set.of(1L))).getErrorCode());
+        assertEquals(ErrorCode.AI_DRAFT_INVALID,
+            assertThrows(FlowSpaceException.class, () -> validator.validateForApply(tooLong, Set.of(1L))).getErrorCode());
+    }
+
+    @Test
+    @DisplayName("하위 작업을 보내지 않은 작업은 빈 목록으로 읽는다")
+    void taskWithoutSubtasksHasEmptyList() {
+        AiDraft.Task plain = new AiDraft.Task("작업", "d", TaskPriority.HIGH, 1L, START, START.plusDays(2));
+        AiDraft.Task withNull = new AiDraft.Task("작업", "d", TaskPriority.HIGH, 1L, START, START.plusDays(2), null);
+
+        assertEquals(List.of(), plain.subtasks());
+        assertEquals(List.of(), withNull.subtasks());
+    }
+
+    private AiDraft draftWithSubtasks(List<String> subtasks) {
+        return new AiDraft(
+            List.of(new AiDraft.Sprint("a", "g", START, START.plusDays(13),
+                List.of(new AiDraft.Task("작업", "d", TaskPriority.HIGH, 1L, START, START.plusDays(2), subtasks)))),
+            List.of());
     }
 }

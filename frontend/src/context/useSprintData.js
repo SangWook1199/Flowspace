@@ -213,7 +213,13 @@ export function useSprintData({ userId, workspaceId }) {
   const changeSprintStatus = async (sprintId, status) => {
     try {
       const updated = await sprintApi.updateSprintStatus(sprintId, status);
-      setSprints((prev) => prev.map((sprint) => (sprint.id === sprintId ? updated : sprint)));
+      // 새로 시작하면 서버가 진행 중이던 다른 스프린트를 계획됨으로 돌려요. 화면도 같이 맞춰요.
+      setSprints((prev) =>
+        prev.map((sprint) => {
+          if (sprint.id === sprintId) return updated;
+          return status === "ACTIVE" && sprint.status === "ACTIVE" ? { ...sprint, status: "PLANNING" } : sprint;
+        }),
+      );
       if (status === "COMPLETED") await refresh();
       return true;
     } catch (err) {

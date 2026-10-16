@@ -244,6 +244,28 @@ public class AiDraftValidator {
             if (task.assigneeUserId() != null && !memberIds.contains(task.assigneeUserId())) {
                 throw new FlowSpaceException(ErrorCode.ACCESS_DENIED);
             }
+
+            validateSubtasks(task);
+        }
+    }
+
+    // 하위 작업은 작업마다 정해진 개수 안에서, 비지 않고 길지 않은 글이어야 해요.
+    private void validateSubtasks(AiDraft.Task task) {
+
+        List<String> subtasks = task.subtasks();
+
+        if (subtasks == null) {
+            return;
+        }
+
+        if (subtasks.size() > AiDraftLimits.MAX_SUBTASKS_PER_TASK) {
+            throw new FlowSpaceException(ErrorCode.AI_DRAFT_INVALID);
+        }
+
+        for (String content : subtasks) {
+            if (isBlank(content) || content.strip().length() > AiDraftLimits.MAX_SUBTASK_CONTENT) {
+                throw new FlowSpaceException(ErrorCode.AI_DRAFT_INVALID);
+            }
         }
     }
 

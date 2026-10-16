@@ -74,8 +74,9 @@ class AiDraftJobServiceTest {
     void setUp() {
         properties = new AiProperties();
 
-        service = new AiDraftJobService(properties, modelClient, generator, new AiDraftJobRegistry(properties),
-            applyService, userRepository, workspaceRepository, workspaceMemberRepository);
+        service = new AiDraftJobService(properties, modelClient, generator, new AiSubtaskWriter(modelClient),
+            new AiDraftJobRegistry(properties), applyService, userRepository, workspaceRepository,
+            workspaceMemberRepository);
 
         me = User.builder().userId(1L).email("a@a.com").nickname("관리자").build();
         other = User.builder().userId(2L).email("b@b.com").nickname("다른관리자").build();

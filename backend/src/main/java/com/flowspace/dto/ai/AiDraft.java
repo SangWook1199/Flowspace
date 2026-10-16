@@ -2,7 +2,9 @@ package com.flowspace.dto.ai;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.flowspace.entity.enums.TaskPriority;
 
 import jakarta.validation.Valid;
@@ -65,8 +67,24 @@ public record AiDraft(
     LocalDate startDate,
 
     @NotNull(message = "종료일은 필수입니다.")
-    LocalDate endDate
+    LocalDate endDate,
+
+    // 작업의 기본적인 단계예요. 없으면 빈 목록이에요(하위 작업 없이 만들어요).
+    @Size(max = AiDraftLimits.MAX_SUBTASKS_PER_TASK, message = "하위 작업은 작업마다 8개까지 만들 수 있어요.")
+    List<@NotBlank(message = "하위 작업 내용은 비워 둘 수 없어요.") @Size(max = AiDraftLimits.MAX_SUBTASK_CONTENT, message = "하위 작업은 300자 이하입니다.") String> subtasks
   ) {
+
+    // 하위 작업이 오지 않거나(옛 화면, 서버가 날짜만 정한 작업) null이 섞여 와도 항상 읽을 수 있는 목록으로 둬요.
+    @JsonCreator
+    public Task {
+      subtasks = subtasks == null ? List.of() : subtasks.stream().filter(Objects::nonNull).toList();
+    }
+
+    // 하위 작업 없이 만들 때 쓰는 생성자예요.
+    public Task(String title, String description, TaskPriority priority, Long assigneeUserId, LocalDate startDate,
+      LocalDate endDate) {
+      this(title, description, priority, assigneeUserId, startDate, endDate, List.of());
+    }
   }
 
   public record Event(

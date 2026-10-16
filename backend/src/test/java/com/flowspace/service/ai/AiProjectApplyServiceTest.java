@@ -32,6 +32,7 @@ import com.flowspace.dto.ai.AiApplyResponse;
 import com.flowspace.dto.ai.AiDraft;
 import com.flowspace.entity.Event;
 import com.flowspace.entity.Sprint;
+import com.flowspace.entity.SubTask;
 import com.flowspace.entity.Task;
 import com.flowspace.entity.TaskAssignee;
 import com.flowspace.entity.TaskStatus;
@@ -50,6 +51,7 @@ import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.repository.EventRepository;
 import com.flowspace.repository.SprintRepository;
+import com.flowspace.repository.SubTaskRepository;
 import com.flowspace.repository.TaskAssigneeRepository;
 import com.flowspace.repository.TaskRepository;
 import com.flowspace.repository.UserRepository;
@@ -77,6 +79,8 @@ class AiProjectApplyServiceTest {
     private TaskRepository taskRepository;
     @Mock
     private TaskAssigneeRepository taskAssigneeRepository;
+    @Mock
+    private SubTaskRepository subTaskRepository;
     @Mock
     private EventRepository eventRepository;
     @Mock
@@ -279,5 +283,40 @@ class AiProjectApplyServiceTest {
 
         assertEquals(ErrorCode.INVALID_TASK_STATUS, e.getErrorCode());
         verify(sprintRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("작업의 하위 작업은 적은 순서대로, 미완료·담당자 없이 저장한다")
+    void savesSubtasksInOrder() {
+        myRole(WorkspaceRole.ADMIN);
+        workspaceMembers(me, other);
+        statuses(todo);
+
+        when(taskRepository.findMaxTaskNumber(workspace)).thenReturn(0);
+        when(taskRepository.findByWorkspaceAndStatusOrderByPositionAsc(workspace, todo)).thenReturn(List.of());
+        when(sprintRepository.save(any(Sprint.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        AiDraft draft = new AiDraft(
+            List.of(new AiDraft.Sprint("개발", null, START, START.plusDays(13),
+                List.of(new AiDraft.Task("회원가입 화면 구현", "설명", TaskPriority.HIGH, 1L, START, START.plusDays(1),
+                    List.of("회원가입 화면 구성", " 회원가입 API 연결 ")),
+                    draftTask("하위 작업 없는 작업", null, 3)))),
+            List.of());
+
+        service.apply(5L, draft, "a@a.com");
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<SubTask>> saved = ArgumentCaptor.forClass(List.class);
+        // 하위 작업이 있는 작업(1개)에서만 저장해요.
+        verify(subTaskRepository, times(1)).saveAll(saved.capture());
+
+        List<SubTask> subtasks = saved.getValue();
+        assertEquals(2, subtasks.size());
+        assertEquals("회원가입 화면 구성", subtasks.get(0).getContent());
+        assertEquals("회원가입 API 연결", subtasks.get(1).getContent());
+        assertEquals(List.of(0, 1), subtasks.stream().map(SubTask::getPosition).toList());
+        assertEquals(List.of(false, false), subtasks.stream().map(SubTask::getIsCompleted).toList());
+        assertEquals("회원가입 화면 구현", subtasks.get(0).getTask().getTitle());
     }
 }
