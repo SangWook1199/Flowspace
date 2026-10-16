@@ -7,19 +7,24 @@ AI가 프로젝트 주제만 받아 스프린트와 작업, 하위 작업까지 
 
 <!-- 화면 캡처를 docs/images/ 에 넣고 아래 자리의 설명을 이미지로 바꿔 주세요. 예: ![스프린트 상세](docs/images/sprint-detail.png) -->
 
-| 대시보드 | 칸반 보드 | 스프린트 상세 |
-| :---: | :---: | :---: |
-| (캡처 추가) | (캡처 추가) | (캡처 추가) |
+|                대시보드                |              칸반 보드               |
+| :------------------------------------: | :----------------------------------: |
+| ![대시보드](docs/images/dashboard.png) | ![칸반 보드](docs/images/kanban.png) |
 
-| 페이지(블록 에디터) | AI 프로젝트 초안 | 회고 |
-| :---: | :---: | :---: |
-| (캡처 추가) | (캡처 추가) | (캡처 추가) |
+|                  스프린트 상세                  |                페이지(블록 에디터)                 |
+| :---------------------------------------------: | :------------------------------------------------: |
+| ![스프린트 상세](docs/images/sprint-detail.png) | ![페이지 블록 에디터](docs/images/page-editor.png) |
+
+|                AI 프로젝트 구성                 |                  회고                  |
+| :---------------------------------------------: | :------------------------------------: |
+| ![AI 프로젝트 구성](docs/images/ai-project.png) | ![회고](docs/images/retrospective.png) |
 
 ---
 
 ## 주요 기능
 
 **프로젝트 관리**
+
 - **워크스페이스**: 멤버 초대와 역할(소유자·관리자·멤버) 관리, 가입하면 개인 워크스페이스가 자동으로 만들어집니다.
 - **스프린트**: 생성·시작·완료. 진행 중인 스프린트는 항상 하나만 유지하며, 다른 스프린트를 시작하면 기존 스프린트가 "계획됨"으로 돌아갑니다.
 - **작업과 하위 작업**: 담당자(여러 명), 우선순위, 기간, 하위 작업 체크. 상태는 워크스페이스마다 자유롭게 만들고 WIP 제한을 둘 수 있습니다.
@@ -27,14 +32,17 @@ AI가 프로젝트 주제만 받아 스프린트와 작업, 하위 작업까지 
 - **회고**: 스프린트를 완료하면 그 시점의 작업 상태가 스냅샷으로 남고 회고 페이지가 자동으로 만들어지며, 끝나지 않은 작업은 백로그로 이동합니다.
 
 **문서와 협업**
+
 - **페이지(블록 에디터)**: 노션처럼 제목·할 일·토글·콜아웃·코드·이미지·파일·열 나누기·데이터베이스 블록을 조합해 문서를 만듭니다.
 - **실시간 반영**: WebSocket으로 알림, 접속 상태, 다른 멤버의 변경이 즉시 반영됩니다. 동시 수정 충돌을 막기 위해 페이지에 버전을 둡니다.
 - **댓글·멘션·활동 기록·검색·알림**: 마감 임박 알림은 한국 시간 기준으로 발송합니다.
 
 **AI 프로젝트 구성**
+
 - 주제, 기간, 멤버와 역할을 입력하면 AI가 스프린트·작업·하위 작업·일정 초안을 만듭니다. 사용자는 미리보기에서 고친 뒤 한 번에 만들 수 있습니다. (아래 [AI 기능](#ai-기능) 참고)
 
 **계정과 보안**
+
 - 이메일 가입(2단계) + **이메일 인증**, Google·Microsoft 소셜 로그인, 비밀번호 찾기.
 - JWT 액세스/리프레시 토큰, 파일 업로드 형식 제한, 운영 환경에서는 Swagger 비공개.
 
@@ -42,15 +50,15 @@ AI가 프로젝트 주제만 받아 스프린트와 작업, 하위 작업까지 
 
 ## 기술 스택
 
-| 영역 | 사용 기술 |
-| --- | --- |
-| 프론트엔드 | React 19, Vite, React Router 7, Axios, lucide-react (UI 라이브러리 없이 직접 스타일링) |
-| 백엔드 | Java 21, Spring Boot 4, Spring Data JPA, Spring Security, OAuth2 Client, WebSocket, Mail, JWT(jjwt), springdoc(Swagger) |
-| 데이터베이스 | MySQL (운영은 `ddl-auto: validate`, 구조 변경은 `db/*.sql`로 관리) |
-| AI | Ollama + `qwen3.6:27b` (JSON 스키마 출력, 스트리밍) |
-| 인프라 | AWS EC2(Ubuntu), nginx 리버스 프록시, certbot HTTPS, systemd |
-| CI/CD | GitHub Actions (테스트 → 빌드 → 자동 배포·롤백) |
-| 테스트 | JUnit 5, Mockito — 단위 테스트 200개 이상 |
+| 영역         | 사용 기술                                                                                                               |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| 프론트엔드   | React 19, Vite, React Router 7, Axios, lucide-react (UI 라이브러리 없이 직접 스타일링)                                  |
+| 백엔드       | Java 21, Spring Boot 4, Spring Data JPA, Spring Security, OAuth2 Client, WebSocket, Mail, JWT(jjwt), springdoc(Swagger) |
+| 데이터베이스 | MySQL (운영은 `ddl-auto: validate`, 구조 변경은 `db/*.sql`로 관리)                                                      |
+| AI           | Ollama + `qwen3.6:27b` (JSON 스키마 출력, 스트리밍)                                                                     |
+| 인프라       | AWS EC2(Ubuntu), nginx 리버스 프록시, certbot HTTPS, systemd                                                            |
+| CI/CD        | GitHub Actions (테스트 → 빌드 → 자동 배포·롤백)                                                                         |
+| 테스트       | JUnit 5, Mockito — 단위 테스트 200개 이상                                                                               |
 
 ---
 
@@ -123,15 +131,18 @@ flowspace/
 ## 로컬에서 실행하기
 
 ### 준비물
+
 JDK 21, Node.js(LTS), MySQL 8
 
 ### 1. 데이터베이스
+
 ```sql
 -- MySQL에서 실행: flow_space DB와 모든 테이블이 만들어집니다.
 source backend/src/main/resources/db/ddl.sql
 ```
 
 ### 2. 백엔드
+
 `backend/src/main/resources/application-secret.yaml`(저장소에 포함되지 않음)을 만들어 DB 연결 정보, JWT 비밀키, Google/Microsoft 클라이언트 ID, 메일 계정을 넣습니다. 필요한 항목은 [docs/SERVER_SETUP_GUIDE.md](docs/SERVER_SETUP_GUIDE.md)의 환경 변수 목록을 참고하세요.
 
 ```bash
@@ -142,6 +153,7 @@ cd backend
 AI 기능을 쓰려면 [Ollama](https://ollama.com)를 설치하고 `qwen3.6:27b` 모델을 받아 둡니다. 쓰지 않으면 `flowspace.ai.enabled: false`로 끄면 됩니다.
 
 ### 3. 프론트엔드
+
 ```bash
 cd frontend
 cp .env.example .env.development   # VITE_API_BASE_URL 등을 채웁니다
@@ -149,7 +161,19 @@ npm install
 npm run dev                        # http://localhost:5173
 ```
 
+### 데모 데이터 (선택, 화면 캡처용)
+
+빈 화면 대신 스프린트 5개·작업 50개·회고·문서·일정이 채워진 데모 워크스페이스를 만들 수 있습니다.
+
+```sql
+source docs/demo-data/seed_demo.sql;      -- 'FlowSpace 개발팀 (데모)' 워크스페이스 추가
+source docs/demo-data/remove_demo.sql;    -- 데모 데이터만 삭제
+```
+
+날짜는 실행한 날을 기준으로 잡히며, 기존 데이터는 건드리지 않습니다.
+
 ### 테스트
+
 ```bash
 cd backend && ./gradlew test
 cd frontend && npm run lint && npm run build
