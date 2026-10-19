@@ -1,0 +1,156 @@
+# main에 푸시하면: 테스트 → 빌드 → AWS 서버에 배포
+# 다른 브랜치의 Pull Request는 테스트와 빌드만 확인해요(배포 X).
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-southeast-2        # 서버가 있는 리전(시드니)
+  API_BASE_URL: https://myflowspace.cloud/api
+
+jobs:
+  backend:
+    name: Backend (테스트·빌드)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Windows에서 올린 gradlew는 실행 권한이 없을 수 있어서 붙여요.
+      - name: Gradle 실행 권한
+        run: chmod +x gradlew
+
+      - name: 테스트와 jar 빌드
+        run: ./gradlew test bootJar --no-daemon
+
+      - name: 테스트 결과 보관 (실패했을 때 확인용)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-report
+          path: backend/build/reports/tests/test
+
+      - name: jar 보관
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: backend/build/libs/backend-0.0.1-SNAPSHOT.jar
+          retention-days: 7
+
+  frontend:
+    name: Frontend (검사·빌드)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      # 코드 스타일 검사에서 오류(error)가 나오면 여기서 멈춰요(경고(warning)는 통과해요).
+      - name: 코드 스타일 검사
+        run: npm run lint
+
+      - name: 빌드
+        run: npm run build
+        env:
+          VITE_API_BASE_URL: ${{ env.API_BASE_URL }}
+
+      - name: dist 보관
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 7
+
+  deploy:
+    name: 서버에 배포
+    needs: [backend, frontend]
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    # 배포가 겹치지 않게 한 번에 하나만 돌려요(진행 중인 배포는 끊지 않아요).
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: backend-jar
+          path: artifact/jar
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: artifact/dist
+
+      - name: 프런트 묶기
+        run: tar -czf dist.tgz -C artifact/dist .
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # 서버의 SSH(22번)는 평소에 닫혀 있어요. 배포하는 동안만 이 실행기의 IP에 열어요.
+      - name: SSH 임시 열기
+        id: ip
+        run: |
+          IP=$(curl -s https://checkip.amazonaws.com | tr -d '\n')
+          echo "ip=$IP" >> "$GITHUB_OUTPUT"
+          aws ec2 authorize-security-group-ingress \
+            --group-id "${{ secrets.AWS_SG_ID }}" \
+            --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=${IP}/32,Description=github-actions-deploy}]"
+          sleep 5
+
+      - name: SSH 준비
+        env:
+          SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -T 15 -H "$EC2_HOST" >> ~/.ssh/known_hosts
+
+      - name: 업로드와 배포
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          sed -i 's/\r$//' deploy/server-deploy.sh
+          SSH_OPTS="-i $HOME/.ssh/deploy_key -o StrictHostKeyChecking=yes -o ConnectTimeout=20"
+          ssh $SSH_OPTS ubuntu@"$EC2_HOST" 'mkdir -p ~/deploy'
+          scp $SSH_OPTS artifact/jar/backend-0.0.1-SNAPSHOT.jar ubuntu@"$EC2_HOST":~/deploy/flowspace.jar
+          scp $SSH_OPTS dist.tgz deploy/server-deploy.sh ubuntu@"$EC2_HOST":~/deploy/
+          ssh $SSH_OPTS ubuntu@"$EC2_HOST" 'bash ~/deploy/server-deploy.sh'
+
+      # 성공하든 실패하든 SSH를 다시 닫아요.
+      - name: SSH 닫기
+        if: always() && steps.ip.outputs.ip != ''
+        run: |
+          aws ec2 revoke-security-group-ingress \
+            --group-id "${{ secrets.AWS_SG_ID }}" \
+            --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=${{ steps.ip.outputs.ip }}/32}]" || true

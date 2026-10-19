@@ -5,10 +5,10 @@ import PreviewCarousel from "./PreviewCarousel";
 import useMediaQuery from "../../hooks/useMediaQuery";
 import "../../styles/auth.css";
 
-import dashboard from "../../assets/login/dashboard-summary.png";
-import calendar from "../../assets/login/calendar-summary.png";
-import kanban from "../../assets/login/kanban-summary.png";
-import document from "../../assets/login/document-summary.png";
+import dashboard from "../../assets/login/dashboard-summary.webp";
+import calendar from "../../assets/login/calendar-summary.webp";
+import kanban from "../../assets/login/kanban-summary.webp";
+import document from "../../assets/login/document-summary.webp";
 
 const PREVIEWS = [
   { image: dashboard, title: "함께 일하는 공간", description: "스프린트 진행률과 오늘의 작업을 한눈에 관리하세요." },

@@ -20,9 +20,13 @@ import com.flowspace.dto.auth.WithdrawRequest;
 import com.flowspace.dto.auth.TokenResponse;
 import com.flowspace.dto.auth.TokenRequest;
 import com.flowspace.service.AccountService;
+import com.flowspace.exception.ErrorCode;
+import com.flowspace.exception.FlowSpaceException;
+import com.flowspace.service.AuthRateLimiter;
 import com.flowspace.service.AuthService;
 import com.flowspace.service.EmailVerificationService;
 import com.flowspace.service.PasswordResetService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -43,17 +47,37 @@ public class AuthController {
     private final AccountService accountService;
     private final PasswordResetService passwordResetService;
     private final EmailVerificationService emailVerificationService;
+    private final AuthRateLimiter authRateLimiter;
 
     @Operation(summary = "회원가입", description = "계정을 만들고 인증 메일을 보냅니다. 메일의 링크로 인증해야 로그인할 수 있습니다.")
     @PostMapping("/signup")
-    public SignupResponse signup(@Valid @RequestBody SignupRequest request) {
+    public SignupResponse signup(@Valid @RequestBody SignupRequest request, HttpServletRequest http) {
+        // 인증 메일이 나가는 요청이라 같은 주소·이메일로 너무 자주 못 보내게 해요.
+        authRateLimiter.checkMailAllowed(http.getRemoteAddr(), request.email());
+
         return authService.signup(request);
     }
 
-    @Operation(summary = "로그인", description = "성공 시 accessToken과 refreshToken을 반환합니다.")
+    @Operation(summary = "로그인", description = "성공 시 accessToken과 refreshToken을 반환합니다. 같은 이메일로 15분 안에 5번 틀리면 잠시 막습니다(429).")
     @PostMapping("/login")
-    public LoginResponse login(@Valid @RequestBody LoginRequest request) {
-        return authService.login(request);
+    public LoginResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest http) {
+        String ip = http.getRemoteAddr();
+
+        // 이미 너무 많이 틀렸으면 비밀번호를 확인하지 않고 바로 막아요.
+        authRateLimiter.checkLoginAllowed(ip, request.email());
+
+        try {
+            LoginResponse response = authService.login(request);
+            authRateLimiter.clearLoginFailures(ip, request.email());
+
+            return response;
+        } catch (FlowSpaceException e) {
+            // 이메일·비밀번호가 틀린 경우만 센다(메일 미인증 같은 다른 이유는 세지 않아요).
+            if (e.getErrorCode() == ErrorCode.INVALID_LOGIN) {
+                authRateLimiter.recordLoginFailure(ip, request.email());
+            }
+            throw e;
+        }
     }
 
     @Operation(summary = "토큰 재발급", description = "refreshToken으로 새 accessToken을 발급합니다.")
@@ -147,13 +171,17 @@ public class AuthController {
 
     @Operation(summary = "인증 메일 다시 보내기", description = "인증하지 않은 계정이면 인증 링크를 다시 보냅니다. 가입 여부와 관계없이 항상 성공으로 응답합니다.")
     @PostMapping("/email/resend")
-    public void resendVerification(@Valid @RequestBody EmailResendRequest request) {
+    public void resendVerification(@Valid @RequestBody EmailResendRequest request, HttpServletRequest http) {
+        authRateLimiter.checkMailAllowed(http.getRemoteAddr(), request.email());
+
         emailVerificationService.resend(request);
     }
 
     @Operation(summary = "비밀번호 찾기 메일 발송", description = "가입된 이메일이면 재설정 링크를 보냅니다. 가입 여부와 관계없이 항상 성공으로 응답합니다.")
     @PostMapping("/password/forgot")
-    public void forgotPassword(@Valid @RequestBody PasswordForgotRequest request) {
+    public void forgotPassword(@Valid @RequestBody PasswordForgotRequest request, HttpServletRequest http) {
+        authRateLimiter.checkMailAllowed(http.getRemoteAddr(), request.email());
+
         passwordResetService.requestReset(request);
     }
 

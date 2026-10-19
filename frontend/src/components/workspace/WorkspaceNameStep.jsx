@@ -1,6 +1,6 @@
 import { useId } from "react";
 import { ArrowRight, Sparkles } from "lucide-react";
-import previewImage from "../../assets/workspace-preview.png";
+import previewImage from "../../assets/workspace-preview.webp";
 
 export default function WorkspaceNameStep({ value, onChange, onNext }) {
   const isValid = value.trim().length >= 2;

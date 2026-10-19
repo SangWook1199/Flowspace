@@ -5,19 +5,17 @@ AI가 프로젝트 주제만 받아 스프린트와 작업, 하위 작업까지 
 
 🔗 **배포 주소: https://myflowspace.cloud**
 
-<!-- 화면 캡처를 docs/images/ 에 넣고 아래 자리의 설명을 이미지로 바꿔 주세요. 예: ![스프린트 상세](docs/images/sprint-detail.png) -->
+| 대시보드 | 칸반 보드 |
+| :---: | :---: |
+| <img src="docs/images/dashboard.png" alt="대시보드" width="440"> | <img src="docs/images/kanban.png" alt="칸반 보드" width="440"> |
 
-|                대시보드                |              칸반 보드               |
-| :------------------------------------: | :----------------------------------: |
-| ![대시보드](docs/images/dashboard.png) | ![칸반 보드](docs/images/kanban.png) |
+| 스프린트 상세 | 페이지(블록 에디터) |
+| :---: | :---: |
+| <img src="docs/images/sprint-detail.png" alt="스프린트 상세" width="440"> | <img src="docs/images/page-editor.png" alt="페이지(블록 에디터)" width="440"> |
 
-|                  스프린트 상세                  |                페이지(블록 에디터)                 |
-| :---------------------------------------------: | :------------------------------------------------: |
-| ![스프린트 상세](docs/images/sprint-detail.png) | ![페이지 블록 에디터](docs/images/page-editor.png) |
-
-|                AI 프로젝트 구성                 |                  회고                  |
-| :---------------------------------------------: | :------------------------------------: |
-| ![AI 프로젝트 구성](docs/images/ai-project.png) | ![회고](docs/images/retrospective.png) |
+| AI 프로젝트 구성 | 회고 |
+| :---: | :---: |
+| <img src="docs/images/ai-project.png" alt="AI 프로젝트 구성" width="440"> | <img src="docs/images/retrospective.png" alt="회고" width="440"> |
 
 ---
 
@@ -160,17 +158,6 @@ cp .env.example .env.development   # VITE_API_BASE_URL 등을 채웁니다
 npm install
 npm run dev                        # http://localhost:5173
 ```
-
-### 데모 데이터 (선택, 화면 캡처용)
-
-빈 화면 대신 스프린트 5개·작업 50개·회고·문서·일정이 채워진 데모 워크스페이스를 만들 수 있습니다.
-
-```sql
-source docs/demo-data/seed_demo.sql;      -- 'FlowSpace 개발팀 (데모)' 워크스페이스 추가
-source docs/demo-data/remove_demo.sql;    -- 데모 데이터만 삭제
-```
-
-날짜는 실행한 날을 기준으로 잡히며, 기존 데이터는 건드리지 않습니다.
 
 ### 테스트
 
