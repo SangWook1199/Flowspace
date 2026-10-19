@@ -7,10 +7,10 @@ import useMediaQuery from "../hooks/useMediaQuery";
 import "../styles/auth.css";
 
 // 소개 이미지
-import dashboard from "../assets/login/dashboard-summary.png";
-import calendar from "../assets/login/calendar-summary.png";
-import kanban from "../assets/login/kanban-summary.png";
-import document from "../assets/login/document-summary.png";
+import dashboard from "../assets/login/dashboard-summary.webp";
+import calendar from "../assets/login/calendar-summary.webp";
+import kanban from "../assets/login/kanban-summary.webp";
+import document from "../assets/login/document-summary.webp";
 
 // 로그인 폼 아래로 소개 카드가 내려가는 폭(auth.css의 1080px)과 같아야 해요.
 const HIDE_PREVIEW_QUERY = "(max-width: 1080px)";

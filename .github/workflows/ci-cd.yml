@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 env:
-  AWS_REGION: ap-southeast-2        # 서버가 있는 리전(시드니)
+  AWS_REGION: ap-southeast-2 # 서버가 있는 리전(시드니)
   API_BASE_URL: https://myflowspace.cloud/api
 
 jobs:
@@ -71,7 +71,6 @@ jobs:
       # 코드 스타일 검사는 알려만 주고 배포를 막지는 않아요(나중에 continue-on-error를 지우면 필수 검사가 돼요).
       - name: 코드 스타일 검사 (참고용)
         run: npm run lint
-        continue-on-error: true
 
       - name: 빌드
         run: npm run build
