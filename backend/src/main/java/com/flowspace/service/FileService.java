@@ -47,11 +47,30 @@ public class FileService {
     private static final Set<String> BLOCKED_EXTENSIONS = Set.of("html", "htm", "xhtml", "xht", "shtml", "svg", "svgz",
         "xml", "xsl", "xslt", "rdf", "atom", "rss", "xul", "mml", "mathml", "js", "mjs", "jsp", "php", "asp", "aspx", "swf");
 
+    // 작업의 "관련 문서"로 올릴 수 있는 확장자예요(오피스·한글·PDF·텍스트·압축·이미지). 여기에 없는 확장자는 받지 않아요.
+    private static final Set<String> DOCUMENT_EXTENSIONS = Set.of("doc", "docx", "xls", "xlsx", "xlsm", "ppt", "pptx",
+        "hwp", "hwpx", "pdf", "txt", "csv", "md", "rtf", "odt", "ods", "odp", "zip", "7z", "png", "jpg", "jpeg", "gif",
+        "webp", "bmp");
+
     // 이미지로 올릴 수 있는 확장자예요(SVG는 스크립트를 담을 수 있어서 제외해요).
     private static final Set<String> IMAGE_EXTENSIONS = Set.of("png", "jpg", "jpeg", "gif", "webp", "bmp", "avif");
 
     // 파일 업로드 (파일 블록처럼 종류를 가리지 않는 첨부)
     public File upload(MultipartFile multipartFile, Workspace workspace, String email) {
+        return store(multipartFile, workspace, email, false);
+    }
+
+    // 문서 업로드 (작업 관련 문서). 허용 목록에 있는 확장자만 받아요.
+    public File uploadDocument(MultipartFile multipartFile, Workspace workspace, String email) {
+
+        if (multipartFile.isEmpty()) {
+            throw new FlowSpaceException(ErrorCode.EMPTY_FILE);
+        }
+
+        if (!DOCUMENT_EXTENSIONS.contains(extensionOf(multipartFile.getOriginalFilename()))) {
+            throw new FlowSpaceException(ErrorCode.UNSUPPORTED_FILE_TYPE);
+        }
+
         return store(multipartFile, workspace, email, false);
     }
 

@@ -4,10 +4,11 @@ import { MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import ColumnResizeHandle from "./ColumnResizeHandle";
 import { cellListHandlers } from "./lib/cellList";
 import PopoverPortal from "./PopoverPortal";
+import useTableBleed from "./hooks/useTableBleed";
 import useDialog from "../../context/useDialog";
 
-// 기존 200px의 3/4로 줄였어요.
-const DEFAULT_COLUMN_WIDTH = 150;
+// 처음 만들 때 너무 좁아 보여서 노션처럼 넉넉하게(240px) 잡았어요.
+const DEFAULT_COLUMN_WIDTH = 240;
 
 // 노션 기본 Table 블록과 같은 수준의 "진짜 단순한 표"예요. DatabaseBlock과
 // 달리 컬럼에 타입(텍스트/숫자/날짜/체크박스/선택)이 아예 없고, 제목도
@@ -17,6 +18,8 @@ const DEFAULT_COLUMN_WIDTH = 150;
 // 쓰이고, 실제 저장되는 block.type은 여전히 'DATABASE'예요.
 export default function SimpleTableBlock({ table, onChange }) {
   const { confirm } = useDialog();
+  // 표가 본문 폭보다 넓어지면 노션처럼 화면 끝까지 펼쳐서 거기서 스크롤돼요(useTableBleed 참고).
+  const wrapRef = useTableBleed();
   const { columns, rows, cells } = table;
 
   const nextColumnId = useRef(Math.max(0, ...columns.map((c) => c.id)) + 1);
@@ -91,8 +94,9 @@ export default function SimpleTableBlock({ table, onChange }) {
 
   return (
     <div className="simple-table-block">
-      <div className="db-block-wrap">
+      <div className="db-block-wrap" ref={wrapRef}>
         <div className="db-table-scroll">
+        <div className="db-table-inner">
         <table className="db-table">
           <thead>
             <tr>
@@ -269,6 +273,7 @@ export default function SimpleTableBlock({ table, onChange }) {
           <button type="button" className="db-add-col-trigger" onClick={addColumn} title="열 추가">
             <Plus size={14} />
           </button>
+        </div>
         </div>
         </div>
       </div>

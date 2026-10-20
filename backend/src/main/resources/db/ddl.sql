@@ -362,6 +362,23 @@ CREATE TABLE comments (
     CONSTRAINT fk_comment_parent FOREIGN KEY (parent_comment_id) REFERENCES comments(comment_id) ON DELETE CASCADE
 );
 
+-- 작업의 관련 문서: 페이지를 연결(page_id)하거나 문서 파일을 올려 둔(file_id) 것 중 하나예요.
+CREATE TABLE task_attachments (
+    attachment_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    task_id BIGINT NOT NULL,
+    page_id BIGINT NULL,
+    file_id BIGINT NULL,
+    created_by BIGINT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_task_attachment_task FOREIGN KEY (task_id) REFERENCES tasks(task_id) ON DELETE CASCADE,
+    CONSTRAINT fk_task_attachment_page FOREIGN KEY (page_id) REFERENCES pages(page_id) ON DELETE CASCADE,
+    CONSTRAINT fk_task_attachment_file FOREIGN KEY (file_id) REFERENCES files(file_id) ON DELETE CASCADE,
+    CONSTRAINT fk_task_attachment_user FOREIGN KEY (created_by) REFERENCES users(user_id),
+    CONSTRAINT uq_task_attachment_page UNIQUE (task_id, page_id),
+    CONSTRAINT chk_task_attachment_one CHECK ((page_id IS NULL) <> (file_id IS NULL))
+);
+
 CREATE TABLE activities (
     activity_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     workspace_id BIGINT NOT NULL,

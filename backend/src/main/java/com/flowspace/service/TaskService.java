@@ -27,6 +27,7 @@ import com.flowspace.dto.task.SubTaskReorderRequest;
 import com.flowspace.dto.task.SubTaskResponse;
 import com.flowspace.dto.task.SubTaskUpdateRequest;
 import com.flowspace.entity.Comment;
+import com.flowspace.entity.File;
 import com.flowspace.entity.Sprint;
 import com.flowspace.entity.SubTask;
 import com.flowspace.entity.Task;
@@ -44,6 +45,7 @@ import com.flowspace.entity.id.WorkspaceTaskStatusId;
 import com.flowspace.exception.ErrorCode;
 import com.flowspace.exception.FlowSpaceException;
 import com.flowspace.repository.CommentRepository;
+import com.flowspace.repository.TaskAttachmentRepository;
 import com.flowspace.repository.SprintRepository;
 import com.flowspace.repository.SubTaskRepository;
 import com.flowspace.repository.TaskAssigneeRepository;
@@ -71,6 +73,8 @@ public class TaskService {
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final SubTaskRepository subTaskRepository;
     private final CommentRepository commentRepository;
+    private final TaskAttachmentRepository taskAttachmentRepository;
+    private final FileService fileService;
     private final TaskAssigneeRepository taskAssigneeRepository;
     private final UserRepository userRepository;
 
@@ -494,7 +498,14 @@ public class TaskService {
         TaskStatus status = task.getStatus();
         Sprint sprint = task.getSprint();
 
+        // 관련 문서로 올려 둔 파일은 서버에서도 같이 지워요(첨부 행은 DB가 작업과 함께 지워요).
+        List<File> attachmentFiles = taskAttachmentRepository.findFilesByTask(task);
+
         taskRepository.delete(task);
+
+        for (File attachmentFile : attachmentFiles) {
+            fileService.delete(attachmentFile);
+        }
 
         List<Task> tasks;
 

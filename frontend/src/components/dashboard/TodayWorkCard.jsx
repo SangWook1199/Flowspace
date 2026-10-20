@@ -72,6 +72,13 @@ export default function TodayWorkCard({ tasks = [] }) {
       .sort(compareBy(sort.key, sort.dir));
   }, [tasks, activeStatus, keyword, sort]);
 
+  // 작업 줄을 누르면(키보드는 Enter·Space) 그 작업이 선택된 스프린트 작업 화면으로 가요.
+  // 스프린트 상세·검색·활동 목록이 쓰는 ?task= 링크와 같은 주소예요.
+  const openTask = (task) => {
+    if (task.sprintId == null) return;
+    navigate(`/sprints/${task.sprintId}/tasks?task=${encodeURIComponent(task.id)}`);
+  };
+
   // 같은 열을 다시 누르면 방향을 뒤집고, 다른 열을 누르면 그 열의 첫 순서(오름차순)로 시작해요.
   const toggleSort = (key) =>
     setSort((prev) => ({ key, dir: prev.key === key && prev.dir === "asc" ? "desc" : "asc" }));
@@ -155,7 +162,20 @@ export default function TodayWorkCard({ tasks = [] }) {
           )}
 
           {visibleTasks.map((task) => (
-            <tr key={task.id}>
+            <tr
+              key={task.id}
+              className={task.sprintId != null ? styles.taskRowLink : undefined}
+              tabIndex={task.sprintId != null ? 0 : undefined}
+              title={task.sprintId != null ? "이 작업으로 이동" : undefined}
+              onClick={() => openTask(task)}
+              onKeyDown={(e) => {
+                if (e.target !== e.currentTarget) return;
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  openTask(task);
+                }
+              }}
+            >
               <td>
                 <span
                   className={`${styles.priority} ${

@@ -1,25 +1,27 @@
+/* 항목이 금방 차서 줄 높이와 간격을 줄였어요(layout.css의 사이드바와 같은 이유). */
 .sidebarSprints {
-  margin-top: 18px;
+  margin-top: 10px;
 }
 .sidebarSprintDivider {
   height: 1px;
   background: #e7ebf2;
-  margin: 0 11px 16px;
+  /* 구분선과 바로 아래 "현재 스프린트" 사이를 조금 더 띄워요(8px -> 15px). */
+  margin: 0 11px 15px;
 }
 .sidebarSprints > p {
-  margin: 0 11px 8px;
+  margin: 0 11px 9px;
   color: #758198;
-  font-size: 12px;
+  font-size: 11.5px;
 }
 .sidebarSprints > button {
-  height: 39px;
+  height: 32px;
   width: 100%;
   border: 0;
   background: transparent;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 12px;
+  gap: 9px;
+  padding: 0 10px;
   text-align: left;
 }
 .sidebarSprints > button > i {
@@ -38,15 +40,20 @@
   background: #34ba79;
 }
 .sidebarSprints > button span {
-  font-size: 13px;
+  font-size: 12.5px;
   flex: 1;
+  /* 스프린트 이름이 길면 두 줄로 넘어가지 않고 한 줄에서 …으로 줄여요. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .sidebarSprints > button b {
-  font-size: 10px;
+  font-size: 9.5px;
   color: #64748b;
   background: #f1f4f7;
   border-radius: 9px;
-  padding: 3px 6px;
+  padding: 2px 6px;
   white-space: nowrap;
 }
 /* 진행 중인 스프린트는 초록색 배지로 눈에 띄게 해요. */
@@ -55,7 +62,7 @@
   background: #e3f6ec;
 }
 .sidebarSprints > button.allSprints {
-  margin-top: 6px;
+  margin-top: 2px;
   color: #273851;
   font-weight: 600;
 }
@@ -63,13 +70,13 @@
   color: #4e6dff;
 }
 .sidebarSprints > button.allSprints span {
-  font-size: 13px;
+  font-size: 12.5px;
 }
 @media (max-height: 850px) {
   .sidebarSprints > button {
-    height: 33px;
+    height: 28px;
   }
   .sidebarSprints {
-    margin-top: 10px;
+    margin-top: 6px;
   }
 }

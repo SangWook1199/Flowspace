@@ -17,7 +17,7 @@ import { isAdminOrOwner } from "../utils/workspaceRole";
 const PAGE_DRAG_MIME = "application/x-flowspace-page";
 
 // 사이드바 "페이지" 목록에서 처음 보여주는 페이지 수예요. 나머지는 "더 보기"로 펼치거나 "모든 페이지 보기"에서 봐요.
-const MAX_VISIBLE_PAGES = 7;
+const MAX_VISIBLE_PAGES = 4;
 
 // "페이지" 섹션을 접었는지는 이 브라우저에 기억해요(저장소를 못 쓰면 매번 펼친 채로 시작해요).
 const PAGES_OPEN_KEY = "flowspace.sidebar.pagesOpen";
@@ -146,6 +146,13 @@ export default function Sidebar({
     return active && !head.includes(active) ? [...head, active] : head;
   })();
   const hiddenCount = regularPages.length - visibleRegular.length;
+
+  // "현재 스프린트"에는 진행 중인 스프린트와 계획된 스프린트만 보여줘요(완료된 스프린트는 "모든 스프린트 보기"에서
+  // 봐요). 진행 중인 스프린트를 맨 위에 두고, 계획된 스프린트가 많아도 사이드바가 안 차게 최대 3개까지만 보여줘요.
+  const currentSprints = [
+    ...sprints.filter((sprint) => sprint.status === "ACTIVE"),
+    ...sprints.filter((sprint) => sprint.status === "PLANNING"),
+  ].slice(0, 3);
 
   // 최상위 페이지 순서를 마우스로 드래그해서 바꿔요 — 블록 에디터의
   // 블록 드래그(BlockEditor.jsx의 handleBlockDragOver/commitBlockDrop)와
@@ -546,7 +553,7 @@ export default function Sidebar({
             </button>
           )}
 
-          {sprints.slice(0, 3).map((sprint) => (
+          {currentSprints.map((sprint) => (
             <button
               key={sprint.id}
               onClick={() => navigate(`/sprints/${sprint.id}`)}

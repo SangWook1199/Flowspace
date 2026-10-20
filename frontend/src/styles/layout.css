@@ -16,7 +16,8 @@
   height: 100dvh;
   background: #fbfcff;
   border-right: 1px solid #e8edf5;
-  padding: 25px 14px;
+  /* 항목이 금방 차서 위·아래·좌우 여백과 항목 크기를 전체적으로 줄였어요. */
+  padding: 18px 12px;
   display: flex;
   flex-direction: column;
   z-index: 2;
@@ -30,27 +31,29 @@
    .flowspace-brand__name 하나로 정리했어요. */
 .workspace {
   width: 100%;
-  height: 76px;
+  height: 58px;
   border: 1px solid #e6ebf4;
-  border-radius: 12px;
+  border-radius: 11px;
   background: #fff;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 13px 15px;
+  gap: 11px;
+  padding: 9px 12px;
   text-align: left;
-  margin-bottom: 25px;
+  /* 아래 .workspaceSwitcher의 margin-bottom(24px)과 더해져서 "홈"까지의 간격이 됐는데
+     너무 벌어져서 이쪽을 14px에서 4px로 줄였어요. */
+  margin-bottom: 4px;
 }
 .workspaceIcon {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   color: #fff; /* 핵심 */
   flex-shrink: 0;
@@ -58,12 +61,12 @@
 .workspace span:nth-child(2) {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 3px;
+  gap: 2px;
   flex: 1;
   min-width: 0;
 }
 .workspace b {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   /* 이름이 길면 한 줄로 줄이고 …으로 생략해요(두 줄로 넘어가지 않게). */
   overflow: hidden;
@@ -72,24 +75,39 @@
 }
 .workspace small,
 .pageArea > p {
-  font-size: 12px;
+  font-size: 11.5px;
   color: #758198;
 }
 .navItem {
-  height: 53px;
+  height: 38px;
   width: 100%;
   border: 0;
   background: transparent;
-  border-radius: 11px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
-  gap: 17px;
-  padding: 0 18px;
+  gap: 12px;
+  padding: 0 12px;
   text-align: left;
+  font-size: 14px;
   font-weight: 500;
 }
 .navItem svg {
   color: #2a3951;
+}
+/* 홈·스프린트·칸반·캘린더·회고 사이에 살짝 간격을 둬요. */
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+/* 메뉴·페이지 줄의 아이콘 크기(예전엔 24px 기본값이라 줄이 커 보였어요). 줄 오른쪽의
+   별·휴지통 같은 작은 아이콘(자손 svg)은 건드리지 않게 바로 아래 자식만 골라요. */
+.navItem > svg,
+.pageNavRow__link > svg {
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
 }
 .selected {
   background: #ebefff;
@@ -100,7 +118,7 @@
   color: #4e6dff;
 }
 .pageArea {
-  margin-top: 18px;
+  margin-top: 10px;
   /* 페이지가 많아져도 사이드바 아래(설정·휴지통)가 밀려나지 않게 이 영역만 스크롤해요. */
   flex: 1 1 auto;
   min-height: 0;
@@ -110,18 +128,19 @@
 .divider {
   height: 1px;
   background: #e7ebf2;
-  margin: 0 11px 16px;
+  /* 구분선과 바로 아래 "즐겨찾기" 사이를 조금 더 띄워요(8px -> 15px). */
+  margin: 0 11px 15px;
 }
 .pageArea > p {
-  margin: 0 11px 12px;
+  margin: 0 11px 8px;
 }
 .newPage {
   color: #4e6dff;
-  margin-top: 8px;
+  margin-top: 2px;
 }
 .pageNavRow {
   position: relative;
-  padding: 0 8px 0 18px;
+  padding: 0 6px 0 12px;
   gap: 0;
 }
 /* 드래그 핸들 — 행 자체에 이미 있던 왼쪽 18px 패딩 자리에 얹어서
@@ -171,7 +190,7 @@
   background: transparent;
   display: flex;
   align-items: center;
-  gap: 17px;
+  gap: 12px;
   text-align: left;
   font-weight: 500;
   color: inherit;
@@ -184,8 +203,8 @@
 }
 .pageNavRow__delete {
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border: 0;
   border-radius: 8px;
   background: transparent;
@@ -206,8 +225,8 @@
 /* 즐겨찾기 별 — 평소엔 숨어 있다가 줄에 호버하면 보이고, 즐겨찾기한 페이지는 항상 노란 별로 보여요. */
 .pageNavRow__pin {
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border: 0;
   border-radius: 8px;
   background: transparent;
@@ -235,8 +254,8 @@
 }
 /* "페이지" 구역 제목 줄 — 누르면 목록을 접고 펼쳐요. */
 .pageArea > p.pageSectionHead {
-  margin-top: 8px;
-  margin-bottom: 6px;
+  margin-top: 4px;
+  margin-bottom: 4px;
 }
 /* 페이지·스프린트 목록이 비었을 때 보여주는 짧은 안내 */
 .pageArea > p.sidebarEmpty,
@@ -279,16 +298,16 @@
 .pageMoreBtn,
 .pageAllLink {
   width: 100%;
-  height: 34px;
+  height: 30px;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 18px;
+  padding: 0 12px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 9px;
   background: transparent;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 12.5px;
   color: #758198;
   text-align: left;
   cursor: pointer;
@@ -323,8 +342,8 @@
 }
 .trashPopover__btn {
   position: relative;
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   border: 1px solid #e7ebf2;
   border-radius: 11px;
   background: transparent;
@@ -508,7 +527,7 @@
      오른쪽 휴지통 버튼과 높이를 맞췄어요. */
   flex: 1;
   min-width: 0;
-  height: 40px;
+  height: 34px;
   border: 1px solid #e7ebf2;
   border-radius: 11px;
   background: transparent;
@@ -779,8 +798,8 @@
 /* 사이드바 맨 위는 "로고 + 접기 버튼(로고 오른쪽 끝)"이에요. */
 .sidebarCollapseBtn {
   position: absolute;
-  top: 26px;
-  right: 13px;
+  top: 19px;
+  right: 11px;
   width: 32px;
   height: 32px;
   border: 0;
@@ -797,7 +816,7 @@
 }
 .sidebar .flowspace-brand {
   margin-top: -3px;
-  margin-bottom: 29px;
+  margin-bottom: 18px;
 }
 /* 로고는 누르는 버튼이 아니라서 눌러지는 것처럼 보이지 않게 해요. */
 .sidebar div.flowspace-brand {

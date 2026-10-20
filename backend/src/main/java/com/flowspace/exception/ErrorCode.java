@@ -57,6 +57,9 @@ public enum ErrorCode {
     INVALID_TASK_STATUS(HttpStatus.BAD_REQUEST, "유효하지 않은 Task 상태입니다."),
     TASK_NOT_FOUND(HttpStatus.NOT_FOUND, "Task를 찾을 수 없습니다."),
     SUBTASK_NOT_FOUND(HttpStatus.NOT_FOUND, "서브태스크를 찾을 수 없습니다."),
+    TASK_ATTACHMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "관련 문서를 찾을 수 없어요."),
+    TASK_ATTACHMENT_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 관련 문서로 연결된 페이지예요."),
+    TASK_ATTACHMENT_LIMIT(HttpStatus.BAD_REQUEST, "관련 문서는 작업 하나에 최대 30개까지 추가할 수 있어요."),
     INVALID_SPRINT(HttpStatus.BAD_REQUEST, "유효하지 않은 스프린트입니다."),
     INVALID_SUBTASK_ASSIGNEE(HttpStatus.BAD_REQUEST, "SubTask 담당자는 Task 담당자 중에서만 선택할 수 있습니다."),
     LAST_TASK_STATUS_CANNOT_DELETE(HttpStatus.BAD_REQUEST, "마지막 남은 Task 상태는 삭제할 수 없습니다."),
@@ -88,6 +91,7 @@ public enum ErrorCode {
     FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "파일을 찾을 수 없습니다."),
     INVALID_IMAGE_FILE(HttpStatus.BAD_REQUEST, "이미지 파일만 업로드할 수 있습니다."),
     UNSUPPORTED_FILE_TYPE(HttpStatus.BAD_REQUEST, "올릴 수 없는 파일 형식이에요."),
+    EMPTY_FILE(HttpStatus.BAD_REQUEST, "내용이 없는 빈 파일은 올릴 수 없어요."),
     FILE_TOO_LARGE(HttpStatus.valueOf(413), "파일이 너무 커요. 20MB 이하의 파일만 올릴 수 있어요."),
 
     // Retrospective

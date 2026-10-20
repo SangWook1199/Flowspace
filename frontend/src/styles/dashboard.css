@@ -601,6 +601,25 @@
   overflow-wrap: anywhere;
 }
 
+/* 작업 줄을 누르면 그 작업으로 이동해요(TodayWorkCard의 openTask). 눌러진다는 걸 보여주려고 호버 때
+   줄에 옅은 배경과 제목 색을 줘요. */
+.taskRowLink {
+  cursor: pointer;
+}
+
+.taskRowLink:hover td {
+  background: #f7f8ff;
+}
+
+.taskRowLink:hover .taskTitle {
+  color: #4f46e5;
+}
+
+.taskRowLink:focus-visible {
+  outline: 2px solid #c7d2fe;
+  outline-offset: -2px;
+}
+
 /* ===== Priority ===== */
 
 .priority {
