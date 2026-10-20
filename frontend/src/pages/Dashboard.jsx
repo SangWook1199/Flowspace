@@ -111,6 +111,8 @@ export default function Dashboard() {
 
         return {
           id: task.id,
+          // 눌렀을 때 이 작업이 있는 스프린트의 작업 화면으로 가려고 같이 넘겨요.
+          sprintId: task.sprintId,
           title: task.title,
           priority: (task.priority ?? "").toLowerCase(),
           priorityLabel: PRIORITY_LABEL[task.priority] ?? "",

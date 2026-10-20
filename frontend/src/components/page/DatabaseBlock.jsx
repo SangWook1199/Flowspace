@@ -17,6 +17,7 @@ import {
   MoreHorizontal,
   Phone,
   Plus,
+  Repeat2,
   Search,
   Settings2,
   Trash2,
@@ -27,6 +28,7 @@ import {
 
 import ColumnResizeHandle from "./ColumnResizeHandle";
 import PopoverPortal from "./PopoverPortal";
+import useTableBleed from "./hooks/useTableBleed";
 import { useWorkspace } from "../../context/WorkspaceContext";
 import { getAvatarTone } from "../../utils/avatarColor";
 import useDialog from "../../context/useDialog";
@@ -35,8 +37,8 @@ import { cellListHandlers } from "./lib/cellList";
 // 컬럼에 width가 없으면(예전 목데이터, 새로 만든 컬럼) 쓰는 기본값이에요.
 // block_database_columns DDL엔 너비 컬럼이 없지만, pageId·kind처럼 이것도
 // content JSON 쪽 column 객체에 그냥 필드 하나(width) 얹는 거라 스키마
-// 변경이 필요 없어요. 기존 200px의 3/4로 줄였어요.
-const DEFAULT_COLUMN_WIDTH = 150;
+// 변경이 필요 없어요. 처음 만들 때 너무 좁아 보여서 노션처럼 넉넉하게(240px) 잡았어요.
+const DEFAULT_COLUMN_WIDTH = 240;
 
 // block_database_columns.type ENUM — 노션 속성 22종 중, 기존 데이터(멤버·
 // 페이지 등)만으로 바로 동작하는 7종(다중 선택/상태/사람/URL/이메일/전화번호/
@@ -137,6 +139,8 @@ export default function DatabaseBlock({
   onDeleteRowPage,
 }) {
   const { confirm } = useDialog();
+  // 표가 본문 폭보다 넓어지면 노션처럼 화면 끝까지 펼쳐서 거기서 스크롤돼요(useTableBleed 참고).
+  const wrapRef = useTableBleed();
   const { columns, rows, cells, title } = database;
   const navigate = useNavigate();
 
@@ -523,14 +527,28 @@ export default function DatabaseBlock({
         onChange={(e) => onChange({ ...database, title: e.target.value })}
       />
 
-      <div className="db-block-wrap">
+      <div className="db-block-wrap" ref={wrapRef}>
         <div className="db-table-scroll">
+        <div className="db-table-inner">
         <table className="db-table">
           <thead>
             <tr>
               {columns.map((col) => (
                 <th key={col.id} style={{ width: col.width || DEFAULT_COLUMN_WIDTH }}>
                   <div className="db-table__head">
+                    {/* 속성 유형은 라벨을 눌러 바꾸지 않고, 이름 앞에 아이콘으로만 보여줘요.
+                        유형을 바꾸려면 오른쪽 "⋯" 메뉴의 "속성 변경"을 써요(노션과 같아요).
+                        제목(TITLE) 열은 노션의 제목 열처럼 이름만 바꿀 수 있어요. */}
+                    {col.type !== "TITLE" && (() => {
+                      const meta = COLUMN_TYPES.find((t) => t.type === col.type);
+                      const Icon = meta?.icon || AlignLeft;
+                      return (
+                        <span className="db-table__head-icon" title={meta?.label || col.type}>
+                          <Icon size={13} />
+                        </span>
+                      );
+                    })()}
+
                     <input
                       className="db-table__head-input"
                       value={col.name}
@@ -538,13 +556,11 @@ export default function DatabaseBlock({
                       onChange={(e) => renameColumn(col.id, e.target.value)}
                     />
 
-                    {/* 제목(TITLE) 열은 타입 변경·옵션·삭제가 전부 없어요 —
-                        노션의 제목 열처럼 이름만 바꿀 수 있어요. */}
                     {col.type !== "TITLE" && (
-                      <div className="db-table__head-type-wrap">
+                      <div className="db-table__head-more-wrap">
                         <button
                           type="button"
-                          // 열을 추가하자마자(addColumn) 자동으로 이 팝오버를 열 때는
+                          // 열을 추가하자마자(addColumn) 속성 변경 팝오버를 자동으로 열 때는
                           // 클릭 이벤트가 없어서 anchor(DOM)를 못 받아요 — 그래서 버튼이
                           // 처음 마운트되는 시점에 ref로 한 번 더 anchor를 잡아줘요.
                           ref={(el) => {
@@ -552,60 +568,9 @@ export default function DatabaseBlock({
                               setTypeMenuAnchor(el);
                             }
                           }}
-                          className="db-table__head-type"
-                          onClick={(e) => {
-                            if (typeMenuFor === col.id) {
-                              setTypeMenuFor(null);
-                              setTypeMenuAnchor(null);
-                            } else {
-                              setTypeMenuFor(col.id);
-                              setTypeMenuAnchor(e.currentTarget);
-                            }
-                          }}
-                        >
-                          {(() => {
-                            const meta = COLUMN_TYPES.find((t) => t.type === col.type);
-                            const Icon = meta?.icon || AlignLeft;
-                            return (
-                              <>
-                                <Icon size={12} />
-                                <span>{meta?.label || col.type}</span>
-                              </>
-                            );
-                          })()}
-                        </button>
-
-                        {typeMenuFor === col.id && (
-                          <PopoverPortal
-                            anchorEl={typeMenuAnchor}
-                            onClose={() => {
-                              setTypeMenuFor(null);
-                              setTypeMenuAnchor(null);
-                            }}
-                          >
-                            <ColumnTypePicker
-                              options={RETYPEABLE_COLUMN_TYPES}
-                              value={col.type}
-                              onSelect={(type) => {
-                                retypeColumn(col.id, type);
-                                setTypeMenuFor(null);
-                                setTypeMenuAnchor(null);
-                              }}
-                              onClose={() => {
-                                setTypeMenuFor(null);
-                                setTypeMenuAnchor(null);
-                              }}
-                            />
-                          </PopoverPortal>
-                        )}
-                      </div>
-                    )}
-
-                    {col.type !== "TITLE" && (
-                      <div className="db-table__head-more-wrap">
-                        <button
-                          type="button"
-                          className={`db-table__head-more${colMenuFor === col.id ? " is-open" : ""}`}
+                          className={`db-table__head-more${
+                            colMenuFor === col.id || typeMenuFor === col.id ? " is-open" : ""
+                          }`}
                           onClick={(e) => {
                             if (colMenuFor === col.id) {
                               setColMenuFor(null);
@@ -629,6 +594,22 @@ export default function DatabaseBlock({
                             }}
                           >
                             <div className="block-menu db-row-menu">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  // 옵션 관리와 똑같이, 닫혀도 DOM에 남아 있는 "⋯" 버튼을
+                                  // 속성 변경 팝오버의 anchor로 다시 써요.
+                                  const anchor = colMenuAnchor;
+                                  setColMenuFor(null);
+                                  setColMenuAnchor(null);
+                                  setTypeMenuFor(col.id);
+                                  setTypeMenuAnchor(anchor);
+                                }}
+                              >
+                                <Repeat2 size={14} />
+                                <span>속성 변경</span>
+                              </button>
+
                               {(col.type === "SELECT" || col.type === "STATUS" || col.type === "MULTI_SELECT") && (
                                 <button
                                   type="button"
@@ -648,9 +629,7 @@ export default function DatabaseBlock({
                                 </button>
                               )}
 
-                              {(col.type === "SELECT" || col.type === "STATUS" || col.type === "MULTI_SELECT") && (
-                                <hr className="block-menu__divider" />
-                              )}
+                              <hr className="block-menu__divider" />
 
                               <button
                                 type="button"
@@ -665,6 +644,30 @@ export default function DatabaseBlock({
                                 <span>삭제</span>
                               </button>
                             </div>
+                          </PopoverPortal>
+                        )}
+
+                        {typeMenuFor === col.id && (
+                          <PopoverPortal
+                            anchorEl={typeMenuAnchor}
+                            onClose={() => {
+                              setTypeMenuFor(null);
+                              setTypeMenuAnchor(null);
+                            }}
+                          >
+                            <ColumnTypePicker
+                              options={RETYPEABLE_COLUMN_TYPES}
+                              value={col.type}
+                              onSelect={(type) => {
+                                retypeColumn(col.id, type);
+                                setTypeMenuFor(null);
+                                setTypeMenuAnchor(null);
+                              }}
+                              onClose={() => {
+                                setTypeMenuFor(null);
+                                setTypeMenuAnchor(null);
+                              }}
+                            />
                           </PopoverPortal>
                         )}
                       </div>
@@ -876,6 +879,7 @@ export default function DatabaseBlock({
           <button type="button" className="db-add-col-trigger" onClick={addColumn} title="열 추가">
             <Plus size={14} />
           </button>
+        </div>
         </div>
         </div>
       </div>

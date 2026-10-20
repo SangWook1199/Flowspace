@@ -374,9 +374,11 @@ public class PageService {
             files.add(page.getCoverFile());
         }
 
-        for (Block block : blockRepository.findByPageOrderByPositionAsc(page)) {
-            if (block.getImageFile() != null) {
-                files.add(block.getImageFile());
+        // 블록을 엔티티로 읽지 않고 이미지 파일만 읽어요. 블록을 읽어 두면 아래에서 페이지를 지울 때
+        // "삭제된 Page를 가리키는 Block"이라는 flush 오류가 나서 휴지통 비우기가 실패했어요.
+        for (File imageFile : blockRepository.findImageFilesByPage(page)) {
+            if (!files.contains(imageFile)) {
+                files.add(imageFile);
             }
         }
 

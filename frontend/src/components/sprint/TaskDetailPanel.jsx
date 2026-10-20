@@ -13,6 +13,7 @@ import MentionInput from "../common/MentionInput";
 import MentionText from "../common/MentionText";
 import { useMemberProfile } from "../../context/MemberProfileContext";
 import { useTaskComments } from "../../hooks/useTaskComments";
+import TaskAttachments from "./TaskAttachments";
 import { toRelativeTime } from "../../api/mappers";
 import { formatDateDots, isRangeReversed, parseDateKey, percentOf, toDateKey } from "../../utils/date";
 import { htmlToText, textToHtml } from "../../utils/sanitizeHtml";
@@ -199,6 +200,7 @@ export default function TaskDetailPanel({
         />
         <SubtaskAdd key={`subtask-add-${task.id}`} onAdd={onAddSubtask} />
       </div>
+      <TaskAttachments key={`attachments-${task.id}`} taskId={task.id} />
       <TaskComments key={`comments-${task.id}`} taskId={task.id} />
       {onDeleteTask && (
         <button type="button" className={styles.deleteSelected} onClick={onDeleteTask}>
