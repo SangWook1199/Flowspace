@@ -22,7 +22,7 @@ import com.flowspace.exception.FlowSpaceException;
 //
 //   모델 초안(AiRawDraft)
 //     1. 개수 확인        스프린트가 모자라거나 작업이 없으면 AiDraftException(다시 만들게 해요)
-//     2. 글 확인·정리      한자·일본어 확인, 마크다운 제거, 조사 교정          → AiText
+//     2. 글 확인·정리      한자·일본어 제거, 마크다운 제거, 조사 교정          → AiText
 //     3. 작업 다듬기       주차 순 정렬 → 역할에 맞는 담당자 → 우선순위       → AiRoleAssigner, AiTaskPrioritizer
 //     4. 날짜 계산         담당자·작업 순서를 지키며 날짜를 정해요            → AiScheduler, AiDependencyRules
 //     5. 흠 점검(strict)   고칠 수 없는 눈에 띄는 흠이면 다시 만들게 해요     → AiDraftReviewer
@@ -46,9 +46,7 @@ public class AiDraftValidator {
     // (여기 적힌 기능은 "요청한 기능"으로 봐요).
     public AiDraft toDraft(AiRawDraft raw, AiDraftContext context, boolean strict, String requestText) {
 
-        List<AiRawDraft.Sprint> rawSprints = takeSprints(raw, context.sprintCount());
-
-        rejectForeignScript(rawSprints);
+        List<AiRawDraft.Sprint> rawSprints = removeForeignScript(takeSprints(raw, context.sprintCount()), strict);
 
         List<SprintPlan> plans = new ArrayList<>();
 
@@ -93,32 +91,52 @@ public class AiDraftValidator {
 
     // ---------- 2. 글 ----------
 
-    // 모델이 만든 글(스프린트·작업)에 한자·일본어가 섞였는지 봐요. 사용자가 직접 쓴 고정 일정은 보지 않아요.
-    private void rejectForeignScript(List<AiRawDraft.Sprint> sprints) {
+    // 한 글에서 한자·일본어가 이 비율을 넘으면 지우고 남은 글을 믿기 어려워요(다시 만들게 해요).
+    private static final double MAX_FOREIGN_RATIO = 0.3;
+
+    // 모델이 만든 글(스프린트·작업)에 섞인 한자·일본어를 지워요. 사용자가 직접 쓴 고정 일정은 보지 않아요.
+    // 모델(qwen)은 다시 시켜도 같은 실수를 자주 해서, 몇 글자만 섞였으면 다시 만들지 않고 서버가 지워요.
+    // strict(마지막 시도 전)일 때만, 글 대부분이 외국 글자이거나 지우면 이름·제목이 비는 경우에 다시 만들게 해요.
+    private List<AiRawDraft.Sprint> removeForeignScript(List<AiRawDraft.Sprint> sprints, boolean strict) {
+
+        List<AiRawDraft.Sprint> cleaned = new ArrayList<>();
 
         for (AiRawDraft.Sprint sprint : sprints) {
 
-            check(sprint.name());
-            check(sprint.goal());
+            List<AiRawDraft.Task> tasks = null;
 
             if (sprint.tasks() != null) {
+                tasks = new ArrayList<>();
+
                 for (AiRawDraft.Task task : sprint.tasks()) {
-                    if (task != null) {
-                        check(task.title());
-                        check(task.description());
-                    }
+                    tasks.add(task == null ? null
+                        : new AiRawDraft.Task(strip(task.title(), true, strict), strip(task.description(), false, strict),
+                            task.priority(), task.assigneeUserId(), task.weekInSprint(), task.durationDays()));
                 }
             }
+
+            cleaned.add(new AiRawDraft.Sprint(strip(sprint.name(), true, strict), strip(sprint.goal(), false, strict), tasks));
         }
+
+        return cleaned;
     }
 
-    private void check(String text) {
+    // required는 이름·제목처럼 비면 안 되는 글이에요.
+    private String strip(String text, boolean required, boolean strict) {
 
         String found = AiText.findForeignScript(text);
 
-        if (found != null) {
+        if (found == null) {
+            return text;
+        }
+
+        String stripped = AiText.stripForeignScript(text);
+
+        if (strict && (AiText.foreignRatio(text) > MAX_FOREIGN_RATIO || (required && stripped.isBlank()))) {
             throw new AiDraftException("한자나 일본어 글자('" + found + "')가 섞여 있어요. 모든 글을 한글로만 써 주세요.");
         }
+
+        return stripped;
     }
 
     // ---------- 3·4. 스프린트 하나 ----------

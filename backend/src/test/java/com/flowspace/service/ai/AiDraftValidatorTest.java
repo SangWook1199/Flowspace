@@ -56,16 +56,44 @@ class AiDraftValidatorTest {
     // ---------- 한자·일본어 섞임 ----------
 
     @Test
-    @DisplayName("작업 설명에 한자가 섞이면 다시 만들게 하고, 섞인 글자를 알려준다")
-    void rejectsForeignScript() {
+    @DisplayName("한자가 몇 글자만 섞이면 다시 만들지 않고 그 글자만 지운다")
+    void stripsFewForeignChars() {
         AiRawDraft draft = new AiRawDraft(
-            List.of(sprint("기반", new AiRawDraft.Task("작업", "테스트中发现된 오류를 고친다.", "HIGH", 1L, 1, 2)),
+            List.of(sprint("기반", new AiRawDraft.Task("진행中 작업 정리", "테스트中发现된 오류를 고친다.", "HIGH", 1L, 1, 2)),
+                sprint("기능", task("작업 하기", 1, 2)), sprint("연동", task("작업 하기", 1, 2)),
+                sprint("마무리", task("작업 하기", 1, 2))));
+
+        AiDraft result = validator.toDraft(draft, context());
+
+        AiDraft.Task first = result.sprints().get(0).tasks().get(0);
+        assertEquals("진행 작업 정리", first.title());
+        assertEquals("테스트된 오류를 고친다.", first.description());
+    }
+
+    @Test
+    @DisplayName("글 대부분이 한자면 다시 만들게 하고, 섞인 글자를 알려준다")
+    void rejectsMostlyForeignText() {
+        AiRawDraft draft = new AiRawDraft(
+            List.of(sprint("기반", new AiRawDraft.Task("작업", "中文测试文本 수정", "HIGH", 1L, 1, 2)),
                 sprint("기능", task("작업 하기", 1, 2)), sprint("연동", task("작업 하기", 1, 2)),
                 sprint("마무리", task("작업 하기", 1, 2))));
 
         AiDraftException e = assertThrows(AiDraftException.class, () -> validator.toDraft(draft, context()));
 
-        assertTrue(e.getMessage().contains("中发现"));
+        assertTrue(e.getMessage().contains("中文测试文本"));
+    }
+
+    @Test
+    @DisplayName("마지막 시도에서는 한자가 많아도 버리지 않고 지워서 쓴다")
+    void lastAttemptStripsInsteadOfRejecting() {
+        AiRawDraft draft = new AiRawDraft(
+            List.of(sprint("기반", new AiRawDraft.Task("작업", "中文测试文本 수정", "HIGH", 1L, 1, 2)),
+                sprint("기능", task("작업 하기", 1, 2)), sprint("연동", task("작업 하기", 1, 2)),
+                sprint("마무리", task("작업 하기", 1, 2))));
+
+        AiDraft result = validator.toDraft(draft, context(), false);
+
+        assertEquals("수정", result.sprints().get(0).tasks().get(0).description());
     }
 
     @Test
