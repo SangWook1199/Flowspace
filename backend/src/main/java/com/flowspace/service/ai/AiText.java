@@ -124,6 +124,46 @@ final class AiText {
         return matcher.find() ? matcher.group() : null;
     }
 
+    // 한자·일본어 글자를 지워요. 모델이 한국어 문장 중간에 몇 글자씩 섞는 경우("진행中")가 많아서,
+    // 이 글자만 빼면 대부분 그대로 쓸 수 있어요. null이면 null이에요.
+    static String stripForeignScript(String text) {
+
+        if (text == null) {
+            return null;
+        }
+
+        return FOREIGN_SCRIPT.matcher(text).replaceAll("");
+    }
+
+    // 공백을 뺀 글자 가운데 한자·일본어 글자의 비율이에요(0~1). 비어 있으면 0이에요.
+    static double foreignRatio(String text) {
+
+        if (text == null) {
+            return 0;
+        }
+
+        int letters = 0;
+        int foreign = 0;
+
+        for (int codePoint : text.codePoints().toArray()) {
+
+            if (Character.isWhitespace(codePoint)) {
+                continue;
+            }
+
+            letters++;
+
+            Character.UnicodeScript script = Character.UnicodeScript.of(codePoint);
+
+            if (script == Character.UnicodeScript.HAN || script == Character.UnicodeScript.HIRAGANA
+                || script == Character.UnicodeScript.KATAKANA) {
+                foreign++;
+            }
+        }
+
+        return letters == 0 ? 0 : (double) foreign / letters;
+    }
+
     private static boolean endsWithNounGwa(String token) {
 
         for (String noun : GWA_NOUNS) {

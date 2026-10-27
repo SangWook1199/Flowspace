@@ -53,4 +53,14 @@ class AiTextTest {
         assertNull(AiText.fixParticles(null));
     }
 
+    @Test
+    @DisplayName("한자·일본어 글자만 지우고, 공백을 뺀 글자 중 그 비율을 잰다")
+    void foreignScript() {
+        assertEquals("진행 작업", AiText.stripForeignScript("진행中 작업"));
+        assertEquals("API 설계", AiText.stripForeignScript("API 설계"));
+        assertNull(AiText.stripForeignScript(null));
+        assertEquals(0.5, AiText.foreignRatio("中文 한글"), 1e-9);
+        assertEquals(0.0, AiText.foreignRatio("JWT 로그인"), 1e-9);
+    }
+
 }
