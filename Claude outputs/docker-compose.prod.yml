@@ -1,0 +1,21 @@
+# 운영 서버용이에요. 배포할 때 서버의 /opt/flowspace/docker-compose.yml 로 복사돼요.
+# MySQL·nginx는 서버에 직접 설치돼 있고, 백엔드만 컨테이너로 실행해요.
+services:
+  backend:
+    # IMAGE_TAG는 배포 스크립트가 /opt/flowspace/.env 에 적어 둬요(커밋 해시).
+    image: ghcr.io/sangwook1199/flowspace-backend:${IMAGE_TAG:-latest}
+    container_name: flowspace-backend
+    # 서버의 네트워크를 그대로 써요(localhost의 MySQL·AI 터널에 연결, nginx가 127.0.0.1:8080으로 연결).
+    network_mode: host
+    # 서버의 flowspace 계정 번호(uid:gid). 업로드 폴더에 쓰려면 같아야 해요.
+    user: "999:988"
+    env_file: /etc/flowspace/flowspace.env
+    environment:
+      JAVA_TOOL_OPTIONS: -Xmx768m
+    volumes:
+      - /var/flowspace/uploads:/var/flowspace/uploads
+    restart: unless-stopped
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"
